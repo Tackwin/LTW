@@ -2,9 +2,9 @@
 
 #include <filesystem>
 #include <string>
-#include <chrono>
 
-#include "json.hpp"
+#include <dyn_struct.hpp>
+#include <chrono>
 
 struct Scoped_Timer {
 
@@ -32,7 +32,7 @@ struct Tracer {
 private:
 	Tracer() noexcept;
 
-	nlohmann::json current_session;
+	dyn_struct current_session;
 	std::string current_session_name;
 	bool session_running = false;
 	std::vector<Scoped_Timer*> timers;
@@ -43,7 +43,7 @@ public:
 	void begin_session(std::string name) noexcept;
 	void end_session(std::filesystem::path path) noexcept;
 
-	void push(nlohmann::json str) noexcept;
+	void push(dyn_struct str) noexcept;
 
 	void begin(std::string name) noexcept;
 	void end() noexcept;

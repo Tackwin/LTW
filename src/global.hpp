@@ -1,4 +1,5 @@
 #include "Math/Vector.hpp"
+#include <mutex>
 
 struct Environment_t {
 	Vector2u windows_size;
@@ -13,3 +14,4 @@ namespace platform {
 
 extern float wheel_scroll;
 extern Environment_t Environment;
+extern std::mutex Main_Mutex;

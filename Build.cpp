@@ -15,6 +15,8 @@ Build build(Flags flags) noexcept {
 	auto b = Build::get_default(flags);
 	b.name = "LTW";
 	b.add_define("GLEW_STATIC");
+	b.add_define("NOMINMAX");
+	b.add_define("PROFILER");
 	b.add_define("CONSOLE");
 	b.add_header("./src/");
 	b.add_source_recursively("./src/");
@@ -44,6 +46,8 @@ Build build(Flags flags) noexcept {
 		b.add_define("UNICODE");
 		b.add_define("_UNICODE");
 
+		b.add_library("Imm32");
+		b.add_library("Dwmapi");
 		b.add_library("Xinput");
 		b.add_library("opengl32");
 		b.add_library("gdi32");
@@ -52,6 +56,7 @@ Build build(Flags flags) noexcept {
 		b.add_library("kernel32");
 		b.add_library("Comdlg32");
 		b.add_library("Ole32");
+		b.add_library("Uuid");
 	}
 
 	return b;

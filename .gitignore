@@ -1,4 +1,7 @@
 ease_build/
 ease_temp/
 .vscode/
+output/trace/
 *.exe
+*.ilk
+*.pdb

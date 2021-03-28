@@ -4,6 +4,8 @@
 #include <functional>
 #include <random>
 
+#include "dyn_struct.hpp"
+
 #pragma warning(push)
 #pragma warning(disable: 4201)
 
@@ -13,6 +15,9 @@
 #ifndef DBL_EPSILON
 #define DBL_EPSILON 0.000000001
 #endif
+
+static constexpr auto Vector2_Type_Tag = "Vector2<T>"_id;
+static constexpr auto Vector4_Type_Tag = "Vector4<T>"_id;
 
 #define COLOR_UNROLL(x) (x).r, (x).g, (x).b, (x).a
 #define XYZW_UNROLL(v) (v).x, (v).y, (v).z, (v).w
@@ -115,18 +120,18 @@ struct __vec_member<4, T> {
 
 template<size_t D, typename T = float>
 struct Vector : public __vec_member<D, T> {
-
+    
 #pragma region STATIC
-
+    
 	static Vector<D, T> createUnitVector(float angles[D - 1]) {
 		Vector<D, T> result;
 		result[0] = cosf(angles[0]);
 		for (size_t i = 1u; i < D; ++i) {
-
+            
 			result[i] = (i + 1u != D) ?
 				cosf(angles[i]) :
 			1;
-
+            
 			for (size_t j = 0u; j < D - 1u; ++j) {
 				result[i] *= sinf(angles[j]);
 			}
@@ -140,11 +145,11 @@ struct Vector : public __vec_member<D, T> {
 		Vector<D, T> result;
 		result[0] = static_cast<T>(cos(angles[0]));
 		for (size_t i = 1u; i < D; ++i) {
-
+            
 			result[i] = (i + 1u != D) ?
 				static_cast<T>(cos(angles[i])) :
 			1;
-
+            
 			for (size_t j = 0u; j < D - 1u; ++j) {
 				result[i] *= static_cast<T>(sin(angles[j]));
 			}
@@ -542,6 +547,32 @@ Vector<D, T> operator/(U scalar, const Vector<D, T>& vec) noexcept {
 	}
 	return result;
 }
+
+
+template<typename T>
+void to_dyn_struct(dyn_struct& s, const Vector<2, T>& x) noexcept {
+	s = { x.x, x.y };
+	s.type_tag = Vector2_Type_Tag;
+}
+template<typename T>
+void from_dyn_struct(const dyn_struct& s, Vector<2, T>& x) noexcept {
+	x.x = (T)s[0];
+	x.y = (T)s[1];
+}
+
+template<typename T>
+void to_dyn_struct(dyn_struct& s, const Vector<4, T>& x) noexcept {
+	s = { x.x, x.y, x.z, x.w };
+	s.type_tag = Vector4_Type_Tag;
+}
+template<typename T>
+void from_dyn_struct(const dyn_struct& s, Vector<4, T>& x) noexcept {
+	x.x = (T)s[0];
+	x.y = (T)s[1];
+	x.z = (T)s[2];
+	x.w = (T)s[3];
+}
+
 
 inline Vector4d to_rgba(Vector4d in) noexcept {
 	double      hh, p, q, t, ff;

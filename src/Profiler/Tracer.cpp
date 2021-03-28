@@ -1,14 +1,13 @@
 #include "Tracer.hpp"
 #include <assert.h>
 #include "OS/Process.hpp"
-#include "OS/file.hpp"
 
 Tracer::Tracer() noexcept {}
 
 void Tracer::begin_session(std::string name) noexcept {
 	assert(!session_running);
 	current_session_name = name;
-	current_session = nlohmann::json::array_t{};
+	current_session = dyn_struct::array_t{};
 	session_running = true;
 	timers.push_back(new Scoped_Timer("session", name));
 }
@@ -21,17 +20,16 @@ void Tracer::end_session(std::filesystem::path path) noexcept {
 	}
 	timers.clear();
 
-	nlohmann::json obj;
+	dyn_struct obj = dyn_struct::structure_t{};
 	obj["traceEvents"] = std::move(current_session);
 	auto save_path = path / (current_session_name + ".json");
-
-	file::overwrite_file(save_path, obj.dump());
+	save_to_json_file(obj, save_path);
 	printf("Wrote session to %s\n", save_path.generic_string().c_str());
 
 	session_running = false;
 }
 
-void Tracer::push(nlohmann::json str) noexcept {
+void Tracer::push(dyn_struct str) noexcept {
 	assert(session_running);
 
 	current_session.push_back(std::move(str));
@@ -59,7 +57,7 @@ Scoped_Timer::~Scoped_Timer() noexcept {
 	auto end = std::chrono::steady_clock::now();
 	auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end - ts).count();
 
-	nlohmann::json str;
+	dyn_struct str = dyn_struct::structure_t{};
 	str["cat"] = cat;
 	str["name"] = name;
 	str["dur"] = dur;
