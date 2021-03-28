@@ -1,0 +1,4 @@
+ease_build/
+ease_temp/
+.vscode/
+*.exe
