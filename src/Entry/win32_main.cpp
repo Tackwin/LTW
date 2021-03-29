@@ -9,10 +9,12 @@
 #include "GL/glew.h"
 #include "GL/wglew.h"
 
+#include "global.hpp"
+
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_impl_win32.h"
 
-#include "global.hpp"
+#include "Graphic/FrameBuffer.hpp"
 
 #include "Game.hpp"
 
@@ -32,6 +34,9 @@ void APIENTRY opengl_debug(
 std::optional<std::string> get_last_error_message() noexcept;
 std::optional<HGLRC> create_gl_context(HWND handle_window) noexcept;
 void destroy_gl_context(HGLRC gl_context) noexcept;
+
+void windows_loop() noexcept;
+
 
 void toggle_fullscren(HWND hwnd) {
 	static WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
@@ -72,19 +77,20 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 	ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
 
 	switch (msg) {
+	case WM_PAINT: windows_loop(); break;
 	case WM_KEYDOWN: {
 		if (wParam == VK_F11) toggle_fullscren(hWnd);
 		break;
 	}
 	case WM_SIZE: {
-		Environment.windows_size.x = (size_t)((int)LOWORD(lParam));
-		Environment.windows_size.y = (size_t)((int)HIWORD(lParam));
+		Environment.window_size.x = (size_t)((int)LOWORD(lParam));
+		Environment.window_size.y = (size_t)((int)HIWORD(lParam));
 		break;
 	}
 	case WM_SIZING: {
 		RECT* rect = (RECT*)lParam;
-		Environment.windows_size.x = rect->right - rect->left;
-		Environment.windows_size.y = rect->bottom - rect->top;
+		Environment.window_size.x = rect->right - rect->left;
+		Environment.window_size.y = rect->bottom - rect->top;
 		break;
 	}
 	case WM_CHAR:
@@ -104,6 +110,10 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
+void render_orders(const render::Orders& orders) noexcept;
+
+Game game;
+render::Orders orders;
 
 #ifdef CONSOLE
 int main(int, char**
@@ -122,7 +132,7 @@ int WINAPI WinMain(
 	// Create application window
 	WNDCLASSEX wc = {
 		sizeof(WNDCLASSEX),
-		CS_CLASSDC | CS_OWNDC,
+		CS_CLASSDC | CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
 		window_proc,
 		0L,
 		0L,
@@ -167,8 +177,8 @@ int WINAPI WinMain(
 		printf("%s", get_last_error_message()->c_str());
 		return 1;
 	}
-	Environment.windows_size.x = (size_t)(window_rect.right - window_rect.left);
-	Environment.windows_size.y = (size_t)(window_rect.bottom - window_rect.top);
+	Environment.window_size.x = (size_t)(window_rect.right - window_rect.left);
+	Environment.window_size.y = (size_t)(window_rect.bottom - window_rect.top);
 	PROFILER_END();
 
 
@@ -188,7 +198,9 @@ int WINAPI WinMain(
 #endif
 
 	glEnable(GL_BLEND);
+	glEnable(GL_MULTISAMPLE);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glDisable(GL_DEPTH_TEST);
 	PROFILER_END();
 
 	printf("Opengl ");
@@ -221,11 +233,9 @@ int WINAPI WinMain(
 	}
 
 	platform::handle_dc_window = dc_window;
-	render::Orders orders;
 	orders.reserve(1000);
 
 	PROFILER_BEGIN("Game");
-	Game game;
 	game.startup();
 	PROFILER_END();
 
@@ -238,34 +248,55 @@ int WINAPI WinMain(
 	PROFILER_END();
 	PROFILER_SESSION_END("output/trace/");
 
-	auto last_time_frame = xstd::seconds();
 	while (msg.message != WM_QUIT) {
-		std::uint64_t dt = xstd::seconds() - last_time_frame;
-		last_time_frame = xstd::seconds();
-
 		if (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		for (auto& x : posted_char) game.post_char(x);
-		posted_char.clear();
-
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
-
-		game.update(dt);
-		game.render(orders);
-
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		SwapBuffers(dc_window);
+		windows_loop();
 	}
 
 	PROFILER_SESSION_BEGIN("Shutup");
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+
 	game.shutdown();
 	return 0;
+}
+
+void windows_loop() noexcept {
+	thread_local auto last_time_frame = xstd::seconds();
+	auto dt = xstd::seconds() - last_time_frame;
+	last_time_frame = xstd::seconds();
+
+	// >TODO(Tackwin): handle multiple char by frame.
+	for (auto& x : posted_char) current_char = x;
+	posted_char.clear();
+	
+	Rectanglef viewport_rect{
+		0.f, 0.f, (float)Environment.window_size.x, (float)Environment.window_size.y
+	};
+	viewport_rect = viewport_rect.fitDownRatio({16, 9});
+	Environment.viewport_size = viewport_rect.size;
+
+	Main_Mutex.lock();
+	defer{ Main_Mutex.unlock(); };
+
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	game.update(dt);
+	game.render(orders);
+
+	render_orders(orders);
+	orders.clear();
+
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+	SwapBuffers((HDC)platform::handle_dc_window);
 }
 
 std::optional<std::string> get_last_error_message() noexcept {
@@ -462,4 +493,90 @@ void APIENTRY opengl_debug(
 	if (std::find(BEG_END(To_Break_On), id) != std::end(To_Break_On)) {
 		DebugBreak();
 	}
+}
+
+
+void render_orders(const render::Orders& orders) noexcept {
+	static float gamma    = 0.7f;
+	static float exposure = 1.0f;
+
+	auto buffer_size = Environment.buffer_size;
+	
+	static Texture_Buffer texture_target(buffer_size);
+	static G_Buffer       g_buffer(buffer_size);
+	static HDR_Buffer     hdr_buffer(buffer_size);
+
+	glViewport(0, 0, (GLsizei)buffer_size.x, (GLsizei)buffer_size.y);
+
+	g_buffer.set_active();
+	g_buffer.clear({});
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	std::vector<render::Camera> cam_stack;
+	for (auto& x : orders) {
+		switch (x.kind) {
+			case render::Order::Camera_Kind: {
+				cam_stack.push_back(x.Camera_);
+				render::current_camera = cam_stack.back();
+				break;
+			}
+			case render::Order::Pop_Camera_Kind: {
+				cam_stack.pop_back();
+				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
+				break;
+			}
+			case render::Order::Circle_Kind:     render::immediate(x.Circle_);    break;
+			case render::Order::Rectangle_Kind:  render::immediate(x.Rectangle_); break;
+			default: break;
+		}
+	}
+
+	hdr_buffer.set_active();
+	g_buffer.set_active_texture();
+	glClearColor(0.4f, 0.2f, 0.3f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Light);
+	shader.use();
+	shader.set_uniform("ambient_light", Vector4d{1, 1, 1, 1});
+	shader.set_uniform("ambient_intensity", 1.f);
+	shader.set_uniform("debug", 0);
+	shader.set_uniform("n_light_points", 0);
+	shader.set_uniform("buffer_albedo", 0);
+	shader.set_uniform("buffer_normal", 1);
+	shader.set_uniform("buffer_position", 2);
+
+	g_buffer.render_quad();
+
+	texture_target.set_active();
+	hdr_buffer.set_active_texture();
+
+	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
+	shader_hdr.use();
+	shader_hdr.set_uniform("gamma", gamma);
+	shader_hdr.set_uniform("exposure", exposure);
+	shader_hdr.set_uniform("hdr_texture", 0);
+	shader_hdr.set_uniform("transform_color", true);
+
+	Rectanglef viewport_rect{
+		0.f, 0.f, (float)Environment.window_size.x, (float)Environment.window_size.y
+	};
+	viewport_rect = viewport_rect.fitDownRatio({16, 9});
+
+	glViewport(
+		(Environment.window_size.x - (GLsizei)viewport_rect.w) / 2,
+		(Environment.window_size.y - (GLsizei)viewport_rect.h) / 2,
+		(GLsizei)viewport_rect.w,
+		(GLsizei)viewport_rect.h
+	);
+
+	hdr_buffer.render_quad();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	
+	shader_hdr.set_uniform("transform_color", false);
+	
+	texture_target.render_quad();
+	hdr_buffer.set_disable_texture();
 }

@@ -1,8 +1,17 @@
 #include "InputsManager.hpp"
 
+#include "imgui/imgui.h"
+
 #include "OS/file.hpp"
 #include "OS/RealTimeIO.hpp"
 #include "xstd.hpp"
+
+#include "Graphic/Render.hpp"
+
+#include "global.hpp"
+
+
+uint8_t current_char = '\0';
 
 std::string to_string(Mouse::Button b) noexcept {
 	switch (b) {
@@ -375,4 +384,99 @@ std::string to_string(Joystick::Button b) noexcept {
 			return "Unknown";
 			break;
 	}
+}
+
+Vector2f project_mouse_pos(Vector2f mouse, const render::Camera& camera) noexcept {
+	return {
+		camera.pos.x - camera.frame_size.x / 2 + mouse.x * camera.frame_size.x,
+		camera.pos.y - camera.frame_size.y / 2 + mouse.y * camera.frame_size.y
+	};
+}
+
+
+Input_Info get_new_frame_input(const Input_Record& records, double dt) noexcept {
+	defer{ wheel_scroll = 0; };
+	Input_Info new_record = {};
+
+	new_record.dt = dt;
+
+	auto keyboard_state = io::get_keyboard_state();
+	for (size_t i = 0; i < io::Keyboard::Count; ++i) {
+		auto vk = map_key((io::Keyboard::Key)i);
+		auto pressed = (bool)keyboard_state.keys[vk];
+		auto last_pressed = records.empty() ? false : records.back().key_infos[i].pressed;
+
+		new_record.key_infos[i].just_pressed = !last_pressed && pressed;
+		new_record.key_infos[i].just_released = last_pressed && !pressed;
+		new_record.key_infos[i].pressed = pressed;
+	}
+
+	for (size_t i = 0; i < io::Mouse::Count; ++i) {
+		auto pressed = (bool)keyboard_state.keys[map_mouse((io::Mouse::Button)i)];
+		auto last_pressed = records.empty() ? false : records.back().mouse_infos[i].pressed;
+
+		new_record.mouse_infos[i].just_pressed = !last_pressed && pressed;
+		new_record.mouse_infos[i].just_released = last_pressed && !pressed;
+		new_record.mouse_infos[i].pressed = pressed;
+	}
+
+	auto state = io::get_controller_state(0);
+	auto Max_Range = .5f + (1 << (8 * sizeof(state.left_thumb_x) - 1));
+
+	new_record.left_trigger = state.left_trigger / 255.f;
+	new_record.right_trigger = state.right_trigger / 255.f;
+	new_record.left_trigger *= new_record.left_trigger;
+	new_record.right_trigger *= new_record.right_trigger;
+
+	new_record.left_joystick = {
+		(state.left_thumb_x + 0.5f) / Max_Range,
+		(state.left_thumb_y + 0.5f) / Max_Range
+	};
+	new_record.right_joystick = {
+		(state.right_thumb_x + 0.5f) / Max_Range,
+		(state.right_thumb_y + 0.5f) / Max_Range
+	};
+
+	auto dead_range = (io::Controller_State::Left_Thumb_Deadzone + .5) / (double)Max_Range;
+	auto length = new_record.left_joystick.length();
+	if (length < dead_range) {
+		new_record.left_joystick = {};
+	}
+	new_record.left_joystick.applyCW([](auto x) { return std::powf(x, 1); });
+
+	length = new_record.right_joystick.length();
+	if (length < dead_range) {
+		new_record.right_joystick = {};
+	}
+	new_record.right_joystick.applyCW([](auto x) { return std::powf(x, 1); });
+
+	for (size_t i = 0; i < io::Controller::Count; ++i) {
+		auto pressed = (bool)(state.buttons_mask & io::map_controller((io::Controller::Button)i));
+		auto last_pressed =
+			records.empty() ? false : records.back().joystick_buttons_infos[i].pressed;
+		new_record.joystick_buttons_infos[i].just_pressed = !last_pressed && pressed;
+		new_record.joystick_buttons_infos[i].just_released = last_pressed && !pressed;
+		new_record.joystick_buttons_infos[i].pressed = pressed;
+	}
+	
+	new_record.focused = io::is_window_focused();
+	new_record.scroll = wheel_scroll;
+
+	Vector2f last_mouse_pos =
+		records.empty() ? Vector2f{} : records.back().mouse_pos;
+
+	auto screen_pos = io::get_mouse_pos();
+
+	new_record.mouse_pos = ((Vector2f)Environment.window_size - Environment.viewport_size) / 2;
+	new_record.mouse_pos.x = (screen_pos.x - new_record.mouse_pos.x) / Environment.viewport_size.x;
+	new_record.mouse_pos.y = (screen_pos.y - new_record.mouse_pos.y) / Environment.viewport_size.y;
+	new_record.mouse_delta = new_record.mouse_pos - last_mouse_pos;
+
+	new_record.key_captured = ImGui::GetIO().WantCaptureKeyboard;
+	new_record.mouse_captured = ImGui::GetIO().WantCaptureMouse;
+
+	new_record.new_character = current_char;
+	current_char = '\0';
+
+	return new_record;
 }

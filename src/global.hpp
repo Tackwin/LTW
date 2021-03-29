@@ -2,7 +2,9 @@
 #include <mutex>
 
 struct Environment_t {
-	Vector2u windows_size;
+	Vector2u window_size;
+	Vector2f viewport_size;
+	Vector2u buffer_size = { 1920, 1080 };
 };
 
 namespace platform {

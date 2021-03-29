@@ -48,7 +48,7 @@ public:
 
 	void set_window_size(Vector2u size) noexcept;
 	void set_view(Rectanglef view) noexcept;
-	void set_primary_color(Vector4d color) noexcept;
+	void set_primary_color(Vector4f color) noexcept;
 	void set_rotation(float rotation) noexcept;
 	void set_origin(Vector2f origin) noexcept;
 	void set_position(Vector2f pos) noexcept;

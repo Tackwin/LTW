@@ -19,21 +19,18 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 
 	// - color + specular color buffer
 	glGenTextures(1, &albedo_buffer);
-	glBindTexture(GL_TEXTURE_2D, albedo_buffer);
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, albedo_buffer);
+	glTexImage2DMultisample(
+		GL_TEXTURE_2D_MULTISAMPLE,
+		4,
 		GL_RGBA,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
-		0,
-		GL_RGBA,
-		GL_UNSIGNED_BYTE,
-		NULL
+		GL_TRUE
 	);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, albedo_buffer, 0);
+	glFramebufferTexture2D(
+		GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, albedo_buffer, 0
+	);
 #ifdef GL_DEBUG
 	label = "geometry_color + specular";
 	glObjectLabel(GL_TEXTURE, albedo_buffer, (GLsizei)strlen(label) - 1, label);
@@ -41,21 +38,18 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 
 	// - normal color buffer
 	glGenTextures(1, &normal_buffer);
-	glBindTexture(GL_TEXTURE_2D, normal_buffer);
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, normal_buffer);
+	glTexImage2DMultisample(
+		GL_TEXTURE_2D_MULTISAMPLE,
+		4,
 		GL_RGBA16F,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
-		0,
-		GL_RGBA,
-		GL_FLOAT,
-		NULL
+		GL_TRUE
 	);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, normal_buffer, 0);
+	glFramebufferTexture2D(
+		GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, normal_buffer, 0
+	);
 #ifdef GL_DEBUG
 	label = "geometry_normal_color";
 	glObjectLabel(GL_TEXTURE, normal_buffer, (GLsizei)strlen(label) - 1, label);
@@ -63,21 +57,18 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 
 	// - position color buffer
 	glGenTextures(1, &pos_buffer);
-	glBindTexture(GL_TEXTURE_2D, pos_buffer);
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pos_buffer);
+	glTexImage2DMultisample(
+		GL_TEXTURE_2D_MULTISAMPLE,
+		4,
 		GL_RGBA16F,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
-		0,
-		GL_RGBA,
-		GL_FLOAT,
-		NULL
+		GL_TRUE
 	);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, pos_buffer, 0);
+	glFramebufferTexture2D(
+		GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, pos_buffer, 0
+	);
 #ifdef GL_DEBUG
 	label = "geometry_pos_buffer";
 	glObjectLabel(GL_TEXTURE, pos_buffer, (GLsizei)strlen(label) - 1, label);
@@ -91,7 +82,9 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 
 	glGenRenderbuffers(1, &depth_rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, depth_rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, (GLsizei)size.x, (GLsizei)size.y);
+	glRenderbufferStorageMultisample(
+		GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT16, (GLsizei)size.x, (GLsizei)size.y
+	);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rbo);
 	// finally check if framebuffer is complete
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -101,7 +94,7 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 	label = "geometry_depth";
 	glObjectLabel(GL_RENDERBUFFER, depth_rbo, (GLsizei)strlen(label) - 1, label);
 #endif
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
@@ -160,20 +153,20 @@ void G_Buffer::set_active() noexcept {
 
 void G_Buffer::set_active_texture() noexcept {
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, albedo_buffer);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, albedo_buffer);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, normal_buffer);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, normal_buffer);
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, pos_buffer);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pos_buffer);
 }
 
 void G_Buffer::set_disable_texture() noexcept {
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 }
 
 
@@ -189,6 +182,7 @@ void G_Buffer::copy_depth_to(uint32_t id) noexcept {
 	// blit to default framebuffer. Note that this may or may not work as the internal formats of both the FBO and default framebuffer have to match.
 	// the internal formats are implementation defined. This works on all of my systems, but if it doesn't on yours you'll likely have to write to the 		
 	// depth buffer in another shader stage (or somehow see to match the default framebuffer's internal format with the FBO's internal format).
+	glDrawBuffer(GL_BACK);
 	glBlitFramebuffer(
 		0,
 		0,
@@ -210,6 +204,7 @@ void G_Buffer::copy_depth_to(uint32_t id, Rectanglef v) noexcept {
 	// blit to default framebuffer. Note that this may or may not work as the internal formats of both the FBO and default framebuffer have to match.
 	// the internal formats are implementation defined. This works on all of my systems, but if it doesn't on yours you'll likely have to write to the 		
 	// depth buffer in another shader stage (or somehow see to match the default framebuffer's internal format with the FBO's internal format).
+	glDrawBuffer(GL_BACK);
 	glBlitFramebuffer(
 		0,
 		0,

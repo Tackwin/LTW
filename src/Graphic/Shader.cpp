@@ -202,9 +202,8 @@ void Shader::use() const noexcept {
 }
 
 #define loc(x) glGetUniformLocation(info.programId, x)
-void Shader::set_primary_color(Vector4d color) noexcept {
-	Vector4f c = (Vector4f)color;
-	glUniform4fv(loc("color"), 1, &c.x);
+void Shader::set_primary_color(Vector4f color) noexcept {
+	glUniform4fv(loc("color"), 1, &color.x);
 }
 void Shader::set_rotation(float rotation) noexcept {
 	glUniform1f(loc("rotation"), rotation);

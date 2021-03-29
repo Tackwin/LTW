@@ -20,6 +20,7 @@ namespace details {
 #define BEG_END(x) BEG(x), END(x)
 #define V2F(x) Vector2f{(x), (x)}
 
+#define for2(i, j, vec) for (size_t i = 0; i < vec.x; ++i) for (size_t j = 0; j < vec.y; ++j)
 
 template<bool flag = false> void static_no_match() noexcept {
 	static_assert(flag, "No match.");
@@ -38,8 +39,8 @@ template<bool flag = false> void static_no_match() noexcept {
 #define sum_type_X_one_of(x) std::is_same_v<T, x> ||
 
 #define sum_type(n, list)\
-		enum Kind { None_Kind = 0 list(sum_type_X_Kind) } kind;\
 		union { list(sum_type_X_Union) };\
+		enum Kind { None_Kind = 0 list(sum_type_X_Kind) } kind;\
 		n() noexcept { kind = None_Kind; }\
 		template<typename T> n(const T& y) noexcept {\
 			if constexpr (false);\
@@ -103,6 +104,10 @@ template<bool flag = false> void static_no_match() noexcept {
 			assert("Yeah no.");\
 			return *reinterpret_cast<T*>(this);\
 		}
+
+#define sum_type_base(base)\
+	base* operator->() noexcept { return (base*)this; }\
+	const base* operator->() const noexcept { return (base*)this; }
 
 
 #include <chrono>

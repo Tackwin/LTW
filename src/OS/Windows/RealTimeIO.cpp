@@ -192,7 +192,7 @@ Vector2f io::get_mouse_pos() noexcept {
 	ScreenToClient((HWND)platform::handle_window, &p);
 	return {
 		(float)(p.x),
-		(float)(Environment.windows_size.y - p.y)
+		(float)(Environment.window_size.y - p.y)
 	};
 }
 bool io::is_window_focused() noexcept {

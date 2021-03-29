@@ -3072,6 +3072,17 @@ bool ImGui::SliderInt(const char* label, int* v, int v_min, int v_max, const cha
     return SliderScalar(label, ImGuiDataType_S32, v, &v_min, &v_max, format, flags);
 }
 
+bool ImGui::SliderSize(const char* label, size_t* v, size_t v_min, size_t v_max, const char* format, ImGuiSliderFlags flags)
+{
+    int64_t x = *v;
+    int64_t mi = v_min;
+    int64_t ma = v_max;
+    auto ret = SliderScalar(label, ImGuiDataType_S64, &x, &mi, &ma, format, flags);
+    *v = x;
+
+    return ret;
+}
+
 bool ImGui::SliderInt2(const char* label, int v[2], int v_min, int v_max, const char* format, ImGuiSliderFlags flags)
 {
     return SliderScalarN(label, ImGuiDataType_S32, v, 2, &v_min, &v_max, format, flags);

@@ -1,0 +1,11 @@
+#version 300 es
+precision mediump float;
+in vec3 in_pos;
+in vec2 in_text;
+
+out vec2 text_coord;
+
+void main() {
+    text_coord = in_text;
+    gl_Position = vec4(in_pos, 1.0);
+}

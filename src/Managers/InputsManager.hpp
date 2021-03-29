@@ -155,7 +155,7 @@ struct Joystick {
 extern std::string to_string(Keyboard::Key k) noexcept;
 extern std::string to_string(Joystick::Button b) noexcept;
 
-struct Inputs_Info {
+struct Input_Info {
 	constexpr static std::uint8_t Version{ 0 };
 
 	struct Action_Info {
@@ -173,12 +173,11 @@ struct Inputs_Info {
 	float left_trigger;
 	float right_trigger;
 
-	Vector2f mouse_screen_pos;
-	Vector2f mouse_screen_delta;
-	Vector2u window_size;
+	Vector2f mouse_pos;   // Normalized
+	Vector2f mouse_delta; // Normalized
 
 	float scroll;
-	float dt;
+	double dt;
 
 	struct {
 		bool mouse_captured : 1;
@@ -189,4 +188,10 @@ struct Inputs_Info {
 	char new_character;
 };
 
-using Input_Record = std::deque<Inputs_Info>;
+extern uint8_t current_char;
+
+using Input_Record = std::deque<Input_Info>;
+extern Input_Info get_new_frame_input(const Input_Record& past, double dt) noexcept;
+
+namespace render { struct Camera; }
+extern Vector2f project_mouse_pos(Vector2f mouse, const render::Camera& camera) noexcept;

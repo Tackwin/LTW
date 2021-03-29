@@ -1,0 +1,37 @@
+#version 300 es
+precision mediump float;
+
+layout (location = 0) out vec4 g_albedo;
+layout (location = 1) out vec4 g_normal;
+layout (location = 2) out vec4 g_position;
+
+in vec2 texture_coord;
+in vec3 pos;
+
+uniform vec4 color;
+
+uniform vec4 texture_rect;
+
+uniform sampler2D color_texture;
+uniform bool use_color_texture;
+uniform sampler2D normal_texture;
+uniform bool use_normal_texture;
+
+void main() {
+	vec4 texel = vec4(1);
+	if (use_color_texture) texel = texture(color_texture, texture_coord * texture_rect.zw + texture_rect.xy);
+
+    g_albedo = vec4(
+    	texel.x * color.x,
+    	texel.y * color.y,
+    	texel.z * color.z,
+    	texel.w * color.w
+    );
+
+    g_normal = vec4(1.0, 1.0, 1.0, texel.a);
+    if (use_normal_texture && texel.a != 0.0) {
+    	g_normal = texture(normal_texture, texture_coord * texture_rect.zw + texture_rect.xy);
+    }
+
+    g_position = vec4(pos, 1);
+}

@@ -18,6 +18,8 @@ Build build(Flags flags) noexcept {
 	b.add_define("NOMINMAX");
 	b.add_define("PROFILER");
 	b.add_define("CONSOLE");
+	if (flags.generate_debug) b.add_define("GL_DEBUG");
+
 	b.add_header("./src/");
 	b.add_source_recursively("./src/");
 

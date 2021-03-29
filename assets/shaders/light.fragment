@@ -1,0 +1,106 @@
+#version 300 es
+precision mediump float;
+const int N_Light_Point = 32;
+
+struct Light_Point {
+    float intensity;
+    vec2 position;
+    vec4 color;
+};
+uniform int n_light_points;
+uniform Light_Point light_points[N_Light_Point];
+
+out vec4 frag_color;
+
+in vec2 text_coord;
+
+uniform sampler2DMS buffer_position;
+uniform sampler2DMS buffer_normal;
+uniform sampler2DMS buffer_albedo;
+
+const int Debug_Default = 0;
+const int Debug_Albedo = 1;
+const int Debug_Normal = 2;
+const int Debug_Position = 3;
+const int Debug_Depth = 4;
+
+uniform int debug;
+
+uniform float ambient_intensity;
+uniform vec4 ambient_color;
+
+vec4 texture_fetch(sampler2DMS texture, vec2 c) {
+	return texelFetch(
+		texture,
+		ivec2(
+			c * vec2(textureSize(texture))
+		),
+		3
+	);
+}
+
+vec3 light_pixel(vec2 pix) {
+	const float root = 0.7;
+	const float linear = 0.25;
+	const float quadratic = 0.05;
+	
+	const float step = 0.1;
+	const float distance_step = 10.0;
+
+	vec4 albedo = texture_fetch(buffer_albedo, pix);
+	vec3 normal = 1.0 - texture_fetch(buffer_normal, pix).xyz * 2.0;
+	vec3 pos = texture_fetch(buffer_position, pix).xyz;
+
+	if (texture_fetch(buffer_normal, pix).xyz == vec3(1.0, 1.0, 1.0)) return albedo.rgb;
+
+	vec3 result = albedo.xyz * ambient_intensity;
+
+	vec3 N = normalize(normal);
+
+	for (int i = 0; i < n_light_points; i++) {
+		vec3 L = -normalize(vec3(light_points[i].position, 2.0) - pos);
+		
+		float dist = distance(pos.xy, light_points[i].position);
+		float attenuation = (root * sqrt(dist) * linear * dist + quadratic * dist * dist);
+		attenuation = distance_step * ceil(attenuation / distance_step);
+
+		float factor = max(dot(N, L), 0.01) * light_points[i].intensity / attenuation;
+		//result.xyz = vec3(factor);
+
+		factor = pow(abs(factor), 0.5);
+
+		factor = round(factor / step) * step;
+
+		result =
+			result +
+			albedo.rgb * light_points[i].color.rgb * factor;
+		//result = N;
+	}
+
+	return result;
+}
+
+
+void main() {
+	vec4 normal = texture_fetch(buffer_normal, text_coord);
+	if (normal == vec4(0.0, 0.0, 0.0, 0.0)){
+		discard;
+	}
+
+	if (debug == Debug_Default) {
+		frag_color.rgb = light_pixel(text_coord);
+		frag_color.a = texture_fetch(buffer_albedo, text_coord).a;
+	}
+	if (debug == Debug_Albedo) {
+		frag_color = texture_fetch(buffer_albedo, text_coord);
+	}
+	if (debug == Debug_Normal) {
+		frag_color = texture_fetch(buffer_normal, text_coord) * 2.0 - 1.0;
+	}
+	if (debug == Debug_Position) {
+		frag_color = texture_fetch(buffer_position, text_coord);
+	}
+	if (debug == Debug_Depth) {
+		frag_color = vec4(texture_fetch(buffer_position, text_coord).w);
+	}
+}
