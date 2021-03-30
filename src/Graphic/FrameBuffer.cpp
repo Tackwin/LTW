@@ -9,7 +9,10 @@
 #include <GL/glew.h>
 #endif
 
-G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
+G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
+	this->size = size;
+	this->n_samples = n_samples;
+
 	glGenFramebuffers(1, &g_buffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, g_buffer);
 #ifdef GL_DEBUG
@@ -22,7 +25,7 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, albedo_buffer);
 	glTexImage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
-		4,
+		n_samples,
 		GL_RGBA,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
@@ -41,7 +44,7 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, normal_buffer);
 	glTexImage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
-		4,
+		n_samples,
 		GL_RGBA16F,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
@@ -60,7 +63,7 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pos_buffer);
 	glTexImage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
-		4,
+		n_samples,
 		GL_RGBA16F,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
@@ -83,7 +86,7 @@ G_Buffer::G_Buffer(Vector2u size) noexcept : size(size) {
 	glGenRenderbuffers(1, &depth_rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, depth_rbo);
 	glRenderbufferStorageMultisample(
-		GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT16, (GLsizei)size.x, (GLsizei)size.y
+		GL_RENDERBUFFER, n_samples, GL_DEPTH_COMPONENT16, (GLsizei)size.x, (GLsizei)size.y
 	);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rbo);
 	// finally check if framebuffer is complete
@@ -237,8 +240,8 @@ HDR_Buffer::HDR_Buffer(Vector2u size) noexcept : size(size) {
 		GL_FLOAT,
 		NULL
 	);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #ifdef GL_DEBUG
 	auto label = "hdr_color_buffer";
 	glObjectLabel(GL_TEXTURE, color_buffer, (GLsizei)strlen(label) - 1, label);
@@ -330,6 +333,8 @@ Texture_Buffer::Texture_Buffer(Vector2u size) noexcept {
 	auto label = "texture_target_frame_buffer";
 
 	texture.create_rgb_null(size);
+	texture.set_parameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	texture.set_parameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #ifdef GL_DEBUG
 	label = "texture_target";
 	glObjectLabel(GL_TEXTURE, texture.get_texture_id(), (GLsizei)strlen(label) - 1, label);

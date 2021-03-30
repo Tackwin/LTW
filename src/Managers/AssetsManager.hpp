@@ -9,8 +9,12 @@
 #include "Graphic/Font.hpp"
 #include "Graphic/Shader.hpp"
 #include "Graphic/Texture.hpp"
+#include "OS/DLL.hpp"
 
 namespace asset {
+	struct DLL_Id {
+		inline static size_t Game = 1;
+	};
 	struct Texture_Id {
 	};
 	struct Shader_Id {
@@ -22,6 +26,11 @@ namespace asset {
 	struct Font_Id {
 	};
 
+
+	struct Asset_DLL {
+		DLL asset;
+		std::filesystem::path path;
+	};
 
 	struct Asset_Font {
 		Font asset;
@@ -46,6 +55,7 @@ namespace asset {
 
 		std::unordered_map<std::string, std::uint64_t> textures_loaded;
 
+		std::unordered_map<std::uint64_t, Asset_DLL> dlls;
 		std::unordered_map<std::uint64_t, Asset_Font> fonts;
 		std::unordered_map<std::uint64_t, Asset_Shader> shaders;
 		std::unordered_map<std::uint64_t, Asset_Texture> textures;
@@ -80,6 +90,10 @@ namespace asset {
 		[[nodiscard]] Font& get_font(size_t k) noexcept;
 		[[nodiscard]] bool load_font(size_t k, std::filesystem::path path) noexcept;
 		[[nodiscard]] std::optional<size_t> load_font(std::filesystem::path path) noexcept;
+
+		[[nodiscard]] DLL& get_dll(size_t k) noexcept;
+		[[nodiscard]] bool load_dll(size_t k, std::filesystem::path path) noexcept;
+		[[nodiscard]] std::optional<size_t> load_dll(std::filesystem::path path) noexcept;
 
 		void monitor_path(std::filesystem::path dir) noexcept;
 

@@ -1299,14 +1299,17 @@ NS::Commands compile_command_incremetal_check(const NS::Build& b) noexcept {
 	return commands;
 }
 
-void execute(const NS::Build& build, const NS::Commands& c) noexcept {
+void execute(const NS::Build& build, const NS::Commands& c, bool full_thread = false) noexcept {
 	#ifndef NO_THREAD
 	std::vector<std::thread> threads;
 	std::atomic<bool> stop_flag = false;
 
-	for (size_t i = 0; i < build.flags.j; ++i) {
+	size_t n_thread = build.flags.j;
+	if (full_thread) n_thread = c.entries.size();
+
+	for (size_t i = 0; i < n_thread; ++i) {
 		threads.push_back(std::thread([&, i] {
-			for (size_t j = i; j < c.entries.size(); j += build.flags.j) {
+			for (size_t j = i; j < c.entries.size(); j += n_thread) {
 				if (stop_flag) return;
 
 				if (build.flags.verbose_level >= 0) {
@@ -1433,7 +1436,7 @@ void handle_build(Build& b, NS::States& new_states) noexcept {
 			}
 
 			c = compile_command_incremetal_check(b);
-			execute(b, c);
+			execute(b, c, true);
 			set_files_hashes(b.flags.get_temp_path(), new_state);
 			if (!b.flags.scratch)
 				b.current_state = NS::Build_State::get_unchanged(b.current_state, new_state);

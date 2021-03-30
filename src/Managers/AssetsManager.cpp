@@ -191,6 +191,18 @@ void Store_t::monitor_path(std::filesystem::path dir) noexcept {
 					else printf("Failed to rebuild shader.\n");
 				}
 			}
+
+			for (auto& [_, x] : dlls) {
+				if (std::filesystem::canonical(x.path) == path) {
+					auto new_dll = ::load_dll(path);
+					if (!new_dll) {
+						auto str = path.string();
+						printf("Failed to hot reload dll %s.\n", str.c_str());
+						continue;
+					}
+					x.asset = std::move(*new_dll);
+				}
+			}
 			return false;
 		}
 	);
@@ -300,5 +312,24 @@ void Store_t::load_from_config(std::filesystem::path config_path) noexcept {
 [[nodiscard]] std::optional<size_t> Store_t::load_font(std::filesystem::path path) noexcept{
 	size_t k = xstd::uuid();
 	if (auto opt = load_font(k, path)) return k;
+	return std::nullopt;
+}
+
+[[nodiscard]] DLL& Store_t::get_dll(size_t k) noexcept {
+	return dlls.at(k).asset;
+}
+[[nodiscard]] bool Store_t::load_dll(size_t k, std::filesystem::path path) noexcept {
+	auto opt = ::load_dll(path);
+	if (!opt) return false;
+
+	Asset_DLL dll;
+	dll.asset = std::move(*opt);
+	dll.path = std::filesystem::weakly_canonical(path);
+	dlls.emplace(k, std::move(dll));
+	return true;
+}
+[[nodiscard]] std::optional<size_t> Store_t::load_dll(std::filesystem::path path) noexcept {
+	size_t k = xstd::uuid();
+	if (auto opt = load_dll(k, path)) return k;
 	return std::nullopt;
 }

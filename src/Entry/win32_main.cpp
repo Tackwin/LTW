@@ -11,6 +11,8 @@
 
 #include "global.hpp"
 
+#include "OS/RealTimeIO.hpp"
+
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_impl_win32.h"
 
@@ -110,10 +112,21 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-void render_orders(const render::Orders& orders) noexcept;
+struct Render_Param {
+	float gamma = 0.7f;
+	float exposure = 1.0f;
+	size_t n_samples = 4;
+};
+void render_orders(const render::Orders& orders, Render_Param param) noexcept;
 
 Game game;
 render::Orders orders;
+struct Game_Proc {
+	decltype(&game_startup)  startup  = game_startup;
+	decltype(&game_shutdown) shutdown = game_shutdown;
+	decltype(&game_update)   update   = game_update;
+	decltype(&game_render)   render   = game_render;
+} game_proc;
 
 #ifdef CONSOLE
 int main(int, char**
@@ -122,6 +135,8 @@ int WINAPI WinMain(
 	HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd
 #endif
 ) {
+	game = {};
+
 	PROFILER_SESSION_BEGIN("Startup");
 	defer { PROFILER_SESSION_END("output/trace/"); };
 
@@ -236,7 +251,7 @@ int WINAPI WinMain(
 	orders.reserve(1000);
 
 	PROFILER_BEGIN("Game");
-	game.startup();
+	game_proc.startup(game);
 	PROFILER_END();
 
 	wglSwapIntervalEXT(0);
@@ -261,11 +276,12 @@ int WINAPI WinMain(
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 
-	game.shutdown();
+	game_proc.shutdown(game);
 	return 0;
 }
 
 void windows_loop() noexcept {
+	static Render_Param render_param;
 	thread_local auto last_time_frame = xstd::seconds();
 	auto dt = xstd::seconds() - last_time_frame;
 	last_time_frame = xstd::seconds();
@@ -287,17 +303,24 @@ void windows_loop() noexcept {
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	game.update(dt);
-	game.render(orders);
+	thread_local bool render_window_open = true;
+	ImGui::Begin("Render", &render_window_open);
+	ImGui::SliderFloat("Gamma   ", &render_param.gamma    , 0, 2);
+	ImGui::SliderFloat("Exposure", &render_param.exposure , 0, 2);
+	ImGui::SliderSize ("Samples ", &render_param.n_samples, 1, 16);
+	ImGui::End();
 
-	render_orders(orders);
+	game_proc.update(game, dt);
+	game_proc.render(game, orders);
+
+	render_orders(orders, render_param);
 	orders.clear();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
 	SwapBuffers((HDC)platform::handle_dc_window);
 }
+
 
 std::optional<std::string> get_last_error_message() noexcept {
 	DWORD errorMessageID = ::GetLastError();
@@ -496,7 +519,7 @@ void APIENTRY opengl_debug(
 }
 
 
-void render_orders(const render::Orders& orders) noexcept {
+void render_orders(const render::Orders& orders, Render_Param param) noexcept {
 	static float gamma    = 0.7f;
 	static float exposure = 1.0f;
 
@@ -505,6 +528,10 @@ void render_orders(const render::Orders& orders) noexcept {
 	static Texture_Buffer texture_target(buffer_size);
 	static G_Buffer       g_buffer(buffer_size);
 	static HDR_Buffer     hdr_buffer(buffer_size);
+
+	if (g_buffer.n_samples != param.n_samples){
+		g_buffer = G_Buffer(buffer_size, param.n_samples);
+	}
 
 	glViewport(0, 0, (GLsizei)buffer_size.x, (GLsizei)buffer_size.y);
 
@@ -525,6 +552,7 @@ void render_orders(const render::Orders& orders) noexcept {
 				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
 				break;
 			}
+			case render::Order::Arrow_Kind:      render::immediate(x.Arrow_);     break;
 			case render::Order::Circle_Kind:     render::immediate(x.Circle_);    break;
 			case render::Order::Rectangle_Kind:  render::immediate(x.Rectangle_); break;
 			default: break;

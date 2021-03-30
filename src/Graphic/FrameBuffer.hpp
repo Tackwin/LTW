@@ -12,9 +12,14 @@ struct G_Buffer {
 	G_Buffer(G_Buffer&) = delete;
 	G_Buffer& operator=(G_Buffer&) = delete;
 	G_Buffer(G_Buffer&&) = default;
-	G_Buffer& operator=(G_Buffer&&) = default;
+	G_Buffer& operator=(G_Buffer&& that) noexcept {
+		this->~G_Buffer();
+		memcpy(this, &that, sizeof(that));
+		memset(&that, 0, sizeof(that));
+		return *this;
+	}
 
-	G_Buffer(Vector2u size) noexcept;
+	G_Buffer(Vector2u size, size_t n_samples = 4) noexcept;
 	~G_Buffer() noexcept;
 
 	void set_active() noexcept;
@@ -26,8 +31,9 @@ struct G_Buffer {
 	void copy_depth_to(std::uint32_t id, Rectanglef viewport) noexcept;
 
 	void clear(Vector4d color) noexcept;
-private:
+
 	Vector2u size;
+	size_t n_samples = 4;
 
 	std::uint32_t g_buffer{ 0 };
 	std::uint32_t pos_buffer{ 0 };
@@ -42,7 +48,7 @@ struct HDR_Buffer {
 	HDR_Buffer(HDR_Buffer&) = delete;
 	HDR_Buffer& operator=(HDR_Buffer&) = delete;
 	HDR_Buffer(HDR_Buffer&&) = default;
-	HDR_Buffer& operator=(HDR_Buffer&&) = delete;
+	HDR_Buffer& operator=(HDR_Buffer&&) = default;
 
 	HDR_Buffer(Vector2u size) noexcept;
 	~HDR_Buffer() noexcept;

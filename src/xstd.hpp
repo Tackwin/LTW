@@ -19,8 +19,11 @@ namespace details {
 #define END(x) std::end(x)
 #define BEG_END(x) BEG(x), END(x)
 #define V2F(x) Vector2f{(x), (x)}
+#define V4F(x) Vector4f{(x), (x), (x), (x)}
 
-#define for2(i, j, vec) for (size_t i = 0; i < vec.x; ++i) for (size_t j = 0; j < vec.y; ++j)
+#define dbgstr(x) printf(#x " = %s\n", x);
+
+#define for2(i, j, vec) for (size_t j = 0; j < vec.y; ++j) for (size_t i = 0; i < vec.x; ++i)
 
 template<bool flag = false> void static_no_match() noexcept {
 	static_assert(flag, "No match.");

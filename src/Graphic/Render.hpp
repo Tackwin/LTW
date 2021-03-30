@@ -22,9 +22,14 @@ namespace render {
 		Vector4f color;
 		float r = 0;
 	};
+	struct Arrow {
+		Vector2f a;
+		Vector2f b;
+		Vector4f color;
+	};
 
 	#define ORDER_LIST(X)\
-	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera)
+	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow)
 
 	struct Order { sum_type(Order, ORDER_LIST); };
 
@@ -33,4 +38,5 @@ namespace render {
 	extern Camera current_camera;
 	void immediate(Rectangle rec) noexcept;
 	void immediate(Circle circle) noexcept;
+	void immediate(Arrow arrow) noexcept;
 };

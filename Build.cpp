@@ -7,6 +7,10 @@ EASE_WATCH_ME;
 clang++ Build.cpp -o Build.exe -std=c++17
 */
 
+void common_build_options(Build& b, Flags& flags) noexcept;
+
+Build build_game(Flags& flags) noexcept;
+
 Build build(Flags flags) noexcept {
 	if (Env::Win32 && flags.generate_debug) {
 		flags.no_default_lib = true;
@@ -14,15 +18,39 @@ Build build(Flags flags) noexcept {
 
 	auto b = Build::get_default(flags);
 	b.name = "LTW";
+
+	b.add_header("./src/");
+	b.add_source_recursively("./src/");
+
+	common_build_options(b, flags);
+	auto game = build_game(flags);
+	game.next = b;
+//	return game;
+	return b;
+}
+
+Build build_game(Flags& flags) noexcept {
+	auto b = Build::get_default(flags);
+	b.name = "game";
+	b.target = Build::Target::Shared;
+	b.flags.output = "assets/dll/";
+
+	b.add_header("./src/");
+	b.add_source_recursively("./src/");
+	b.del_source_recursively("./src/Entry/");
+
+	b.add_define("BUILD_DLL");
+
+	common_build_options(b, flags);
+	return b;
+}
+
+void common_build_options(Build& b, Flags& flags) noexcept {
 	b.add_define("GLEW_STATIC");
 	b.add_define("NOMINMAX");
 	b.add_define("PROFILER");
 	b.add_define("CONSOLE");
 	if (flags.generate_debug) b.add_define("GL_DEBUG");
-
-	b.add_header("./src/");
-	b.add_source_recursively("./src/");
-
 	b.no_warnings_win32();
 	if (Env::Win32 && flags.generate_debug) {
 		if (flags.release) {
@@ -60,6 +88,4 @@ Build build(Flags flags) noexcept {
 		b.add_library("Ole32");
 		b.add_library("Uuid");
 	}
-
-	return b;
 }

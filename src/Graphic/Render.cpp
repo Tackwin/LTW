@@ -9,12 +9,14 @@
 #include "Managers/AssetsManager.hpp"
 #include "global.hpp"
 
-render::Camera render::current_camera;
+#include "xstd.hpp"
 
+render::Camera render::current_camera;
+ 
 void render::immediate(Circle circle) noexcept {
 	static GLuint vao{ 0 };
 	static GLuint vbo{ 0 };
-	constexpr size_t Half_Prec = 10;
+	constexpr size_t Half_Prec = 30;
 
 	if (!vao) {
 		const float ang_inc = 3.1415926f / Half_Prec;
@@ -129,6 +131,77 @@ void render::immediate(Rectangle rec) noexcept {
 	shader.set_uniform("use_normal_texture", false);
 	shader.set_use_texture(false);
 	shader.set_texture(0);
+
+	glBindVertexArray(quad_vao);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+void render::immediate(Arrow info) noexcept {
+	static GLuint head_vao{ 0 };
+	static GLuint head_vbo{ 0 };
+	static GLuint quad_vao{ 0 };
+	static GLuint quad_vbo{ 0 };
+
+	auto size = V2F((info.a - info.b).length() / 10.f);
+
+	if (!head_vao) {
+		static float head_vertices[] = {
+			+0.0f, +0.0f, 1.0f,
+			-1.0f, +1.0f, 1.0f,
+			-1.0f, -1.0f, 1.0f,
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &head_vao);
+		glBindVertexArray(head_vao);
+		glGenBuffers(1, &head_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, head_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(head_vertices), &head_vertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+		static float quad_vertices[] = {
+			// positions    
+			0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f,
+			1.0f, 1.0f, 0.0f,
+			1.0f, 0.0f, 0.0f
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &quad_vao);
+		glBindVertexArray(quad_vao);
+		glGenBuffers(1, &quad_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	}
+
+
+	Rectanglef view;
+	view.pos = current_camera.pos - current_camera.frame_size / 2;
+	view.size = current_camera.frame_size;
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default);
+	shader.use();
+	shader.set_window_size(Environment.window_size);
+	shader.set_view(view);
+	shader.set_origin({ 0, 0 });
+	shader.set_position(info.b);
+	shader.set_primary_color(info.color);
+	shader.set_rotation((float)(info.b - info.a).angleX());
+	shader.set_size(size);
+	shader.set_uniform("use_normal_texture", false);
+	shader.set_use_texture(false);
+	shader.set_texture(0);
+
+	glBindVertexArray(head_vao);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 3);
+
+	shader.set_origin({ 0, 0.5 });
+	shader.set_position(info.a);
+	shader.set_size({ (info.a - info.b).length() - size.x, size.y });
 
 	glBindVertexArray(quad_vao);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

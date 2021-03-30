@@ -1,4 +1,4 @@
-#version 300 es
+#version 450
 precision mediump float;
 const int N_Light_Point = 32;
 
@@ -29,14 +29,14 @@ uniform int debug;
 uniform float ambient_intensity;
 uniform vec4 ambient_color;
 
-vec4 texture_fetch(sampler2DMS texture, vec2 c) {
-	return texelFetch(
-		texture,
-		ivec2(
-			c * vec2(textureSize(texture))
-		),
-		3
-	);
+vec4 texture_fetch(sampler2DMS tex, vec2 c) {
+	vec4 ret;
+	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
+	int samples = textureSamples(tex);
+	for (int i = 0; i < samples; ++i) {
+		ret += texelFetch(tex, tex_pixel, i);
+	}
+	return ret / float(samples);
 }
 
 vec3 light_pixel(vec2 pix) {

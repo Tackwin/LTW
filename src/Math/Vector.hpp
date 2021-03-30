@@ -332,8 +332,10 @@ struct Vector : public __vec_member<D, T> {
 		return *this;
 	}
 
-	constexpr Vector<D, T> normale() const noexcept {
+	constexpr Vector<D, T> normed() const noexcept {
 		const auto& l = length();
+		if (l == 0) return {0, 0};
+
 		auto result = *this;
 		
 		if (l == 0) return result;
@@ -345,6 +347,16 @@ struct Vector : public __vec_member<D, T> {
 
 	constexpr Vector<D, T> projectTo(const Vector<D, T>& other) const noexcept {
 		return other * dot(other) / other.length2();
+	}
+
+	const char* leak_string() const noexcept {
+		auto str = new std::string();
+
+		*str = "[ ";
+		for (size_t i = 0; i < D; ++i) *str += std::to_string(this->components[i]) + " ";
+		*str += "]";
+
+		return str->c_str();
 	}
 
 	Vector<D, T> round(T magnitude) {
