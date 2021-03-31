@@ -23,6 +23,7 @@ void* platform::main_opengl_context = nullptr;
 void* platform::asset_opengl_context = nullptr;
 
 void game_startup(Game&) noexcept {
+	xstd::seed(0);
 	PROFILER_BEGIN_SEQ("monitor");
 	asset::Store.monitor_path("assets/");
 	PROFILER_SEQ("load_shaders");
@@ -38,50 +39,61 @@ void game_shutdown(Game&) noexcept {
 void game_update(Game& game, double dt) noexcept {
 	game.input_record.push_back(get_new_frame_input(game.input_record, dt));
 	auto in = game.input_record.back();
+	if (!game.interface.input(in)) {
+		if (in.key_infos[Keyboard::LCTRL].pressed && in.key_infos[Keyboard::Num1].just_pressed) {
+			game.gui.board_open = true;
+		}
 
-	if (in.key_infos[Keyboard::LCTRL].pressed && in.key_infos[Keyboard::Num1].just_pressed) {
-		game.gui.board_open = true;
+		game.zqsd_vector = {};
+		if (in.key_infos[Keyboard::Z].pressed) game.zqsd_vector.y += 1;
+		if (in.key_infos[Keyboard::Q].pressed) game.zqsd_vector.x -= 1;
+		if (in.key_infos[Keyboard::S].pressed) game.zqsd_vector.y -= 1;
+		if (in.key_infos[Keyboard::D].pressed) game.zqsd_vector.x += 1;
+		game.zqsd_vector = game.zqsd_vector.normed();
+
+		if (in.scroll) {
+			game.camera.frame_size *= std::powf(2, in.scroll / 5.f);
+		}
+
+		if (in.key_infos[Keyboard::Space].pressed) {
+			Unit new_unit;
+			size_t first_spawn_tile =
+				(game.board.size.y - game.board.start_zone_height) * game.board.size.x;
+			size_t final_spawn_tile = game.board.size.x * game.board.size.y;
+
+			new_unit.current_tile =
+				(size_t)(first_spawn_tile + xstd::random() * (final_spawn_tile - first_spawn_tile));
+
+			new_unit.pos = game.board.tile_box({
+				new_unit.current_tile % game.board.size.x,
+				new_unit.current_tile / game.board.size.x
+			}).center();
+
+			new_unit.speed = 5.f;
+			game.board.units.push_back(new_unit);
+		}
 	}
 
-	game.zqsd_vector = {};
-	if (in.key_infos[Keyboard::Z].pressed) game.zqsd_vector.y += 1;
-	if (in.key_infos[Keyboard::Q].pressed) game.zqsd_vector.x -= 1;
-	if (in.key_infos[Keyboard::S].pressed) game.zqsd_vector.y -= 1;
-	if (in.key_infos[Keyboard::D].pressed) game.zqsd_vector.x += 1;
-	game.zqsd_vector = game.zqsd_vector.normed();
 
-	if (in.scroll) {
-		game.camera.frame_size *= std::powf(2, in.scroll / 5.f);
-	}
-
-	if (in.key_infos[Keyboard::Space].pressed) {
-		Unit new_unit;
-		new_unit.current_tile = game.board.size.x / 2 + (game.board.size.y - 1) * game.board.size.x;
-		new_unit.pos = game.board.tile_box({
-			new_unit.current_tile % game.board.size.x,
-			new_unit.current_tile / game.board.size.x
-		}).center();
-		new_unit.speed = 5.f;
-		game.board.units.push_back(new_unit);
-	}
-
-	ImGui::Begin("Board", &game.gui.board_open);
 	if (game.gui.board_open) {
+		ImGui::Begin("Board", &game.gui.board_open);
 		ImGui::SliderFloat("tile_size   ", &game.board.tile_size, 0, 2);
 		ImGui::SliderFloat("tile_padding", &game.board.tile_padding, 0, 1);
 		ImGui::SliderSize("size_x", &game.board.size.x, 0, 10);
 		ImGui::SliderSize("size_y", &game.board.size.y, 0, 50);
 
 		ImGui::Checkbox("render path", &game.board.gui.render_path);
+		ImGui::End();
 	}
-	ImGui::End();
 
-	ImGui::Begin("Game Debug", &game.gui.game_debug_open);
 	if (game.gui.game_debug_open) {
+		ImGui::Begin("Game Debug", &game.gui.game_debug_open);
 		ImGui::SliderFloat("Cam speed", &game.camera_speed, 0, 10);
 		ImGui::Text("Fps %zu", (size_t)(1 / dt));
+		ImGui::End();
 	}
-	ImGui::End();
+
+	game.interface.update(dt);
 
 	game.board.input(in, project_mouse_pos(in.mouse_pos, game.camera));
 	game.board.update(dt);
@@ -98,6 +110,8 @@ void game_render(Game& game, render::Orders& order) noexcept {
 	defer { order.push_back(render::Pop_Camera{}); };
 
 	game.board.render(order);
+
+	game.interface.render(order);
 }
 
 void Board::input(const Input_Info& in, Vector2f mouse_world_pos) noexcept {

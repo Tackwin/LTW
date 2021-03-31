@@ -5,3 +5,8 @@ output/trace/
 *.exe
 *.ilk
 *.pdb
+*.dll
+*.dll_game
+*.exp
+*.lib
+.vs/

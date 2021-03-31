@@ -8,6 +8,8 @@
 
 #include "Managers/InputsManager.hpp"
 
+#include "Interface.hpp"
+
 inline static size_t Id_Increment = 1;
 struct Common_Tile {
 	Vector4f color = {.1f, .1f, .1f, 1};
@@ -145,11 +147,17 @@ struct Game {
 	
 	Board board;
 	Input_Record input_record;
+	Interface interface;
 
-	render::Camera camera{ .pos = {0, 0}, .frame_size = { 16, 9 }};
+	render::Camera camera;
 	float camera_speed = 1.f;
 	
 	Vector2f zqsd_vector;
+
+	Game() noexcept {
+		camera.pos = {0, 0};
+		camera.frame_size = { 16, 9 };
+	}
 };
 
 

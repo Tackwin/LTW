@@ -646,3 +646,14 @@ inline Vector4d to_rgba(Vector4d in) noexcept {
 }
 
 #pragma warning(pop)
+
+namespace std {
+template<typename T, size_t D>
+Vector<D, T> max(const Vector<D, T>& a, const Vector<D, T>& b) noexcept {
+	Vector<D, T> m;
+	for (size_t i = 0; i < D; ++i) m[i] = std::max(a[i], b[i]);
+	return m;
+}
+
+}
+

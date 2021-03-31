@@ -159,6 +159,20 @@ namespace xstd {
 #pragma warning(pop)
 	}
 
+	inline size_t seed() noexcept {
+		auto s = time(nullptr);
+		srand(s);
+		return s;
+	}
+	inline void seed(size_t s) noexcept {
+		srand(s);
+	}
+
+	inline double random() noexcept {
+		// i know whatever.
+		return rand() / (double)RAND_MAX;
+	}
+
 }
 constexpr size_t operator""_id(const char* user, size_t size) {
 	size_t seed = 0;
