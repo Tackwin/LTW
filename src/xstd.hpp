@@ -21,6 +21,7 @@ namespace details {
 #define V2F(x) Vector2f{(x), (x)}
 #define V4F(x) Vector4f{(x), (x), (x), (x)}
 
+#define dbgbool(x) printf(#x " = %s\n", (x) ? "true" : "false");
 #define dbgstr(x) printf(#x " = %s\n", x);
 
 #define for2(i, j, vec) for (size_t j = 0; j < vec.y; ++j) for (size_t i = 0; i < vec.x; ++i)
@@ -111,7 +112,6 @@ template<bool flag = false> void static_no_match() noexcept {
 #define sum_type_base(base)\
 	base* operator->() noexcept { return (base*)this; }\
 	const base* operator->() const noexcept { return (base*)this; }
-
 
 #include <chrono>
 

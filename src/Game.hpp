@@ -9,6 +9,7 @@
 #include "Managers/InputsManager.hpp"
 
 #include "Interface.hpp"
+#include "Tower.hpp"
 
 inline static size_t Id_Increment = 1;
 struct Common_Tile {
@@ -17,18 +18,7 @@ struct Common_Tile {
 struct Empty : Common_Tile {
 	Empty() noexcept { color = {.1f, .1f, .1f, 1}; }
 };
-struct Archer : Common_Tile {
-	float range = 5.f;
-	float attack_speed = 1.f;
-	float attack_cd = 0;
-	Archer() noexcept { color = {1, 0, 0, 1}; }
-};
-struct Sharp : Common_Tile {
-	Sharp()  noexcept { color = {0, 1, 0, 1}; }
-};
-
-#define TILE_LIST(X)\
-	X(Archer) X(Sharp) X(Empty)
+#define TILE_LIST(X) X(Empty)
 struct Tile {
 	sum_type(Tile, TILE_LIST);
 	sum_type_base(Common_Tile);
@@ -114,18 +104,22 @@ struct Board {
 		bool render_path = false;
 	} gui;
 
-	Vector2u size = { 10, 30 };
-	float tile_size = 0.99f;
+	Vector2f pos = {0, 0};
+	Vector2u size = { 20, 50 };
+	float tile_size = 0.49f;
 	float tile_padding = 0.01f;
 
 	size_t start_zone_height = 2;
 	size_t cease_zone_height = 2;
-	Pool<Tile> tiles;
 
+	Pool<Tile> tiles;
 	Pool<Unit> units;
+	Pool<Tower> towers;
 	Pool<Projectile> projectiles;
 
 	std::vector<size_t> next_tile;
+
+	size_t gold_gained = 0;
 
 	void input(const Input_Info& in, Vector2f mouse_world_pos) noexcept;
 	void update(double dt) noexcept;
@@ -135,17 +129,24 @@ struct Board {
 	Rectanglef tile_box(Vector2u pos) noexcept;
 	Rectanglef tile_box(size_t idx) noexcept { return tile_box({ idx % size.x, idx / size.x }); }
 
-	void compute_paths() noexcept;
+	void soft_compute_paths() noexcept;
+	Tile* get_tile_at(Vector2f x) noexcept;
 };
 
+struct Player {
+	size_t gold = 0;
+
+	Tower placing = nullptr;
+};
 
 struct Game {
 	struct Gui {
 		bool board_open = true;
 		bool game_debug_open = true;
 	} gui;
-	
+
 	Board board;
+	Player player;
 	Input_Record input_record;
 	Interface interface;
 
@@ -154,10 +155,14 @@ struct Game {
 	
 	Vector2f zqsd_vector;
 
+	size_t golds = 0;
+
 	Game() noexcept {
 		camera.pos = {0, 0};
 		camera.frame_size = { 16, 9 };
 	}
+
+	Interface::Ressource_Info construct_interface_ressource_info() noexcept;
 };
 
 

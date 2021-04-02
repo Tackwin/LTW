@@ -140,7 +140,8 @@ void Store_t::monitor_path(std::filesystem::path dir) noexcept {
 		dir,
 		[&, d = dir] (std::filesystem::path path) -> bool {
 			if (stop) return true;
-			std::lock_guard guard{ Main_Mutex };
+			Main_Mutex.lock();
+			defer { Main_Mutex.unlock(); };
 			
 			path = std::filesystem::canonical(d / path);
 
@@ -224,6 +225,18 @@ void Store_t::load_known_textures() noexcept {
 		printf("failed :( !\n");\
 	}
 
+	X("assets/textures/gold_icon.png",  Gold_Icon);
+	X("assets/textures/back_icon.png",  Back_Icon);
+	X("assets/textures/null_icon.png",  Null_Icon);
+	X("assets/textures/build_icon.png", Build_Icon);
+	X("assets/textures/up_icon.png",    Up_Icon);
+	X("assets/textures/left_icon.png",  Left_Icon);
+	X("assets/textures/down_icon.png",  Down_Icon);
+	X("assets/textures/right_icon.png", Right_Icon);
+	X("assets/textures/archer_build_icon.png", Archer_Build_Icon);
+	X("assets/textures/splash_build_icon.png", Splash_Build_Icon);
+	X("assets/textures/cancel_icon.png", Cancel_Icon);
+
 #undef X
 }
 
@@ -231,7 +244,7 @@ void Store_t::load_known_fonts() noexcept {
 	std::optional<size_t> opt;
 
 #define X(str, x)\
-	printf("Loading " str " ... ");\
+	printf("Loading " #x " ... ");\
 	opt = load_font(str);\
 	if (opt) {\
 		Font_Id::x = *opt;\
@@ -240,6 +253,7 @@ void Store_t::load_known_fonts() noexcept {
 	else {\
 		printf("failed :( !\n");\
 	}
+	X("assets/fonts/consolas_regular_100.json", Consolas);
 
 #undef X
 }
@@ -247,7 +261,6 @@ void Store_t::load_known_fonts() noexcept {
 void Store_t::load_known_shaders() noexcept {
 
 	std::optional<size_t> opt;
-
 
 #define X(f, v, g, x)\
 	printf("Loading " #x " shader... ");\
@@ -264,12 +277,6 @@ void Store_t::load_known_shaders() noexcept {
 	X("assets/shaders/default.vertex", "assets/shaders/default.fragment", "", Default);
 	X("assets/shaders/light.vertex",   "assets/shaders/light.fragment",   "", Light  );
 	X("assets/shaders/hdr.vertex",     "assets/shaders/hdr.fragment",     "", HDR    );
-	X(
-		"assets/shaders/line.vertex",
-		"assets/shaders/hdr.fragment",
-		"assets/shaders/line.geometry",
-		Line
-	);
 #undef X
 }
 

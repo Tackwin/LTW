@@ -1,32 +1,60 @@
 #include "Interface.hpp"
 
-Rectanglef Interface::get_left_down_buttons_zone() noexcept {
-	Rectanglef left_down_buttons_zone;
-	left_down_buttons_zone.pos = {1.6f - 4 * button_bounds, 0.f};
-	left_down_buttons_zone.size = {4 * button_bounds, 4 * button_bounds};
-	return left_down_buttons_zone;
+#include "Managers/AssetsManager.hpp"
+
+Rectanglef Action::get_zone() noexcept {
+	Rectanglef zone;
+	zone.pos = {0.f, 0.f};
+	zone.size = N * Vector2f{button_bounds, button_bounds};
+	return zone;
 }
 
+void Action::back_to_main() noexcept {
+	current_state = State::Main;
+}
+
+
 bool Interface::input(const Input_Info& info) noexcept {
-	auto left_down_buttons_zone = get_left_down_buttons_zone();
+	auto action_zone = action.get_zone();
 
 	auto mouse_pos = project_mouse_pos(info.mouse_pos, ui_camera);
 
-	bool mouse_pressed = info.mouse_infos[Mouse::Left].just_pressed;
+	bool mouse_pressed = info.mouse_infos[Mouse::Left].pressed;
+	bool mouse_just_pressed = info.mouse_infos[Mouse::Left].just_pressed;
 	bool return_value = false;
 
-	for (auto& x : left_down_buttons) x.pressed = false;
-	for (auto& x : left_down_buttons) x.hovered = false;
+	auto& table = action.Button_Nav_Map[action.current_state];
 
-	for2(x, y, Vector2u(4, 4)) {
+	for (auto& [_, x] : action.state_button) x.hovered = false;
+	for (auto& [_, x] : action.state_button) x.pressed = false;
+	for (auto& [_, x] : action.state_button) x.just_pressed = false;
+
+	constexpr std::array<Keyboard::Key, Action::N * Action::N> key_map = {
+		Keyboard::W, Keyboard::X, Keyboard::C,
+		Keyboard::Q, Keyboard::S, Keyboard::D,
+		Keyboard::A, Keyboard::Z, Keyboard::E
+	};
+	for (size_t i = 0; i < Action::N * Action::N; ++i) {
+		auto& it = action.state_button[table[i]];
+		if (table[i] == Action::State::Null) continue;
+		it.pressed |= info.key_infos[key_map[i]].pressed;
+		it.just_pressed |= info.key_infos[key_map[i]].just_pressed;
+	}
+
+	for2(x, y, V2F(Action::N)) {
+		auto i = x + y * Action::N;
+		if (table[i] == Action::State::Null) continue;
+
 		Rectanglef rec;
-		rec.pos.x = left_down_buttons_zone.x + button_bounds * x + button_padding / 2;
-		rec.pos.y = left_down_buttons_zone.y + button_bounds * y + button_padding / 2;
-		rec.size = V2F(button_content);
+		rec.pos.x = action.button_bounds * x + action.button_padding / 2;
+		rec.pos.y = action.button_bounds * y + action.button_padding / 2;
+		rec.pos += action_zone.pos;
+		rec.size = V2F(action.button_content);
 
 		if (rec.in(mouse_pos)) {
-			left_down_buttons[x + y * 4].hovered = true;
-			left_down_buttons[x + y * 4].pressed = mouse_pressed;
+			action.state_button[table[i]].hovered = true;
+			action.state_button[table[i]].pressed |= mouse_pressed;
+			action.state_button[table[i]].just_pressed |= mouse_just_pressed;
 			return_value |= true;
 		}
 	}
@@ -34,10 +62,20 @@ bool Interface::input(const Input_Info& info) noexcept {
 }
 
 void Interface::update(double dt) noexcept {
-	for (auto& x : left_down_buttons) {
+	for (auto& [s, x] : action.state_button) if (s != Action::State::Null) {
 		x.actual_color += (x.target_color - x.actual_color) * dt;
-		if (x.hovered) x.actual_color = std::max(x.target_color * 1.1f, x.actual_color);
-		if (x.pressed) x.actual_color = std::max(x.target_color * 1.6f, x.actual_color);
+		if (x.hovered) x.actual_color = std::max(x.target_color * 1.3f, x.actual_color);
+		if (x.pressed) x.actual_color = std::max(x.target_color * 1.8f, x.actual_color);
+	}
+
+	auto& table = action.Button_Nav_Map[action.current_state];
+	for (size_t i = 0; i < Action::N * Action::N; ++i) {
+		auto& it = action.state_button[table[i]];
+		if (!action.Button_Nav_Map.contains(table[i])) continue;
+		if (it.just_pressed) {
+			action.current_state = table[i];
+			break;
+		}
 	}
 }
 
@@ -45,21 +83,84 @@ void Interface::render(render::Orders& orders) noexcept {
 	orders.push_back(ui_camera);
 	defer { orders.push_back(render::Pop_Camera{}); };
 	
-	auto left_down_buttons_zone = get_left_down_buttons_zone();
+	auto action_zone = action.get_zone();
 
 	render::Rectangle rec;
-	rec.rec = left_down_buttons_zone;
+	render::Sprite sprite;
+	render::Text text;
+
+	rec.rec = action_zone;
 	rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
 	orders.push_back(rec);
 
-	for2(x, y, Vector2u(4, 4)) {
-		auto& it = left_down_buttons[x + y * 4];
-		rec.pos.x = left_down_buttons_zone.x + button_bounds * x + button_padding / 2;
-		rec.pos.y = left_down_buttons_zone.y + button_bounds * y + button_padding / 2;
-		rec.size = V2F(button_content);
-
+	auto& table = action.Button_Nav_Map[action.current_state];
+	for2(x, y, V2F(Action::N)) {
+		auto& it  = action.state_button[table[x + y * Action::N]];
+		rec.pos.x = action.button_bounds * x + action.button_padding / 2;
+		rec.pos.y = action.button_bounds * y + action.button_padding / 2;
+		rec.pos  += action_zone.pos,
+		rec.size  = V2F(action.button_content);
 		rec.color = it.actual_color;
 
 		orders.push_back(rec);
+
+		if (it.texture_id) {
+			sprite.rec = rec.rec;
+			sprite.texture = it.texture_id;
+			orders.push_back(sprite);
+		}
 	}
+
+	rec.pos.x = 0;
+	rec.pos.y = ui_camera.frame_size.y - info_bar_height;
+	rec.size.x = ui_camera.frame_size.x;
+	rec.size.y = info_bar_height;
+	rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
+	orders.push_back(rec);
+
+	thread_local std::string temp_string;
+	temp_string.clear();
+	temp_string = std::to_string(ressources.golds);
+
+	sprite.color = V4F(1);
+	sprite.origin = V2F(0.5f);
+	sprite.pos = { ui_camera.frame_size.x / 2, ui_camera.frame_size.y - info_bar_height / 2 };
+	sprite.size = V2F(info_bar_height) / 1.5f;
+	sprite.texture = asset::Texture_Id::Gold_Icon;
+	sprite.texture_rect.pos  = {0, 0};
+	sprite.texture_rect.size = {1, 1};
+	orders.push_back(sprite);
+
+	text.pos.x = ui_camera.frame_size.x / 2 + info_bar_height / 2 + 0.01f;
+	text.pos.y = ui_camera.frame_size.y - info_bar_height / 2;
+	text.origin = { 0.f, .5f};
+	text.color = {1, 1, 1, 1};
+	text.height = info_bar_height * 0.5f;
+	text.font_id = asset::Font_Id::Consolas;
+	text.text = temp_string.data();
+	text.text_length = temp_string.size();
+	orders.push_back(text);
+}
+
+void Interface::init_buttons() noexcept {
+	action.state_button[Action::State::Build].texture_id =
+		asset::Texture_Id::Build_Icon;
+	action.state_button[Action::State::Main].texture_id =
+		asset::Texture_Id::Back_Icon;
+	action.state_button[Action::State::Null].texture_id =
+		asset::Texture_Id::Null_Icon;
+	action.state_button[Action::State::Up].texture_id =
+		asset::Texture_Id::Up_Icon;
+	action.state_button[Action::State::Left].texture_id =
+		asset::Texture_Id::Left_Icon;
+	action.state_button[Action::State::Down].texture_id =
+		asset::Texture_Id::Down_Icon;
+	action.state_button[Action::State::Right].texture_id =
+		asset::Texture_Id::Right_Icon;
+	action.state_button[Action::State::Archer_Build].texture_id =
+		asset::Texture_Id::Archer_Build_Icon;
+	action.state_button[Action::State::Splash_Build].texture_id =
+		asset::Texture_Id::Splash_Build_Icon;
+	action.state_button[Action::State::Cancel].texture_id =
+		asset::Texture_Id::Cancel_Icon;
 }

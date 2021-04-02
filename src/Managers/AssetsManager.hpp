@@ -16,6 +16,17 @@ namespace asset {
 		inline static size_t Game = 1;
 	};
 	struct Texture_Id {
+		inline static size_t Gold_Icon  = 1;
+		inline static size_t Build_Icon = 2;
+		inline static size_t Back_Icon  = 3;
+		inline static size_t Null_Icon  = 4;
+		inline static size_t Up_Icon    = 5;
+		inline static size_t Left_Icon  = 6;
+		inline static size_t Down_Icon  = 7;
+		inline static size_t Right_Icon = 8;
+		inline static size_t Archer_Build_Icon = 9;
+		inline static size_t Splash_Build_Icon = 10;
+		inline static size_t Cancel_Icon = 11;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
@@ -24,6 +35,7 @@ namespace asset {
 		inline static size_t Line    = 4;
 	};
 	struct Font_Id {
+		inline static size_t Consolas{1};
 	};
 
 

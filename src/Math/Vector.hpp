@@ -434,7 +434,15 @@ struct Vector : public __vec_member<D, T> {
         
 		return result;
 	}
-    
+
+	template<typename U>
+	Vector<D, T>& operator/=(const U& scalaire) {
+		static_assert(std::is_scalar<U>::value);
+		for (size_t i = 0; i < getDimension(); ++i) this->components[i] /= scalaire;
+
+		return *this;
+	}
+
 	template<typename U>
 		Vector<D, T> operator+(const Vector<D, U>& other) const {
 		Vector<D, T> result;
@@ -652,6 +660,12 @@ template<typename T, size_t D>
 Vector<D, T> max(const Vector<D, T>& a, const Vector<D, T>& b) noexcept {
 	Vector<D, T> m;
 	for (size_t i = 0; i < D; ++i) m[i] = std::max(a[i], b[i]);
+	return m;
+}
+template<typename T, size_t D>
+Vector<D, T> min(const Vector<D, T>& a, const Vector<D, T>& b) noexcept {
+	Vector<D, T> m;
+	for (size_t i = 0; i < D; ++i) m[i] = std::min(a[i], b[i]);
 	return m;
 }
 

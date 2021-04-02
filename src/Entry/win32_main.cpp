@@ -552,7 +552,9 @@ void render_orders(const render::Orders& orders, Render_Param param) noexcept {
 				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
 				break;
 			}
+			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
 			case render::Order::Arrow_Kind:      render::immediate(x.Arrow_);     break;
+			case render::Order::Sprite_Kind:     render::immediate(x.Sprite_);    break;
 			case render::Order::Circle_Kind:     render::immediate(x.Circle_);    break;
 			case render::Order::Rectangle_Kind:  render::immediate(x.Rectangle_); break;
 			default: break;
