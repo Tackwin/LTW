@@ -80,8 +80,8 @@ void Interface::update(double dt) noexcept {
 }
 
 void Interface::render(render::Orders& orders) noexcept {
-	orders.push_back(ui_camera);
-	defer { orders.push_back(render::Pop_Camera{}); };
+	orders.push(ui_camera);
+	defer { orders.push(render::Pop_Camera{}); };
 	
 	auto action_zone = action.get_zone();
 
@@ -91,7 +91,7 @@ void Interface::render(render::Orders& orders) noexcept {
 
 	rec.rec = action_zone;
 	rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
-	orders.push_back(rec);
+	orders.push(rec, -1);
 
 	auto& table = action.Button_Nav_Map[action.current_state];
 	for2(x, y, V2F(Action::N)) {
@@ -102,12 +102,12 @@ void Interface::render(render::Orders& orders) noexcept {
 		rec.size  = V2F(action.button_content);
 		rec.color = it.actual_color;
 
-		orders.push_back(rec);
+		orders.push(rec, 0);
 
 		if (it.texture_id) {
 			sprite.rec = rec.rec;
 			sprite.texture = it.texture_id;
-			orders.push_back(sprite);
+			orders.push(sprite);
 		}
 	}
 
@@ -116,7 +116,7 @@ void Interface::render(render::Orders& orders) noexcept {
 	rec.size.x = ui_camera.frame_size.x;
 	rec.size.y = info_bar_height;
 	rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
-	orders.push_back(rec);
+	orders.push(rec, 0);
 
 	thread_local std::string temp_string;
 	temp_string.clear();
@@ -129,7 +129,7 @@ void Interface::render(render::Orders& orders) noexcept {
 	sprite.texture = asset::Texture_Id::Gold_Icon;
 	sprite.texture_rect.pos  = {0, 0};
 	sprite.texture_rect.size = {1, 1};
-	orders.push_back(sprite);
+	orders.push(sprite);
 
 	text.pos.x = ui_camera.frame_size.x / 2 + info_bar_height / 2 + 0.01f;
 	text.pos.y = ui_camera.frame_size.y - info_bar_height / 2;
@@ -139,28 +139,20 @@ void Interface::render(render::Orders& orders) noexcept {
 	text.font_id = asset::Font_Id::Consolas;
 	text.text = temp_string.data();
 	text.text_length = temp_string.size();
-	orders.push_back(text);
+	orders.push(text);
 }
 
 void Interface::init_buttons() noexcept {
-	action.state_button[Action::State::Build].texture_id =
-		asset::Texture_Id::Build_Icon;
-	action.state_button[Action::State::Main].texture_id =
-		asset::Texture_Id::Back_Icon;
-	action.state_button[Action::State::Null].texture_id =
-		asset::Texture_Id::Null_Icon;
-	action.state_button[Action::State::Up].texture_id =
-		asset::Texture_Id::Up_Icon;
-	action.state_button[Action::State::Left].texture_id =
-		asset::Texture_Id::Left_Icon;
-	action.state_button[Action::State::Down].texture_id =
-		asset::Texture_Id::Down_Icon;
-	action.state_button[Action::State::Right].texture_id =
-		asset::Texture_Id::Right_Icon;
-	action.state_button[Action::State::Archer_Build].texture_id =
-		asset::Texture_Id::Archer_Build_Icon;
-	action.state_button[Action::State::Splash_Build].texture_id =
-		asset::Texture_Id::Splash_Build_Icon;
-	action.state_button[Action::State::Cancel].texture_id =
-		asset::Texture_Id::Cancel_Icon;
+	auto& b = action.state_button;
+	b[Action::State::Build].texture_id        = asset::Texture_Id::Build_Icon;
+	b[Action::State::Main].texture_id         = asset::Texture_Id::Back_Icon;
+	b[Action::State::Null].texture_id         = asset::Texture_Id::Null_Icon;
+	b[Action::State::Up].texture_id           = asset::Texture_Id::Up_Icon;
+	b[Action::State::Left].texture_id         = asset::Texture_Id::Left_Icon;
+	b[Action::State::Down].texture_id         = asset::Texture_Id::Down_Icon;
+	b[Action::State::Right].texture_id        = asset::Texture_Id::Right_Icon;
+	b[Action::State::Archer_Build].texture_id = asset::Texture_Id::Archer_Build_Icon;
+	b[Action::State::Splash_Build].texture_id = asset::Texture_Id::Splash_Build_Icon;
+	b[Action::State::Cancel].texture_id       = asset::Texture_Id::Cancel_Icon;
+	b[Action::State::Send].texture_id         = asset::Texture_Id::Send_Icon;
 }

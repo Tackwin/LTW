@@ -117,7 +117,7 @@ struct Render_Param {
 	float exposure = 1.0f;
 	size_t n_samples = 4;
 };
-void render_orders(const render::Orders& orders, Render_Param param) noexcept;
+void render_orders(render::Orders& orders, Render_Param param) noexcept;
 
 Game game;
 render::Orders orders;
@@ -215,7 +215,6 @@ int WINAPI WinMain(
 	glEnable(GL_BLEND);
 	glEnable(GL_MULTISAMPLE);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glDisable(GL_DEPTH_TEST);
 	PROFILER_END();
 
 	printf("Opengl ");
@@ -494,7 +493,7 @@ void APIENTRY opengl_debug(
 	};
 
 	constexpr GLenum To_Break_On[] = {
-		1280, 1281, 1282, 1286
+		1280, 1281, 1282, 1286, 131076
 	};
 
 	if (std::find(BEG_END(To_Ignore), id) != std::end(To_Ignore)) return;
@@ -519,7 +518,7 @@ void APIENTRY opengl_debug(
 }
 
 
-void render_orders(const render::Orders& orders, Render_Param param) noexcept {
+void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	static float gamma    = 0.7f;
 	static float exposure = 1.0f;
 
@@ -540,23 +539,40 @@ void render_orders(const render::Orders& orders, Render_Param param) noexcept {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	std::vector<render::Camera> cam_stack;
+	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
+	for (auto& x : rectangle_batch) x.clear();
+
 	for (auto& x : orders) {
 		switch (x.kind) {
 			case render::Order::Camera_Kind: {
 				cam_stack.push_back(x.Camera_);
+				if (rectangle_batch.size() < cam_stack.size()) {
+					rectangle_batch.resize(cam_stack.size());
+				}
 				render::current_camera = cam_stack.back();
 				break;
 			}
 			case render::Order::Pop_Camera_Kind: {
+				auto& batch = rectangle_batch[cam_stack.size() - 1];
+				if (!batch.empty()) {
+					render::immediate(batch);
+				}
+
+				batch.clear();
 				cam_stack.pop_back();
 				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
+
+
 				break;
 			}
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
 			case render::Order::Arrow_Kind:      render::immediate(x.Arrow_);     break;
 			case render::Order::Sprite_Kind:     render::immediate(x.Sprite_);    break;
 			case render::Order::Circle_Kind:     render::immediate(x.Circle_);    break;
-			case render::Order::Rectangle_Kind:  render::immediate(x.Rectangle_); break;
+			case render::Order::Rectangle_Kind: {
+				rectangle_batch[cam_stack.size() - 1].push_back(x.Rectangle_);
+				break;
+			}
 			default: break;
 		}
 	}

@@ -12,7 +12,126 @@
 #include "xstd.hpp"
 
 render::Camera render::current_camera;
- 
+
+void render::Orders::push(render::Order o) noexcept {
+	push(o, commands.size());
+}
+
+void render::Orders::push(render::Order o, float z) noexcept {
+	o->z = z;
+	commands.push_back(std::move(o));
+}
+
+void render::immediate(std::span<Rectangle> rectangle) noexcept {
+	constexpr size_t GPU_Rectangle_Size = 8 + 8 + 4 + 16;
+
+	thread_local GLuint instance_vbo = 0;
+	thread_local size_t instance_vbo_size = 0;
+	thread_local std::vector<std::uint8_t> instance_data;
+
+	thread_local GLuint quad_vao = 0;
+	thread_local GLuint quad_vbo = 0;
+
+
+	if (instance_vbo_size < rectangle.size()) {
+		size_t new_size = (instance_vbo_size * 5) / 3;
+		instance_vbo_size = std::max(new_size, rectangle.size());
+
+		if (instance_vbo) glDeleteBuffers(1, &instance_vbo);
+		glGenBuffers(1, &instance_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Rectangle_Size, NULL, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "rectangle_batch_instance_buffer";
+		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	if (!quad_vao) {
+		static float quad_vertices[] = {
+			// positions    
+			0.0f, 1.0f,
+			0.0f, 0.0f,
+			1.0f, 1.0f,
+			1.0f, 0.0f
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &quad_vao);
+		glBindVertexArray(quad_vao);
+		glGenBuffers(1, &quad_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "rectangle_info_vbo";
+		glObjectLabel(GL_BUFFER, quad_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	auto& i = instance_data;
+	instance_data.clear();
+	for (auto& x : rectangle) {
+		size_t off = instance_data.size();
+		instance_data.resize(instance_data.size() + GPU_Rectangle_Size);
+
+		Vector2f p = x.pos;
+		Vector2f s = x.size;
+		float z = x.z;
+		Vector4f c = x.color;
+
+		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
+		X(&p, 8);  // world pos
+		X(&s, 8);  // world size
+		X(&z, 4);  // world z
+		X(&c, 16); // color
+	}
+
+	glBindVertexArray(quad_vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instance_data.size(),
+		instance_data.data(),
+		GL_STATIC_DRAW
+	);
+
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+	glEnableVertexAttribArray(0); // Model position
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glEnableVertexAttribArray(1); // World position
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)0);
+	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
+	
+	glEnableVertexAttribArray(2); // World size
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(8));
+	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(3); // World Z
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(16));
+	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(4); // Color
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(20));
+	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	Rectanglef view;
+	view.pos = current_camera.pos - current_camera.frame_size / 2;
+	view.size = current_camera.frame_size;
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_Batched);
+	shader.use();
+	shader.set_window_size(Environment.window_size);
+	shader.set_view(view);
+
+	glBindVertexArray(quad_vao);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
+
+	for (size_t i = 0; i < 5; ++i) glDisableVertexAttribArray(i);
+}
+
 void render::immediate(Circle circle) noexcept {
 	static GLuint vao{ 0 };
 	static GLuint vbo{ 0 };

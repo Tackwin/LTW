@@ -1,6 +1,10 @@
 #pragma once
 #include <cassert>
 
+#include <vector>
+#include <atomic>
+#include <unordered_map>
+
 namespace details {
 	template<typename Callable>
 	struct Defer {
@@ -173,6 +177,53 @@ namespace xstd {
 		return rand() / (double)RAND_MAX;
 	}
 
+
+	template<typename T>
+	struct Pool {
+		std::vector<T> pool;
+		std::unordered_map<size_t, size_t> pool_ids;
+
+		void resize(size_t n, T v = {}) noexcept {
+			pool.resize(n, v);
+			pool_ids.clear();
+			for (size_t i = 0; i < pool.size(); ++i) pool_ids[pool[i].id] = i;
+		}
+		void clear() noexcept {
+			pool.clear();
+			pool_ids.clear();
+		}
+		void push_back(const T& v) noexcept {
+			pool_ids[v.id] = pool.size();
+			pool.push_back(v);
+		}
+
+		void remove_at(size_t idx) noexcept {
+			for (auto& [_, x] : pool_ids) if (x > idx) x--;
+			pool_ids.erase(pool[idx].id);
+			pool.erase(std::begin(pool) + idx);
+		}
+
+		auto begin() noexcept {
+			return std::begin(pool);
+		}
+		auto end() noexcept {
+			return std::end(pool);
+		}
+
+		T& operator[](size_t idx) noexcept {
+			return pool[idx];
+		}
+
+		T& id(size_t id) noexcept {
+			return pool[pool_ids.at(id)];
+		}
+
+		size_t size() const noexcept {
+			return pool.size();
+		}
+
+		bool exist(size_t id) noexcept { return pool_ids.contains(id); }
+	};
 }
 constexpr size_t operator""_id(const char* user, size_t size) {
 	size_t seed = 0;

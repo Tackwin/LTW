@@ -22,6 +22,7 @@ struct Action {
 		Archer_Build,
 		Splash_Build,
 		Cancel,
+		Send,
 		Count
 	};
 
@@ -29,7 +30,7 @@ struct Action {
 		std::array<State, N*N>;
 
 	static constexpr Tranistion_Table Main_Table = {
-		State::Build, State::Null, State::Null,
+		State::Build, State::Send, State::Null,
 		State::Left,  State::Down, State::Right,
 		State::Cancel,  State::Up,   State::Null
 	};
@@ -38,10 +39,16 @@ struct Action {
 		State::Archer_Build, State::Splash_Build, State::Null,
 		State::Null,         State::Null,         State::Null
 	};
+	static constexpr Tranistion_Table Send1_Table = {
+		State::Main, State::Null, State::Null,
+		State::Null, State::Null, State::Null,
+		State::Null, State::Null, State::Null
+	};
 
 	inline static std::unordered_map<State, Tranistion_Table> Button_Nav_Map = {
 		{State::Main,  Main_Table},
-		{State::Build, Build_Table}
+		{State::Build, Build_Table},
+		{State::Send,  Send1_Table}
 	};
 	
 	float button_content = 0.18f / 3;

@@ -1,14 +1,18 @@
 #pragma once
 
 #include <vector>
+#include <span>
 
 #include "Math/Vector.hpp"
 #include "Math/Rectangle.hpp"
 #include "xstd.hpp"
 
 namespace render {
+	struct Order_Base {
+		float z = 1.f;
+	};
 
-	struct Camera {
+	struct Camera : Order_Base {
 		union {
 			Rectanglef rec;
 			struct {
@@ -19,8 +23,8 @@ namespace render {
 
 		Camera() {};
 	};
-	struct Pop_Camera {};
-	struct Rectangle {
+	struct Pop_Camera : Order_Base {};
+	struct Rectangle : Order_Base {
 		union {
 			Rectanglef rec;
 			struct {
@@ -32,17 +36,17 @@ namespace render {
 
 		Rectangle() {};
 	};
-	struct Circle {
+	struct Circle : Order_Base {
 		Vector2f pos;
 		Vector4f color;
 		float r = 0;
 	};
-	struct Arrow {
+	struct Arrow : Order_Base {
 		Vector2f a;
 		Vector2f b;
 		Vector4f color;
 	};
-	struct Text {
+	struct Text : Order_Base {
 		size_t font_id = 0;
 
 		Vector2f origin;
@@ -62,7 +66,7 @@ namespace render {
 
 		std::uint32_t style_mask = 0;
 	};
-	struct Sprite {
+	struct Sprite : Order_Base {
 		union {
 			Rectanglef rec;
 			struct {
@@ -86,9 +90,28 @@ namespace render {
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite)
 
-	struct Order { sum_type(Order, ORDER_LIST); };
+	struct Order {
+		sum_type(Order, ORDER_LIST);
+		sum_type_base(Order_Base);
+	};
 
-	using Orders = std::vector<Order>;
+
+	struct Orders {
+		std::vector<Order> commands;
+
+		void push(Order o) noexcept;
+		void push(Order o, float z) noexcept;
+
+		void reserve(size_t n) noexcept { commands.reserve(n); }
+		void clear() noexcept { commands.clear(); }
+
+		auto begin() noexcept -> auto {
+			return std::begin(commands);
+		}
+		auto end() noexcept -> auto {
+			return std::end(commands);
+		}
+	};
 
 	extern Camera current_camera;
 	void immediate(Rectangle rec) noexcept;
@@ -96,4 +119,5 @@ namespace render {
 	void immediate(Sprite sprite) noexcept;
 	void immediate(Arrow arrow) noexcept;
 	void immediate(Text text) noexcept;
+	void immediate(std::span<Rectangle> rectangle) noexcept;
 };

@@ -236,6 +236,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/archer_build_icon.png", Archer_Build_Icon);
 	X("assets/textures/splash_build_icon.png", Splash_Build_Icon);
 	X("assets/textures/cancel_icon.png", Cancel_Icon);
+	X("assets/textures/send_icon.png", Send_Icon);
 
 #undef X
 }
@@ -275,6 +276,12 @@ void Store_t::load_known_shaders() noexcept {
 	}
 
 	X("assets/shaders/default.vertex", "assets/shaders/default.fragment", "", Default);
+	X(
+		"assets/shaders/default_batched.vertex",
+		"assets/shaders/default_batched.fragment",
+		"",
+		Default_Batched
+	);
 	X("assets/shaders/light.vertex",   "assets/shaders/light.fragment",   "", Light  );
 	X("assets/shaders/hdr.vertex",     "assets/shaders/hdr.fragment",     "", HDR    );
 #undef X

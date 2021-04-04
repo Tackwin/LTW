@@ -21,8 +21,7 @@ struct Archer : public Tower_Base {
 
 struct Sharp : public Tower_Base {
 	float range  = 1.0f;
-	float damage = 1.0f;
-
+	float damage = 0.1f;
 
 	Sharp() noexcept { color = {1, 1, 0, 1}; }
 };
@@ -35,4 +34,5 @@ struct Tower {
 
 	inline static size_t Tower_Id = 0;
 	size_t id = Tower_Id++;
+	bool to_remove = false;
 };

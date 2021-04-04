@@ -1,0 +1,38 @@
+#version 300 es
+
+layout(location = 0) in vec2 model_pos;
+layout(location = 1) in vec2 world_pos;
+layout(location = 2) in vec2 world_size;
+layout(location = 3) in float world_z;
+layout(location = 4) in vec4 in_color;
+
+out vec4 out_pos;
+out vec4 out_color;
+
+uniform vec2 screen_bounds;
+uniform vec4 world_bounds;
+
+float transform_z(float x) {
+	return 1.0 - 1.0 / (1.0 + exp(x));
+}
+
+void main() {
+	out_color = in_color;
+
+	vec2 local_pos = model_pos;
+	local_pos.x *= world_size.x;
+	local_pos.y *= world_size.y;
+
+	out_pos = vec4(
+		local_pos.x + world_pos.x,
+		local_pos.y + world_pos.y,
+		transform_z(world_z),
+		1
+	);
+
+	vec4 screen_pos = out_pos;
+	screen_pos.x = 2.0 * (screen_pos.x - world_bounds.x) / world_bounds.z - 1.0;
+	screen_pos.y = 2.0 * (screen_pos.y - world_bounds.y) / world_bounds.w - 1.0;
+
+	gl_Position = screen_pos;
+}

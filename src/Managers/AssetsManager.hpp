@@ -27,12 +27,14 @@ namespace asset {
 		inline static size_t Archer_Build_Icon = 9;
 		inline static size_t Splash_Build_Icon = 10;
 		inline static size_t Cancel_Icon = 11;
+		inline static size_t Send_Icon   = 12;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
 		inline static size_t Light   = 2;
 		inline static size_t HDR     = 3;
 		inline static size_t Line    = 4;
+		inline static size_t Default_Batched = 5;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};
