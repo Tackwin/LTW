@@ -195,3 +195,4 @@ extern Input_Info get_new_frame_input(const Input_Record& past, double dt) noexc
 
 namespace render { struct Camera; }
 extern Vector2f project_mouse_pos(Vector2f mouse, const render::Camera& camera) noexcept;
+extern Vector2f project_mouse_delta(Vector2f mouse, const render::Camera& camera) noexcept;

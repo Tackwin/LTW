@@ -28,6 +28,7 @@ namespace asset {
 		inline static size_t Splash_Build_Icon = 10;
 		inline static size_t Cancel_Icon = 11;
 		inline static size_t Send_Icon   = 12;
+		inline static size_t Dummy       = 13;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;

@@ -10,7 +10,7 @@
 #include "Managers/InputsManager.hpp"
 
 struct Action {
-	static constexpr size_t N = 3;
+	static constexpr size_t N = 4;
 	enum class State {
 		Null,
 		Main,
@@ -23,6 +23,7 @@ struct Action {
 		Splash_Build,
 		Cancel,
 		Send,
+		Send_First,
 		Count
 	};
 
@@ -30,19 +31,22 @@ struct Action {
 		std::array<State, N*N>;
 
 	static constexpr Tranistion_Table Main_Table = {
-		State::Build, State::Send, State::Null,
-		State::Left,  State::Down, State::Right,
-		State::Cancel,  State::Up,   State::Null
+		State::Build,   State::Send, State::Null,  State::Null,
+		State::Left,    State::Down, State::Right, State::Null,
+		State::Cancel,  State::Up,   State::Null,  State::Null,
+		State::Null,    State::Null, State::Null,  State::Null
 	};
 	static constexpr Tranistion_Table Build_Table = {
-		State::Main,         State::Null,         State::Null,
-		State::Archer_Build, State::Splash_Build, State::Null,
-		State::Null,         State::Null,         State::Null
+		State::Main,         State::Null,         State::Null, State::Null,
+		State::Archer_Build, State::Splash_Build, State::Null, State::Null,
+		State::Null,         State::Null,         State::Null, State::Null,
+		State::Null,         State::Null,         State::Null, State::Null
 	};
 	static constexpr Tranistion_Table Send1_Table = {
-		State::Main, State::Null, State::Null,
-		State::Null, State::Null, State::Null,
-		State::Null, State::Null, State::Null
+		State::Main,       State::Null, State::Null, State::Null,
+		State::Null,       State::Null, State::Null, State::Null,
+		State::Send_First, State::Null, State::Null, State::Null,
+		State::Null,       State::Null, State::Null, State::Null
 	};
 
 	inline static std::unordered_map<State, Tranistion_Table> Button_Nav_Map = {
@@ -51,7 +55,7 @@ struct Action {
 		{State::Send,  Send1_Table}
 	};
 	
-	float button_content = 0.18f / 3;
+	float button_content = 0.18f / N;
 	float button_padding = button_content / 20;
 	float button_bounds  = button_content + button_padding;
 

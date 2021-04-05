@@ -11,6 +11,11 @@ uniform float rotation;
 uniform sampler2D color_texture;
 uniform vec4 world_bounds;
 uniform vec2 screen_bounds;
+uniform float world_z;
+
+float transform_z(float x) {
+	return 1.0 / (1.0 + exp(x));
+}
 
 void main() {
 	vec2 object_space = vec2(
@@ -30,7 +35,7 @@ void main() {
 	pos = vec3(
 		object_pos.x + object_space.x,
 		object_pos.y + object_space.y,
-		1.0
+		transform_z(world_z)
 	);
 
 	vec3 screen_pos = pos;

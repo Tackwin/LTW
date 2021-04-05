@@ -4,13 +4,14 @@
 #include "imgui/imgui.h"
 
 void Board::input(const Input_Info& in, Vector2f mouse_world_pos) noexcept {
-	for2(i, j, size) if (tile_box({i, j}).in(mouse_world_pos)) {
-		if (in.mouse_infos[Mouse::Middle].just_released) remove_tower({i, j});
+	if (in.mouse_infos[Mouse::Right].just_released) {
+		auto tile = get_tile_at(mouse_world_pos);
+		if (tile) remove_tower(*tile);
 	}
 }
 
 void Board::update(double dt) noexcept {
-	tiles.resize(size.x * size.y, Empty{});
+	if (tiles.size() != size.x * size.y) tiles.resize(size.x * size.y, Empty{});
 
 	if (path_construction.soft_dirty) soft_compute_paths();
 	else if (path_construction.dirty) compute_paths();
@@ -134,8 +135,9 @@ void Board::render(render::Orders& order) noexcept {
 			arrow.a = tile_box({ i % size.x, i / size.x }).center() + pos;
 			arrow.b = tile_box({ j % size.x, j / size.x }).center() + pos;
 			arrow.color = V4F(0.5f);
+			arrow.color.a = 1.f;
 
-			order.push(arrow);
+			order.push(arrow, 1.1f);
 		}
 
 		auto& path = path_construction;
@@ -144,13 +146,13 @@ void Board::render(render::Orders& order) noexcept {
 			circle.r = 0.1f;
 			circle.color = {0, 0, 1, 1};
 			circle.pos = tile_box(x).center() + pos;
-			order.push(circle);
+			order.push(circle, 1.05f);
 		}
 		for (size_t i = 0; i < path.closed.size(); ++i) if (path.closed[i]) {
 			circle.r = 0.05f;
 			circle.color = {0, 1, 0, 1};
 			circle.pos = tile_box(i).center() + pos;
-			order.push(circle);
+			order.push(circle, 1.05f);
 		}
 	}
 
@@ -158,7 +160,7 @@ void Board::render(render::Orders& order) noexcept {
 	circle.color = { 0.6f, 0.5f, 0.1f, 1.f };
 	for (auto& x : units) {
 		circle.pos = x.pos + pos;
-		order.push(circle);
+		order.push(circle, 0.5f);
 	}
 
 	for (auto& x : projectiles) {
@@ -166,7 +168,7 @@ void Board::render(render::Orders& order) noexcept {
 		circle.pos = x.pos + pos;
 		circle.color = x.color;
 
-		order.push(circle);
+		order.push(circle, 0.6f);
 	}
 
 	for (auto& x : towers) {
@@ -175,7 +177,7 @@ void Board::render(render::Orders& order) noexcept {
 		circle.pos   = tile_box(x->tile_pos).pos + s * (Vector2f)x->tile_size / 2 + pos;
 		circle.color = x->color;
 
-		order.push(circle);
+		order.push(circle, 1);
 	}
 }
 
@@ -262,16 +264,16 @@ void Board::soft_compute_paths() noexcept {
 	return;
 }
 
-Tile* Board::get_tile_at(Vector2f x) noexcept {
+std::optional<Vector2u> Board::get_tile_at(Vector2f x) noexcept {
 	auto s = tile_size + tile_padding;
-	if (pos.x < x.x && x.x < pos.x + size.x * s)
-	if (pos.y < x.y && x.y < pos.y + size.y * s) {
+	if (pos.x - size.x * s / 2 < x.x && x.x < pos.x + size.x * s / 2)
+	if (pos.y - size.y * s / 2 < x.y && x.y < pos.y + size.y * s / 2) {
 		Vector2u t;
-		t.x = (x.x - pos.x) / s;
-		t.y = (x.y - pos.y) / s;
-		return &tile(t);
+		t.x = (x.x - (pos.x - size.x * s / 2)) / s;
+		t.y = (x.y - (pos.y - size.y * s / 2)) / s;
+		return t;
 	}
-	return nullptr;
+	return std::nullopt;
 }
 
 void Board::insert_tower(Tower t) noexcept {
@@ -287,8 +289,8 @@ void Board::insert_tower(Tower t) noexcept {
 void Board::remove_tower(Vector2u p) noexcept {
 	tiles[p.x + p.y * size.x] = Empty{};
 	for (auto& x : towers) {
-		if (x->tile_pos.x <= p.x && p.x <= x->tile_pos.x + x->tile_size.x)
-		if (x->tile_pos.y <= p.y && p.y <= x->tile_pos.y + x->tile_size.y) x.to_remove = true;
+		if (x->tile_pos.x <= p.x && p.x < x->tile_pos.x + x->tile_size.x)
+		if (x->tile_pos.y <= p.y && p.y < x->tile_pos.y + x->tile_size.y) x.to_remove = true;
 	}
 	invalidate_paths();
 }
@@ -305,6 +307,17 @@ void Board::invalidate_paths() noexcept {
 
 	for (size_t i = 0; i < size.x; ++i) {
 		path.open.push_back(i);
-		path.closed[i] = true;;
+		path.closed[i] = true;
 	}
+}
+
+void Board::spawn_unit(Unit u) noexcept {
+	size_t first = (size.y - start_zone_height) * size.x;
+	size_t final = size.x * size.y;
+
+	u.current_tile = (size_t)(first + xstd::random() * (final - first));
+	u.pos = tile_box({u.current_tile % size.x, u.current_tile / size.x}).center();
+	u.speed = 5.f;
+
+	units.push_back(u);
 }

@@ -237,6 +237,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/splash_build_icon.png", Splash_Build_Icon);
 	X("assets/textures/cancel_icon.png", Cancel_Icon);
 	X("assets/textures/send_icon.png", Send_Icon);
+	X("assets/textures/dummy.png", Dummy);
 
 #undef X
 }

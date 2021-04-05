@@ -119,5 +119,7 @@ namespace render {
 	void immediate(Sprite sprite) noexcept;
 	void immediate(Arrow arrow) noexcept;
 	void immediate(Text text) noexcept;
-	void immediate(std::span<Rectangle> rectangle) noexcept;
+	void immediate(std::span<Rectangle> rectangles) noexcept;
+	void immediate(std::span<Circle> circles) noexcept;
+	void immediate(std::span<Arrow> arrows) noexcept;
 };

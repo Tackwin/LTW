@@ -20,6 +20,7 @@ uniform bool use_normal_texture;
 void main() {
 	vec4 texel = vec4(1);
 	if (use_color_texture) texel = texture(color_texture, texture_coord * texture_rect.zw + texture_rect.xy);
+	if (texel.a < 0.1) discard;
 
     g_albedo = vec4(
     	texel.x * color.x,

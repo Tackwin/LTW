@@ -1,4 +1,6 @@
 #pragma once 
+
+#include <optional>
 #include <unordered_set>
 
 #include "xstd.hpp"
@@ -7,6 +9,7 @@
 #include "Tower.hpp"
 
 struct Common_Tile {
+	Vector2u tile_pos = {0, 0};
 	Vector4f color = {.1f, .1f, .1f, 1};
 	bool passthrough = true;
 };
@@ -21,15 +24,13 @@ struct Block : Common_Tile {
 };
 #define TILE_LIST(X) X(Empty) X(Block)
 struct Tile {
-	inline static size_t Id_Increment = 1;
 	sum_type(Tile, TILE_LIST);
 	sum_type_base(Common_Tile);
-	size_t id = Id_Increment++;
+	size_t id = 0;
 };
 
 struct Projectile {
-	inline static size_t Id_Increment = 0;
-	size_t id = Id_Increment++;
+	size_t id = 0;
 
 	size_t from = 0;
 	size_t to = 0;
@@ -44,8 +45,7 @@ struct Projectile {
 };
 
 struct Unit {
-	inline static size_t Id_Increment = 0;
-	size_t id = Id_Increment++;
+	size_t id = 0;
 
 	size_t current_tile = 0;
 	Vector2f pos;
@@ -97,9 +97,10 @@ struct Board {
 	void compute_paths() noexcept;
 	void invalidate_paths() noexcept;
 
-
-	Tile* get_tile_at(Vector2f x) noexcept;
+	std::optional<Vector2u> get_tile_at(Vector2f x) noexcept;
 
 	void insert_tower(Tower t) noexcept;
 	void remove_tower(Vector2u p) noexcept;
+
+	void spawn_unit(Unit u) noexcept;
 };

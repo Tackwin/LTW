@@ -27,8 +27,8 @@ struct Game {
 		bool game_debug_open = true;
 	} gui;
 
-	std::array<Board, 16>  boards;
-	std::array<Player, 16> players;
+	std::array<Board,  2>  boards;
+	std::array<Player, 2> players;
 
 	size_t board_per_line = 8;
 	Vector2f board_pos_offset = { 15, 30 };
@@ -60,7 +60,11 @@ struct Game {
 #define EXTERN extern
 #endif
 
-EXTERN void game_update(Game& game, double dt) noexcept;
+struct Game_Request {
+	bool confine_cursor = false;
+};
+
+EXTERN Game_Request game_update(Game& game, double dt) noexcept;
 EXTERN void game_render(Game& game, render::Orders& orders) noexcept;
 EXTERN void game_startup(Game& game) noexcept;
 EXTERN void game_shutdown(Game& game) noexcept;

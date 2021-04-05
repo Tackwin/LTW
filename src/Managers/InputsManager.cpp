@@ -393,6 +393,10 @@ Vector2f project_mouse_pos(Vector2f mouse, const render::Camera& camera) noexcep
 	};
 }
 
+Vector2f project_mouse_delta(Vector2f mouse, const render::Camera& camera) noexcept {
+	return { mouse.x * camera.frame_size.x, mouse.y * camera.frame_size.y };
+}
+
 
 Input_Info get_new_frame_input(const Input_Record& records, double dt) noexcept {
 	defer{ wheel_scroll = 0; };

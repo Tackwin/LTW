@@ -30,9 +30,10 @@ bool Interface::input(const Input_Info& info) noexcept {
 	for (auto& [_, x] : action.state_button) x.just_pressed = false;
 
 	constexpr std::array<Keyboard::Key, Action::N * Action::N> key_map = {
-		Keyboard::W, Keyboard::X, Keyboard::C,
-		Keyboard::Q, Keyboard::S, Keyboard::D,
-		Keyboard::A, Keyboard::Z, Keyboard::E
+		Keyboard::W,    Keyboard::X,    Keyboard::C,    Keyboard::V,
+		Keyboard::Q,    Keyboard::S,    Keyboard::D,    Keyboard::F,
+		Keyboard::A,    Keyboard::Z,    Keyboard::E,    Keyboard::R,
+		Keyboard::Num1, Keyboard::Num2, Keyboard::Num3, Keyboard::Num4
 	};
 	for (size_t i = 0; i < Action::N * Action::N; ++i) {
 		auto& it = action.state_button[table[i]];
@@ -91,7 +92,7 @@ void Interface::render(render::Orders& orders) noexcept {
 
 	rec.rec = action_zone;
 	rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
-	orders.push(rec, -1);
+	orders.push(rec, 2);
 
 	auto& table = action.Button_Nav_Map[action.current_state];
 	for2(x, y, V2F(Action::N)) {
@@ -102,12 +103,12 @@ void Interface::render(render::Orders& orders) noexcept {
 		rec.size  = V2F(action.button_content);
 		rec.color = it.actual_color;
 
-		orders.push(rec, 0);
+		orders.push(rec, 3);
 
 		if (it.texture_id) {
 			sprite.rec = rec.rec;
 			sprite.texture = it.texture_id;
-			orders.push(sprite);
+			orders.push(sprite, 4);
 		}
 	}
 
@@ -116,7 +117,7 @@ void Interface::render(render::Orders& orders) noexcept {
 	rec.size.x = ui_camera.frame_size.x;
 	rec.size.y = info_bar_height;
 	rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
-	orders.push(rec, 0);
+	orders.push(rec, 2);
 
 	thread_local std::string temp_string;
 	temp_string.clear();
@@ -129,7 +130,7 @@ void Interface::render(render::Orders& orders) noexcept {
 	sprite.texture = asset::Texture_Id::Gold_Icon;
 	sprite.texture_rect.pos  = {0, 0};
 	sprite.texture_rect.size = {1, 1};
-	orders.push(sprite);
+	orders.push(sprite, 3);
 
 	text.pos.x = ui_camera.frame_size.x / 2 + info_bar_height / 2 + 0.01f;
 	text.pos.y = ui_camera.frame_size.y - info_bar_height / 2;
@@ -139,7 +140,7 @@ void Interface::render(render::Orders& orders) noexcept {
 	text.font_id = asset::Font_Id::Consolas;
 	text.text = temp_string.data();
 	text.text_length = temp_string.size();
-	orders.push(text);
+	orders.push(text, 3);
 }
 
 void Interface::init_buttons() noexcept {
@@ -155,4 +156,5 @@ void Interface::init_buttons() noexcept {
 	b[Action::State::Splash_Build].texture_id = asset::Texture_Id::Splash_Build_Icon;
 	b[Action::State::Cancel].texture_id       = asset::Texture_Id::Cancel_Icon;
 	b[Action::State::Send].texture_id         = asset::Texture_Id::Send_Icon;
+	b[Action::State::Send_First].texture_id   = asset::Texture_Id::Dummy;
 }

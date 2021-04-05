@@ -194,6 +194,7 @@ int WINAPI WinMain(
 	}
 	Environment.window_size.x = (size_t)(window_rect.right - window_rect.left);
 	Environment.window_size.y = (size_t)(window_rect.bottom - window_rect.top);
+
 	PROFILER_END();
 
 
@@ -213,6 +214,7 @@ int WINAPI WinMain(
 #endif
 
 	glEnable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_MULTISAMPLE);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	PROFILER_END();
@@ -276,6 +278,8 @@ int WINAPI WinMain(
 	ImGui::DestroyContext();
 
 	game_proc.shutdown(game);
+	// >SEE(Tackwin) >ClipCursor
+	ClipCursor(nullptr);
 	return 0;
 }
 
@@ -309,7 +313,7 @@ void windows_loop() noexcept {
 	ImGui::SliderSize ("Samples ", &render_param.n_samples, 1, 16);
 	ImGui::End();
 
-	game_proc.update(game, dt);
+	auto response = game_proc.update(game, dt);
 	game_proc.render(game, orders);
 
 	render_orders(orders, render_param);
@@ -318,6 +322,16 @@ void windows_loop() noexcept {
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	SwapBuffers((HDC)platform::handle_dc_window);
+
+	if (response.confine_cursor) {
+		RECT r;
+		GetWindowRect((HWND)platform::handle_window, &r);
+		ClipCursor(&r);
+	} else {
+		// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are destroying it
+		// we need to restore the old clipCursor by doing GetClipCursor...
+		ClipCursor(nullptr);
+	}
 }
 
 
@@ -538,27 +552,42 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	g_buffer.clear({});
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	glEnable(GL_DEPTH_TEST);
 	std::vector<render::Camera> cam_stack;
 	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
+	thread_local std::vector<std::vector<render::Circle>>    circle_batch;
+	thread_local std::vector<std::vector<render::Arrow>>     arrow_batch;
 	for (auto& x : rectangle_batch) x.clear();
+	for (auto& x : circle_batch) x.clear();
+	for (auto& x : arrow_batch) x.clear();
 
 	for (auto& x : orders) {
 		switch (x.kind) {
 			case render::Order::Camera_Kind: {
 				cam_stack.push_back(x.Camera_);
-				if (rectangle_batch.size() < cam_stack.size()) {
+
+				if (rectangle_batch.size() < cam_stack.size())
 					rectangle_batch.resize(cam_stack.size());
-				}
+				if (circle_batch.size() < cam_stack.size()) circle_batch.resize(cam_stack.size());
+				if (arrow_batch.size() < cam_stack.size())  arrow_batch.resize(cam_stack.size());
+
 				render::current_camera = cam_stack.back();
 				break;
 			}
 			case render::Order::Pop_Camera_Kind: {
-				auto& batch = rectangle_batch[cam_stack.size() - 1];
-				if (!batch.empty()) {
+				if (auto& batch = rectangle_batch[cam_stack.size() - 1]; !batch.empty()) {
 					render::immediate(batch);
+					batch.clear();
+				}
+				if (auto& batch = circle_batch[cam_stack.size() - 1]; !batch.empty()) {
+					render::immediate(batch);
+					batch.clear();
+				}
+				if (auto& batch = arrow_batch[cam_stack.size() - 1]; !batch.empty()) {
+					render::immediate(batch);
+					batch.clear();
 				}
 
-				batch.clear();
 				cam_stack.pop_back();
 				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
 
@@ -566,9 +595,15 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 				break;
 			}
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
-			case render::Order::Arrow_Kind:      render::immediate(x.Arrow_);     break;
 			case render::Order::Sprite_Kind:     render::immediate(x.Sprite_);    break;
-			case render::Order::Circle_Kind:     render::immediate(x.Circle_);    break;
+			case render::Order::Arrow_Kind: {
+				arrow_batch[cam_stack.size() - 1].push_back(x.Arrow_);
+				break;
+			}
+			case render::Order::Circle_Kind: {
+				circle_batch[cam_stack.size() - 1].push_back(x.Circle_);
+				break;
+			}
 			case render::Order::Rectangle_Kind: {
 				rectangle_batch[cam_stack.size() - 1].push_back(x.Rectangle_);
 				break;
@@ -576,6 +611,7 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 			default: break;
 		}
 	}
+	glDisable(GL_DEPTH_TEST);
 
 	hdr_buffer.set_active();
 	g_buffer.set_active_texture();

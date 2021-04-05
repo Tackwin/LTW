@@ -63,6 +63,7 @@ template<bool flag = false> void static_no_match() noexcept {
 		}\
 		n(std::nullptr_t) noexcept { kind = None_Kind; }\
 		n(n&& that) noexcept {\
+			memcpy(this, &that, sizeof(that));\
 			kind = that.kind;\
 			switch (kind) {\
 				list(sum_type_X_case_mve)\
@@ -70,6 +71,7 @@ template<bool flag = false> void static_no_match() noexcept {
 			}\
 		}\
 		n(const n& that) noexcept {\
+			memcpy(this, &that, sizeof(that));\
 			kind = that.kind;\
 			switch (kind) {\
 				list(sum_type_X_case_cpy)\
@@ -77,6 +79,7 @@ template<bool flag = false> void static_no_match() noexcept {
 			}\
 		}\
 		n& operator=(const n& that) noexcept {\
+			memcpy(this, &that, sizeof(that));\
 			kind = that.kind;\
 			switch (kind) {\
 				list(sum_type_X_case_cpy)\
@@ -85,6 +88,7 @@ template<bool flag = false> void static_no_match() noexcept {
 			return *this;\
 		}\
 		n& operator=(n&& that) noexcept {\
+			memcpy(this, &that, sizeof(that));\
 			kind = that.kind;\
 			switch (kind) {\
 				list(sum_type_X_case_mve)\
@@ -180,26 +184,34 @@ namespace xstd {
 
 	template<typename T>
 	struct Pool {
+		inline static size_t ID = 0;
+		std::vector<size_t> indexes;
 		std::vector<T> pool;
 		std::unordered_map<size_t, size_t> pool_ids;
 
 		void resize(size_t n, T v = {}) noexcept {
 			pool.resize(n, v);
+			for (size_t i = indexes.size(); i < n; ++i) {
+				indexes.push_back(ID++);
+				assign_id(i, indexes.back());
+			}
 			pool_ids.clear();
-			for (size_t i = 0; i < pool.size(); ++i) pool_ids[pool[i].id] = i;
+			for (size_t i = 0; i < pool.size(); ++i) pool_ids[indexes[i]] = i;
 		}
 		void clear() noexcept {
 			pool.clear();
 			pool_ids.clear();
 		}
 		void push_back(const T& v) noexcept {
-			pool_ids[v.id] = pool.size();
 			pool.push_back(v);
+			indexes.push_back(ID++);
+			pool_ids[indexes.back()] = pool.size() - 1;
+			assign_id(pool.size() - 1, indexes.back());
 		}
 
 		void remove_at(size_t idx) noexcept {
+			pool_ids.erase(indexes[idx]);
 			for (auto& [_, x] : pool_ids) if (x > idx) x--;
-			pool_ids.erase(pool[idx].id);
 			pool.erase(std::begin(pool) + idx);
 		}
 
@@ -223,7 +235,28 @@ namespace xstd {
 		}
 
 		bool exist(size_t id) noexcept { return pool_ids.contains(id); }
+
+		template<typename, typename = void>
+		struct has_id : std::false_type {};
+
+		template<typename V>
+		struct has_id<V, std::void_t<decltype(&V::id)>> :
+			std::is_same<size_t, decltype(std::declval<V>().id)> {};
+
+		void assign_id(size_t idx, size_t id) noexcept {
+			if constexpr (has_id<T>::value) {
+				pool[idx].id = id;
+			}
+		}
 	};
+
+	template< typename T, typename Pred > typename std::vector<T>::iterator
+	insert_sorted(std::vector<T> & vec, T const& item, Pred pred) {
+		return vec.insert(
+			std::upper_bound( vec.begin(), vec.end(), item, pred ),
+			item 
+		);
+	}
 }
 constexpr size_t operator""_id(const char* user, size_t size) {
 	size_t seed = 0;

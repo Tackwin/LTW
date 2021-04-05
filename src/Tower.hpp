@@ -32,7 +32,6 @@ struct Tower {
 	sum_type(Tower, TOWER_LIST);
 	sum_type_base(Tower_Base);
 
-	inline static size_t Tower_Id = 0;
-	size_t id = Tower_Id++;
+	size_t id = 0;
 	bool to_remove = false;
 };
