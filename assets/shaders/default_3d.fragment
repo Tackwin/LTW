@@ -1,0 +1,19 @@
+#version 330
+precision mediump float;
+
+layout (location = 0) out vec4 g_albedo;
+layout (location = 1) out vec4 g_normal;
+layout (location = 2) out vec4 g_position;
+
+uniform sampler2D color_texture;
+
+in vec2 texture_pos;
+in vec3 position;
+in vec3 normal;
+
+void main() {
+	vec4 texel = texture(color_texture, texture_pos);
+	g_normal = vec4(normal, texel.a);
+	g_albedo = texel;
+	g_position = vec4(position, 1);
+}

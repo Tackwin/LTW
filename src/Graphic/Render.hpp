@@ -36,6 +36,14 @@ namespace render {
 
 		Rectangle() {};
 	};
+	struct Model : Order_Base {
+		size_t object_id = 0;
+		size_t shader_id = 0;
+		size_t texture_id = 0;
+
+		Vector3f pos;
+		float scale = 1.f;
+	};
 	struct Circle : Order_Base {
 		Vector2f pos;
 		Vector4f color;
@@ -88,7 +96,7 @@ namespace render {
 	};
 
 	#define ORDER_LIST(X)\
-	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite)
+	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -118,6 +126,7 @@ namespace render {
 	void immediate(Circle circle) noexcept;
 	void immediate(Sprite sprite) noexcept;
 	void immediate(Arrow arrow) noexcept;
+	void immediate(Model model) noexcept;
 	void immediate(Text text) noexcept;
 	void immediate(std::span<Rectangle> rectangles) noexcept;
 	void immediate(std::span<Circle> circles) noexcept;

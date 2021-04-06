@@ -204,6 +204,19 @@ void Store_t::monitor_path(std::filesystem::path dir) noexcept {
 					x.asset = std::move(*new_dll);
 				}
 			}
+
+			for (auto& [_, x] : objects) {
+				if (std::filesystem::canonical(x.path) == path) {
+					auto new_obj = Object::load_from_file(path);
+					if (!new_obj) {
+						auto str = path.string();
+						printf("Failed to hot reload dll %s.\n", str.c_str());
+						continue;
+					}
+					x.asset = std::move(*new_obj);
+				}
+			}
+
 			return false;
 		}
 	);
@@ -238,6 +251,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/cancel_icon.png", Cancel_Icon);
 	X("assets/textures/send_icon.png", Send_Icon);
 	X("assets/textures/dummy.png", Dummy);
+	X("assets/textures/palette.png", Palette);
 
 #undef X
 }
@@ -277,6 +291,7 @@ void Store_t::load_known_shaders() noexcept {
 	}
 
 	X("assets/shaders/default.vertex", "assets/shaders/default.fragment", "", Default);
+	X("assets/shaders/default_3d.vertex", "assets/shaders/default_3d.fragment", "", Default_3D);
 	X(
 		"assets/shaders/default_batched.vertex",
 		"assets/shaders/default_batched.fragment",
@@ -285,6 +300,23 @@ void Store_t::load_known_shaders() noexcept {
 	);
 	X("assets/shaders/light.vertex",   "assets/shaders/light.fragment",   "", Light  );
 	X("assets/shaders/hdr.vertex",     "assets/shaders/hdr.fragment",     "", HDR    );
+#undef X
+}
+void Store_t::load_known_objects() noexcept {
+	std::optional<size_t> opt;
+
+#define X(str, x)\
+	printf("Loading " #x " ... ");\
+	opt = load_object(str);\
+	if (opt) {\
+		Object_Id::x = *opt;\
+		printf("sucess :) !\n");\
+	}\
+	else {\
+		printf("failed :( !\n");\
+	}
+	X("assets/model/methane.ply", Methane);
+
 #undef X
 }
 
@@ -346,5 +378,25 @@ void Store_t::load_from_config(std::filesystem::path config_path) noexcept {
 [[nodiscard]] std::optional<size_t> Store_t::load_dll(std::filesystem::path path) noexcept {
 	size_t k = xstd::uuid();
 	if (auto opt = load_dll(k, path)) return k;
+	return std::nullopt;
+}
+
+
+[[nodiscard]] Object& Store_t::get_object(size_t k) noexcept {
+	return objects.at(k).asset;
+}
+[[nodiscard]] bool Store_t::load_object(size_t k, std::filesystem::path path) noexcept {
+	auto opt = Object::load_from_file(path);
+	if (!opt) return false;
+
+	Asset_Object obj;
+	obj.asset = std::move(*opt);
+	obj.path = std::filesystem::weakly_canonical(path);
+	objects.emplace(k, std::move(obj));
+	return true;
+}
+[[nodiscard]] std::optional<size_t> Store_t::load_object(std::filesystem::path path) noexcept {
+	size_t k = xstd::uuid();
+	if (auto opt = load_object(k, path)) return k;
 	return std::nullopt;
 }

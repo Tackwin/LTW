@@ -595,6 +595,7 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 				break;
 			}
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
+			case render::Order::Model_Kind:      render::immediate(x.Model_);     break;
 			case render::Order::Sprite_Kind:     render::immediate(x.Sprite_);    break;
 			case render::Order::Arrow_Kind: {
 				arrow_batch[cam_stack.size() - 1].push_back(x.Arrow_);

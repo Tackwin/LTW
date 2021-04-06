@@ -775,3 +775,77 @@ void render::immediate(Sprite info) noexcept {
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+struct Gpu_Vector {
+
+	void upload(size_t size, void* data) noexcept {
+		glBindBuffer(target, buffer);
+		glBufferData(target, size, data, GL_STATIC_DRAW);
+	}
+
+	void fit(size_t new_size) noexcept {
+		if (capacity < new_size) {
+			size_t new_capacity = (capacity * 5) / 3;
+			capacity = std::max(new_capacity, new_size);
+
+			if (buffer) glDeleteBuffers(1, &buffer);
+			glGenBuffers(1, &buffer);
+			glBindBuffer(target, buffer);
+			glBufferData(target, capacity, NULL, GL_STATIC_DRAW);
+	#ifdef GL_DEBUG
+			glObjectLabel(GL_BUFFER, buffer, debug_name.size(), debug_name.data());
+	#endif
+		}
+	}
+
+	std::string debug_name;
+	GLuint buffer = 0;
+	size_t capacity = 0;
+	size_t target = GL_ARRAY_BUFFER;
+};
+
+void render::immediate(Model info) noexcept {
+	thread_local GLuint vao = 0;
+	thread_local Gpu_Vector vertices;
+	thread_local Gpu_Vector indices;
+
+	if (!vao) glGenVertexArrays(1, &vao);
+
+	auto& object = asset::Store.get_object(info.object_id);
+	auto& texture = asset::Store.get_albedo(info.texture_id);
+
+	vertices.debug_name = "Vertex buffer object";
+	vertices.target = GL_ARRAY_BUFFER;
+	indices.debug_name  = "Index buffer object";
+	indices.target = GL_ELEMENT_ARRAY_BUFFER;
+
+	vertices.fit(object.vertices.size() * sizeof(Object::Vertex));
+	indices.fit(object.faces.size() * sizeof(size_t));
+
+	vertices.upload(object.vertices.size() * sizeof(Object::Vertex), object.vertices.data());
+	indices.upload(object.faces.size() * sizeof(unsigned short), object.faces.data());
+
+	if (!info.shader_id) info.shader_id = asset::Shader_Id::Default_3D;
+	auto& shader = asset::Store.get_shader(info.shader_id);
+	texture.bind(4);
+	shader.use();
+	shader.set_uniform("world_position", info.pos);
+	shader.set_texture(4);
+
+	glBindVertexArray(vao);
+	glBindBuffer(vertices.target, vertices.buffer);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)0);
+
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)12);
+
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)24);
+
+	glBindBuffer(indices.target, indices.buffer);
+	glDrawElements(GL_TRIANGLES, object.vertices.size() * 3, GL_UNSIGNED_SHORT, (void*)0);
+
+	for (size_t i = 0; i < 2; ++i) glDisableVertexAttribArray(i);
+}

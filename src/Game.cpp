@@ -38,6 +38,8 @@ void game_startup(Game& game) noexcept {
 	asset::Store.load_known_fonts();
 	PROFILER_SEQ("load_textures");
 	asset::Store.load_known_textures();
+	PROFILER_SEQ("load_models");
+	asset::Store.load_known_objects();
 	PROFILER_SEQ("other");
 	game.interface.init_buttons();
 
@@ -173,6 +175,12 @@ void game_render(Game& game, render::Orders& order) noexcept {
 	order.push(game.camera);
 	defer { order.push(render::Pop_Camera{}); };
 
+	render::Model m;
+	m.object_id = asset::Object_Id::Methane;
+	m.texture_id = asset::Texture_Id::Palette;
+	order.push(m);
+
+	return;
 	for (size_t i = 0; i < game.boards.size(); ++i) {
 		auto& board = game.boards[i];
 		board.render(order);
