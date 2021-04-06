@@ -39,6 +39,7 @@ struct Game {
 	Interface interface;
 
 	render::Camera camera;
+	render::Camera3D camera3d;
 	float camera_speed = 1.f;
 	
 	Vector2f zqsd_vector;
@@ -48,6 +49,9 @@ struct Game {
 	Game() noexcept {
 		camera.pos = {0, 0};
 		camera.frame_size = { 16, 9 };
+
+		camera3d.pos = {0, -2, 2};
+		camera3d.look_at({});
 	}
 
 	Interface::Ressource_Info construct_interface_ressource_info() noexcept;

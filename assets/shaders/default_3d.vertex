@@ -10,9 +10,12 @@ out vec2 texture_pos;
 out vec3 position;
 out vec3 normal;
 
+uniform mat4 view;
+uniform mat4 proj;
+
 void main() {
 	position = in_position * 0.1 + world_position;
-	gl_Position = vec4(position, 1.0);
+	gl_Position = vec4(position, 1.0) * view * proj;
 	texture_pos = in_uv;
 	normal = in_normal;
 }

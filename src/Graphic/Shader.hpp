@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "Math/Vector.hpp"
+#include "Math/Matrix.hpp"
 #include "Math/Rectangle.hpp"
 
 struct ShaderInfo {
@@ -64,6 +65,7 @@ public:
 
 
 	void set_uniform(const std::string& name, Rectanglef x) noexcept;
+	void set_uniform(const std::string& name, Matrix4f x, bool transpose = false) noexcept;
 	void set_uniform(const std::string& name, Vector2f x) noexcept;
 	void set_uniform(const std::string& name, Vector3f x) noexcept;
 	void set_uniform(const std::string& name, Vector4u x) noexcept;

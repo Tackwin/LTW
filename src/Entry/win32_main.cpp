@@ -553,10 +553,14 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_DEPTH_TEST);
-	std::vector<render::Camera> cam_stack;
+	thread_local std::vector<render::Camera> cam_stack;
+	thread_local std::vector<render::Camera3D> cam3d_stack;
 	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
 	thread_local std::vector<std::vector<render::Circle>>    circle_batch;
 	thread_local std::vector<std::vector<render::Arrow>>     arrow_batch;
+
+	cam_stack.clear();
+	cam3d_stack.clear();
 	for (auto& x : rectangle_batch) x.clear();
 	for (auto& x : circle_batch) x.clear();
 	for (auto& x : arrow_batch) x.clear();
@@ -592,6 +596,16 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
 
 
+				break;
+			}
+			case render::Order::Camera3D_Kind: {
+				cam3d_stack.push_back(x.Camera3D_);
+				render::current_camera_3d = cam3d_stack.back();
+				break;
+			}
+			case render::Order::Pop_Camera3D_Kind: {
+				cam3d_stack.pop_back();
+				if (!cam3d_stack.empty()) render::current_camera_3d = cam3d_stack.back();
 				break;
 			}
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;

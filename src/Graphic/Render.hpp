@@ -5,6 +5,7 @@
 
 #include "Math/Vector.hpp"
 #include "Math/Rectangle.hpp"
+#include "Math/Matrix.hpp"
 #include "xstd.hpp"
 
 namespace render {
@@ -24,6 +25,18 @@ namespace render {
 		Camera() {};
 	};
 	struct Pop_Camera : Order_Base {};
+
+	struct Camera3D : Order_Base {
+		float fov = 90;
+		Vector3f pos;
+		Vector3f dir;
+
+		void look_at(Vector3f target) noexcept;
+		Matrix4f get_view(Vector3f up = {0, 0, 1}) noexcept;
+	};
+	struct Pop_Camera3D : Order_Base {};
+
+	
 	struct Rectangle : Order_Base {
 		union {
 			Rectanglef rec;
@@ -96,7 +109,8 @@ namespace render {
 	};
 
 	#define ORDER_LIST(X)\
-	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model)
+	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
+	X(Pop_Camera3D)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -121,7 +135,8 @@ namespace render {
 		}
 	};
 
-	extern Camera current_camera;
+	extern Camera   current_camera;
+	extern Camera3D current_camera_3d;
 	void immediate(Rectangle rec) noexcept;
 	void immediate(Circle circle) noexcept;
 	void immediate(Sprite sprite) noexcept;

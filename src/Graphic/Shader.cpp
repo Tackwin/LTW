@@ -246,6 +246,13 @@ void Shader::set_uniform(const std::string& name, Vector3f x) noexcept {
 
 	glUniform3fv(cache_loc[name], 1, &x.x);
 }
+void Shader::set_uniform(const std::string& name, Matrix4f x, bool transpose) noexcept {
+	if (cache_loc.count(name) == 0) {
+		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
+	}
+
+	glUniformMatrix4fv(cache_loc[name], 1, transpose ? GL_TRUE : GL_FALSE, &x[0][0]);
+}
 void Shader::set_uniform(const std::string& name, Vector4d x) noexcept {
 	if (cache_loc.count(name) == 0) {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());

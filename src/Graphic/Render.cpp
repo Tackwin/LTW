@@ -6,12 +6,37 @@
 #include "GL/wglew.h"
 #endif
 
+#include "Math/Matrix.hpp"
+
 #include "Managers/AssetsManager.hpp"
 #include "global.hpp"
 
 #include "xstd.hpp"
 
 render::Camera render::current_camera;
+render::Camera3D render::current_camera_3d;
+
+void render::Camera3D::look_at(Vector3f target) noexcept {
+	dir = target - pos;
+	dir = dir.normalize();
+}
+
+Matrix4f render::Camera3D::get_view(Vector3f up) noexcept {
+	auto x = cross(dir, up).normalize();
+	auto y = cross(x, dir).normalize();
+	auto z = -1 * dir.normalize();
+
+	float comp[] {
+		x.x, y.x, z.x, 0.f,
+		x.y, y.y, z.y, 0.f,
+		x.z, y.z, z.z, 0.f,
+		0.f, 0.f, 0.f, 1.f
+	};
+	
+	Matrix4f view(comp);
+	view = view * Matrix4f::translation(-1 * pos);
+	return view;
+}
 
 void render::Orders::push(render::Order o) noexcept {
 	push(o, commands.size());
@@ -831,6 +856,8 @@ void render::immediate(Model info) noexcept {
 	shader.use();
 	shader.set_uniform("world_position", info.pos);
 	shader.set_texture(4);
+	shader.set_uniform("view", current_camera_3d.get_view({0, 0, 1}));
+	shader.set_uniform("proj", perspective(3.141592f * current_camera_3d.fov / 180, 16/9.f, 100, 0.01f));
 
 	glBindVertexArray(vao);
 	glBindBuffer(vertices.target, vertices.buffer);

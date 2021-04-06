@@ -404,7 +404,7 @@ struct Vector : public __vec_member<D, T> {
 		constexpr std::enable_if_t<Dp == 2, Vector<D, T>> rotate90() const noexcept {
 		return { -this->y, this->x };
 	}
-    
+
 #pragma region OPERATOR
 	T& operator[](size_t i) {
 		return this->components[i];
@@ -412,8 +412,8 @@ struct Vector : public __vec_member<D, T> {
 	const T& operator[](size_t i) const {
 		return this->components[i];
 	}
-    
-    
+
+
 	template<typename U>
 		auto operator*(const U& scalaire) const noexcept -> Vector<D, decltype(T{} * scalaire)> {
 		static_assert(std::is_scalar<U>::value, "need to be a scalar");
@@ -553,6 +553,15 @@ struct Vector : public __vec_member<D, T> {
 	}
 #pragma endregion
 };
+
+template<typename T>
+Vector3<T> cross(Vector3<T> u, Vector3<T> v) noexcept {
+	return {
+		u[1]*v[2] - u[2] * v[1],
+		u[2]*v[0] - u[0] * v[2],
+		u[0]*v[1] - u[1] * v[0]
+	};
+}
 
 template<size_t D, typename T, typename U>
 auto operator*(U scalar, const Vector<D, T>& vec) noexcept -> Vector<D, decltype(scalar * vec[0])>

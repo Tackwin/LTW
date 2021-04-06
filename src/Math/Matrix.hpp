@@ -1,40 +1,12 @@
 ﻿#pragma once
 #include "Vector.hpp"
+#include <cmath>
 
 template<size_t R, size_t C, typename T = float>
 struct Matrix {
 	Vector<C, T> rows[R];
 
 	template<size_t N = R>
-	static constexpr std::enable_if_t<N == C, Matrix<N, N, T>> identity() {
-		Matrix<N, N, T> m;
-		for (size_t i = 0u; i < N; ++i) {
-			m[i][i] = (T)1;
-		}
-		return m;
-	}
-
-	template<size_t Rp = R, size_t Cp = C>
-	static constexpr std::enable_if_t<Rp == Cp, Matrix<Rp, Cp, T>> diagonal(T scalar) {
-		Matrix<Rp, Cp, T> matrix;
-		for (size_t i = 0u; i < Rp; ++i) {
-			matrix[i][i] = scalar;
-		}
-		return matrix;
-	}
-
-	template<size_t N = R, typename T = float>
-	static constexpr std::enable_if_t<N == C, Matrix<N, N, T>>
-		scalar(Vector<N, T> scalar)
-	{
-		Matrix<N, N, T> matrix;
-		for (size_t i = 0u; i < N; ++i) {
-			matrix[i][i] = scalar[i];
-		}
-		return matrix;
-	}
-
-	template<size_t N = R, typename T = float>
 	static constexpr std::enable_if_t<N == C, Matrix<N, N, T>>
 		translation(Vector<N - 1, T> vec)
 	{
@@ -78,7 +50,7 @@ struct Matrix {
 	Matrix(const T ele[R * C]) {
 		for (size_t i = 0u; i < R; ++i) {
 			for (size_t j = 0u; j < C; ++j) {
-				rows[i][j] = ele[i * R + j];
+				rows[i][j] = ele[i + j * R];
 			}
 		}
 	}
@@ -92,7 +64,7 @@ struct Matrix {
 	Matrix(const std::initializer_list<T> ele) {
 		for (size_t i = 0u; i < R; ++i) {
 			for (size_t j = 0u; j < C; ++j) {
-				rows[i][j] = *(ele.begin() + (i * R + j));
+				rows[i][j] = *(ele.begin() + (i + j * R));
 			}
 		}
 	}
@@ -281,3 +253,15 @@ struct Matrix {
 template<typename T>
 using Matrix4 = Matrix<4, 4, T>;
 using Matrix4f = Matrix4<float>;
+
+inline Matrix4f perspective(float fov, float ratio, float f, float n) noexcept {
+	float uh = 1.f / std::tanf(fov / 2);
+	float uw = uh * (1.f / ratio);
+
+	Matrix4f matrix;
+	matrix[0] = Vector4f{ uw, 0, 0, 0 };
+	matrix[1] = Vector4f{ 0, uh, 0, 0 };
+	matrix[2] = Vector4f{ 0, 0, (f + n) / (n - f), 2 * (f * n) / (n - f) };
+	matrix[3] = Vector4f{ 0, 0, -1, 0};
+	return matrix;
+}

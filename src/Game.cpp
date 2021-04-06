@@ -108,6 +108,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 			game.controller.board_id  = temp;
 			game.controller.player_id = temp;
 		}
+		ImGui::SliderFloat("Fov", &game.camera3d.fov, 0, 180);
 		ImGui::Text("Fps %zu", (size_t)(1 / dt));
 		ImGui::End();
 	}
@@ -167,20 +168,23 @@ Game_Request game_update(Game& game, double dt) noexcept {
 
 	float camera_zoom_speed_multiplier = std::max(1.f, game.camera.frame_size.x / 1.5f);
 	game.camera.pos += game.camera_speed * game.zqsd_vector * dt * camera_zoom_speed_multiplier;
+	game.camera3d.pos += game.camera_speed * V3F(game.zqsd_vector, 0) * dt;
 
 	return response;
 }
 
 void game_render(Game& game, render::Orders& order) noexcept {
-	order.push(game.camera);
-	defer { order.push(render::Pop_Camera{}); };
-
+	order.push(game.camera3d);
 	render::Model m;
 	m.object_id = asset::Object_Id::Methane;
 	m.texture_id = asset::Texture_Id::Palette;
 	order.push(m);
+	order.push(render::Pop_Camera3D{});
 
 	return;
+	order.push(game.camera);
+	defer { order.push(render::Pop_Camera{}); };
+
 	for (size_t i = 0; i < game.boards.size(); ++i) {
 		auto& board = game.boards[i];
 		board.render(order);
