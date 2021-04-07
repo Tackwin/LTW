@@ -4,18 +4,16 @@ layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec3 in_normal;
 layout (location = 2) in vec2 in_uv;
 
-uniform vec3 world_position;
-
 out vec2 texture_pos;
 out vec3 position;
 out vec3 normal;
 
-uniform mat4 view;
-uniform mat4 proj;
+uniform mat4 MVP;
 
 void main() {
-	position = in_position * 0.1 + world_position;
-	gl_Position = vec4(position, 1.0) * view * proj;
+	//position = (vec4(position, 1.0) * Model).xyz;
+	gl_Position = vec4(in_position, 1.0) * MVP;
+	position = gl_Position.xyz;
 	texture_pos = in_uv;
 	normal = in_normal;
 }

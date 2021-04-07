@@ -13,6 +13,7 @@ namespace render {
 		float z = 1.f;
 	};
 
+	struct Clear_Depth : Order_Base {};
 	struct Camera : Order_Base {
 		union {
 			Rectanglef rec;
@@ -28,11 +29,17 @@ namespace render {
 
 	struct Camera3D : Order_Base {
 		float fov = 90;
+		float ratio = 16/9.f;
+		float far_ = 100.f;
+		float near_ = 0.1f;
 		Vector3f pos;
 		Vector3f dir;
 
 		void look_at(Vector3f target) noexcept;
 		Matrix4f get_view(Vector3f up = {0, 0, 1}) noexcept;
+		Matrix4f get_VP(Vector3f up = {0, 0, 1}) noexcept;
+
+		Vector2f project(Vector2f mouse) noexcept;
 	};
 	struct Pop_Camera3D : Order_Base {};
 
@@ -110,7 +117,7 @@ namespace render {
 
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
-	X(Pop_Camera3D)
+	X(Pop_Camera3D) X(Clear_Depth)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -135,15 +142,24 @@ namespace render {
 		}
 	};
 
-	extern Camera   current_camera;
-	extern Camera3D current_camera_3d;
-	void immediate(Rectangle rec) noexcept;
-	void immediate(Circle circle) noexcept;
-	void immediate(Sprite sprite) noexcept;
-	void immediate(Arrow arrow) noexcept;
-	void immediate(Model model) noexcept;
-	void immediate(Text text) noexcept;
-	void immediate(std::span<Rectangle> rectangles) noexcept;
-	void immediate(std::span<Circle> circles) noexcept;
-	void immediate(std::span<Arrow> arrows) noexcept;
+	extern Order current_camera;
+	extern void immediate(Rectangle rec) noexcept;
+	extern void immediate(Circle circle) noexcept;
+	extern void immediate(Sprite sprite) noexcept;
+	extern void immediate(Arrow arrow) noexcept;
+	extern void immediate(Model model) noexcept;
+	extern void immediate(Text text) noexcept;
+
+	extern void immediate(std::span<Rectangle> rectangles) noexcept;
+	extern void immediate(std::span<Circle> circles) noexcept;
+	extern void immediate(std::span<Model> models) noexcept;
+	extern void immediate(std::span<Arrow> arrows) noexcept;
+
+	extern void immediate2d(std::span<Rectangle> rectangles) noexcept;
+	extern void immediate2d(std::span<Circle> circles) noexcept;
+	extern void immediate2d(std::span<Arrow> arrows) noexcept;
+
+	extern void immediate3d(std::span<Rectangle> rectangles) noexcept;
+	extern void immediate3d(std::span<Circle> circles) noexcept;
+	extern void immediate3d(std::span<Arrow> arrows) noexcept;
 };

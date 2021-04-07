@@ -1,5 +1,6 @@
 #include "Board.hpp"
 
+#include "Managers/AssetsManager.hpp"
 
 #include "imgui/imgui.h"
 
@@ -17,6 +18,8 @@ void Board::update(double dt) noexcept {
 	else if (path_construction.dirty) compute_paths();
 
 	gold_gained = 0;
+
+	for (auto& x : units) x.life_time += dt;
 
 	for (auto& x : units) if (!x.to_remove) {
 		auto next = next_tile[x.current_tile];
@@ -112,7 +115,7 @@ void Board::render(render::Orders& order) noexcept {
 	rec.pos   = start_zone.pos + pos;
 	rec.size  = start_zone.size;
 	rec.color = {.8f, .8f, .8f, 1.f};
-	order.push(rec, 1);
+	order.push(rec, 0.01f);
 
 	Rectanglef cease_zone;
 	cease_zone.x = tile_zone.x;
@@ -123,7 +126,7 @@ void Board::render(render::Orders& order) noexcept {
 	rec.pos   = cease_zone.pos + pos;
 	rec.size  = cease_zone.size;
 	rec.color = {.8f, .8f, .8f, 1.f};
-	order.push(rec, 1);
+	order.push(rec, 0.01f);
 
 	if (gui.render_path) {
 		for (size_t i = 0; i < next_tile.size(); ++i)
@@ -137,7 +140,7 @@ void Board::render(render::Orders& order) noexcept {
 			arrow.color = V4F(0.5f);
 			arrow.color.a = 1.f;
 
-			order.push(arrow, 1.1f);
+			order.push(arrow, 0.03f);
 		}
 
 		auto& path = path_construction;
@@ -146,21 +149,29 @@ void Board::render(render::Orders& order) noexcept {
 			circle.r = 0.1f;
 			circle.color = {0, 0, 1, 1};
 			circle.pos = tile_box(x).center() + pos;
-			order.push(circle, 1.05f);
+			order.push(circle, 0.02f);
 		}
 		for (size_t i = 0; i < path.closed.size(); ++i) if (path.closed[i]) {
 			circle.r = 0.05f;
 			circle.color = {0, 1, 0, 1};
 			circle.pos = tile_box(i).center() + pos;
-			order.push(circle, 1.05f);
+			order.push(circle, 0.02f);
 		}
 	}
 
 	circle.r = 0.2f;
 	circle.color = { 0.6f, 0.5f, 0.1f, 1.f };
+
+	render::Model m;
+	m.object_id = asset::Object_Id::Methane;
+	m.shader_id = asset::Shader_Id::Default_3D;
+	m.texture_id = asset::Texture_Id::Palette;
+	m.scale = 0.5f;
 	for (auto& x : units) {
-		circle.pos = x.pos + pos;
-		order.push(circle, 0.5f);
+		m.pos.x = x.pos.x + pos.x;
+		m.pos.y = x.pos.y + pos.y;
+		m.pos.z = std::sinf(x.life_time) * 0.1f + 0.15f;
+		order.push(m, 0.02f);
 	}
 
 	for (auto& x : projectiles) {
@@ -168,7 +179,7 @@ void Board::render(render::Orders& order) noexcept {
 		circle.pos = x.pos + pos;
 		circle.color = x.color;
 
-		order.push(circle, 0.6f);
+		order.push(circle, 0.03f);
 	}
 
 	for (auto& x : towers) {
@@ -177,7 +188,7 @@ void Board::render(render::Orders& order) noexcept {
 		circle.pos   = tile_box(x->tile_pos).pos + s * (Vector2f)x->tile_size / 2 + pos;
 		circle.color = x->color;
 
-		order.push(circle, 1);
+		order.push(circle, 0.01);
 	}
 }
 

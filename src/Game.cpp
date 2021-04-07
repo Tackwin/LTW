@@ -10,6 +10,7 @@
 
 #include "Managers/AssetsManager.hpp"
 
+#include "Math/Ray.hpp"
 #include "Math/Vector.hpp"
 #include "Math/Rectangle.hpp"
 
@@ -55,6 +56,7 @@ void game_startup(Game& game) noexcept {
 	}
 
 	game.camera.pos = game.boards[game.controller.board_id].pos;
+	game.camera3d.pos = V3F(game.boards[game.controller.board_id].pos, 2);
 	PROFILER_END_SEQ();
 }
 
@@ -82,9 +84,14 @@ Game_Request game_update(Game& game, double dt) noexcept {
 		}
 
 		if (in.scroll) game.camera.frame_size *= std::powf(2, in.scroll / 5.f);
+		if (in.scroll) game.camera3d.pos.z += in.scroll * dt * 100;
 
 		if (in.mouse_infos[Mouse::Middle].pressed) {
 			game.camera.pos -= project_mouse_delta(in.mouse_delta, game.camera);
+		}
+
+		if (in.key_infos[Keyboard::O].pressed) {
+			game.boards[game.controller.board_id].spawn_unit(Unit());
 		}
 
 		if (in.mouse_infos[Mouse::Left].just_pressed)
@@ -100,6 +107,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 
 		ImGui::Begin("Game Debug", &game.gui.game_debug_open);
 		ImGui::Checkbox("render path", &board.gui.render_path);
+		ImGui::Checkbox("depth buffer", &game.gui.debug_depth_buffer);
 		ImGui::SliderFloat("Cam speed", &game.camera_speed, 0, 10);
 		temp = game.controller.board_id;
 		if (ImGui::InputInt("Player Board", &temp)) {
@@ -137,7 +145,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 
 	if (!game.controller.placing.typecheck(Tower::None_Kind)) {
 		auto tile_size = board.tile_size + board.tile_padding;
-		auto mouse = project_mouse_pos(in.mouse_pos, game.camera);
+		auto mouse = game.camera3d.project(in.mouse_pos);
 		mouse -= board.pos;
 		mouse += Vector2f{tile_size * board.size.x, tile_size * board.size.y} / 2;
 		mouse /= board.tile_size + board.tile_padding;
@@ -168,22 +176,34 @@ Game_Request game_update(Game& game, double dt) noexcept {
 
 	float camera_zoom_speed_multiplier = std::max(1.f, game.camera.frame_size.x / 1.5f);
 	game.camera.pos += game.camera_speed * game.zqsd_vector * dt * camera_zoom_speed_multiplier;
-	game.camera3d.pos += game.camera_speed * V3F(game.zqsd_vector, 0) * dt;
+	game.camera3d.pos += game.camera_speed * V3F(game.zqsd_vector, 0) * dt * game.camera3d.pos.z;
 
 	return response;
 }
 
 void game_render(Game& game, render::Orders& order) noexcept {
 	order.push(game.camera3d);
+
 	render::Model m;
 	m.object_id = asset::Object_Id::Methane;
 	m.texture_id = asset::Texture_Id::Palette;
+	m.pos = V3F(game.boards[game.controller.board_id].pos, 1.f);
+	m.scale = 0.2f;
 	order.push(m);
-	order.push(render::Pop_Camera3D{});
 
-	return;
-	order.push(game.camera);
-	defer { order.push(render::Pop_Camera{}); };
+	m.object_id = asset::Object_Id::Methane;
+	m.texture_id = asset::Texture_Id::Palette;
+	m.pos = V3F(game.boards[game.controller.board_id].pos, 1.f);
+	m.pos.x += 1;
+	m.scale = 0.02f;
+
+	order.push(m);
+	m.object_id = asset::Object_Id::Methane;
+	m.texture_id = asset::Texture_Id::Palette;
+	m.pos = V3F(game.boards[game.controller.board_id].pos, 1.f);
+	m.pos.x -= 1;
+	m.scale = 0.1f;
+	order.push(m);
 
 	for (size_t i = 0; i < game.boards.size(); ++i) {
 		auto& board = game.boards[i];
@@ -198,9 +218,11 @@ void game_render(Game& game, render::Orders& order) noexcept {
 			rec.pos   = (Vector2f)game.controller.placing->tile_pos * tile_size;
 			rec.pos  -= Vector2f{ board.size.x * tile_size, board.size.y * tile_size } / 2;
 			rec.pos  += board.pos;
-			order.push(rec);
+			order.push(rec, 0.02f);
 		}
 
 	}
+	order.push(render::Pop_Camera3D{});
+	order.push(render::Clear_Depth{});
 	game.interface.render(order);
 }

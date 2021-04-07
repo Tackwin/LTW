@@ -1,14 +1,23 @@
 #version 450
 precision mediump float;
 const int N_Light_Point = 32;
+const int N_Light_Dir   = 32;
 
 struct Light_Point {
     float intensity;
-    vec2 position;
+    vec3 position;
     vec4 color;
 };
 uniform int n_light_points;
 uniform Light_Point light_points[N_Light_Point];
+
+struct Light_Dir {
+	float intensity;
+	vec3 dir;
+	vec3 color;
+};
+uniform int n_light_dirs;
+uniform Light_Dir light_dirs[N_Light_Dir];
 
 out vec4 frag_color;
 
@@ -58,9 +67,9 @@ vec3 light_pixel(vec2 pix) {
 	vec3 N = normalize(normal);
 
 	for (int i = 0; i < n_light_points; i++) {
-		vec3 L = -normalize(vec3(light_points[i].position, 2.0) - pos);
+		vec3 L = -normalize(light_points[i].position - pos);
 		
-		float dist = distance(pos.xy, light_points[i].position);
+		float dist = distance(pos, light_points[i].position);
 		float attenuation = (root * sqrt(dist) * linear * dist + quadratic * dist * dist);
 		attenuation = distance_step * ceil(attenuation / distance_step);
 
@@ -75,6 +84,18 @@ vec3 light_pixel(vec2 pix) {
 			result +
 			albedo.rgb * light_points[i].color.rgb * factor;
 		//result = N;
+	}
+
+	for (int i = 0; i < n_light_dirs; i++) {
+		vec3 L = light_dirs[i].dir;
+
+		float factor = max(dot(N, L), 0.01) * light_dirs[i].intensity;
+
+		factor = pow(abs(factor), 0.5);
+
+		result =
+			result +
+			albedo.rgb * light_dirs[i].color * factor;
 	}
 
 	return result;

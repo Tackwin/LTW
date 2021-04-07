@@ -25,6 +25,7 @@ struct Game {
 	struct Gui {
 		bool board_open = true;
 		bool game_debug_open = true;
+		bool debug_depth_buffer = false;
 	} gui;
 
 	std::array<Board,  2>  boards;
@@ -50,7 +51,7 @@ struct Game {
 		camera.pos = {0, 0};
 		camera.frame_size = { 16, 9 };
 
-		camera3d.pos = {0, -2, 2};
+		camera3d.pos = {0, -1, 20};
 		camera3d.look_at({});
 	}
 

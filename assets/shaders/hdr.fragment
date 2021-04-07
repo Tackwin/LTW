@@ -80,7 +80,7 @@ void main() {
 
     const float step = 1.0 / 255.0;
 
-    if (transform_color) frag_color = vec4(result, 1.0);
+    if (true || transform_color) frag_color = vec4(result, 1.0);
     else                 frag_color = vec4(hdr_color, 1.0);
     //frag_color = vec4(round(result / step) * step, 1.0);
     //frag_color = texture(hdr_texture, text_coord).rgba;

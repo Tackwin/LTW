@@ -252,6 +252,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/send_icon.png", Send_Icon);
 	X("assets/textures/dummy.png", Dummy);
 	X("assets/textures/palette.png", Palette);
+	X("assets/textures/methane_icon.png", Methane_Icon);
 
 #undef X
 }
@@ -292,6 +293,12 @@ void Store_t::load_known_shaders() noexcept {
 
 	X("assets/shaders/default.vertex", "assets/shaders/default.fragment", "", Default);
 	X("assets/shaders/default_3d.vertex", "assets/shaders/default_3d.fragment", "", Default_3D);
+	X(
+		"assets/shaders/default_3d_batched.vertex",
+		"assets/shaders/default_3d_batched.fragment",
+		"",
+		Default_3D_Batched
+	);
 	X(
 		"assets/shaders/default_batched.vertex",
 		"assets/shaders/default_batched.fragment",

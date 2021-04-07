@@ -6,6 +6,7 @@
 #include "GL/wglew.h"
 #endif
 
+#include "Math/Ray.hpp"
 #include "Math/Matrix.hpp"
 
 #include "Managers/AssetsManager.hpp"
@@ -13,8 +14,7 @@
 
 #include "xstd.hpp"
 
-render::Camera render::current_camera;
-render::Camera3D render::current_camera_3d;
+render::Order render::current_camera;
 
 void render::Camera3D::look_at(Vector3f target) noexcept {
 	dir = target - pos;
@@ -38,6 +38,39 @@ Matrix4f render::Camera3D::get_view(Vector3f up) noexcept {
 	return view;
 }
 
+Matrix4f render::Camera3D::get_VP(Vector3f up) noexcept {
+	return perspective(3.1415926 * fov / 180, ratio, far_, near_) * get_view(up);
+}
+
+Vector2f normalize_mouse(Vector2f mouse_pos) {
+	Rectanglef viewport = {0, 0, 1, 1};
+	return {
+		(2.f * (mouse_pos.x - viewport.x)) / viewport.w - 1.f,
+		(2.f * (mouse_pos.y - viewport.y)) / viewport.h - 1.f
+	};
+}
+
+Vector2f render::Camera3D::project(Vector2f mouse) noexcept {
+	Vector2f p = normalize_mouse(mouse);
+
+	Vector3f ray = {
+		p.x, // (2.f * IM::getMouseScreenPos().x) / Window_Info.size.x - 1.f,
+		p.y, // 1.f - (2.f * IM::getMouseScreenPos().y) / Window_Info.size.y,
+		1
+	};
+	Vector4f ray_nds = { ray.x, ray.y, 1, 0 };
+	Vector4f ray_clip = { ray_nds.x, ray_nds.y, 1, 0 };
+	auto ray_eye = (*perspective(3.1415926 * fov / 180, ratio, far_, near_).invert()) * ray_clip;
+	ray_eye.z = 1;
+	ray_eye.w = 0;
+	auto ray_world = (*get_view().invert()) * ray_eye;
+	ray = Vector3f{ ray_world.x, ray_world.y, ray_world.z }.normalize();
+
+	return Rayf{pos, ray}.intersect_plane();
+}
+
+
+
 void render::Orders::push(render::Order o) noexcept {
 	push(o, commands.size());
 }
@@ -47,8 +80,46 @@ void render::Orders::push(render::Order o, float z) noexcept {
 	commands.push_back(std::move(o));
 }
 
-void render::immediate(std::span<Rectangle> rectangle) noexcept {
-	constexpr size_t GPU_Rectangle_Size = 8 + 8 + 4 + 4 + 16;
+
+void render::immediate(std::span<Rectangle> x) noexcept {
+	if (current_camera.kind == render::Order::Camera3D_Kind) immediate3d(x);
+	else immediate2d(x);
+}
+void render::immediate(std::span<Circle> x) noexcept {
+	if (current_camera.kind == render::Order::Camera3D_Kind) immediate3d(x);
+	else immediate2d(x);
+}
+void render::immediate(std::span<Arrow> x) noexcept {
+	if (current_camera.kind == render::Order::Camera3D_Kind) immediate3d(x);
+	else immediate2d(x);
+}
+
+void vertex_attrib_matrix(size_t off_id, size_t off_ptr, size_t stride) noexcept {
+	glEnableVertexAttribArray(off_id); // Model Matrix
+	glVertexAttribPointer(off_id, 4, GL_FLOAT, GL_FALSE, stride, (void*)off_ptr);
+	glVertexAttribDivisor(off_id, 1); // tell OpenGL this is an instanced vertex attribute.
+	off_id++;
+	off_ptr += 16;
+
+	glEnableVertexAttribArray(off_id); // Model Matrix
+	glVertexAttribPointer(off_id, 4, GL_FLOAT, GL_FALSE, stride, (void*)off_ptr);
+	glVertexAttribDivisor(off_id, 1); // tell OpenGL this is an instanced vertex attribute.
+	off_id++;
+	off_ptr += 16;
+
+	glEnableVertexAttribArray(off_id); // Model Matrix
+	glVertexAttribPointer(off_id, 4, GL_FLOAT, GL_FALSE, stride, (void*)off_ptr);
+	glVertexAttribDivisor(off_id, 1); // tell OpenGL this is an instanced vertex attribute.
+	off_id++;
+	off_ptr += 16;
+
+	glEnableVertexAttribArray(off_id); // Model Matrix
+	glVertexAttribPointer(off_id, 4, GL_FLOAT, GL_FALSE, stride, (void*)off_ptr);
+	glVertexAttribDivisor(off_id, 1); // tell OpenGL this is an instanced vertex attribute.
+}
+
+void render::immediate3d(std::span<Rectangle> rectangle) noexcept {
+	constexpr size_t GPU_Rectangle_Size = 16 * 4 + 16;
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
@@ -57,6 +128,7 @@ void render::immediate(std::span<Rectangle> rectangle) noexcept {
 	thread_local GLuint quad_vao = 0;
 	thread_local GLuint quad_vbo = 0;
 
+	auto& cam = current_camera.Camera3D_;
 
 	if (instance_vbo_size < rectangle.size()) {
 		size_t new_size = (instance_vbo_size * 5) / 3;
@@ -75,10 +147,10 @@ void render::immediate(std::span<Rectangle> rectangle) noexcept {
 	if (!quad_vao) {
 		static float quad_vertices[] = {
 			// positions    
-			0.0f, 1.0f,
-			0.0f, 0.0f,
-			1.0f, 1.0f,
-			1.0f, 0.0f
+			0.0f, 1.f, 0.0f,
+			0.0f, 0.f, 0.0f,
+			1.0f, 1.f, 0.0f,
+			1.0f, 0.f, 0.0f
 		};
 
 		// setup plane VAO
@@ -93,23 +165,18 @@ void render::immediate(std::span<Rectangle> rectangle) noexcept {
 #endif
 	}
 
+	Matrix4f VP = cam.get_VP();
+
 	auto& i = instance_data;
 	instance_data.clear();
 	instance_data.resize(rectangle.size() * GPU_Rectangle_Size);
 	size_t off = 0;
 	for (auto& x : rectangle) {
-		Vector2f p = x.pos;
-		Vector2f s = x.size;
-		float z = x.z;
-		Vector4f c = x.color;
-		float r = 0;
+		auto MVP = VP * Matrix4f::translation(V3F(x.pos, x.z)) * Matrix4f::scale(V3F(x.size, 1));
 
-		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
-		X(&p, 8);  // world pos
-		X(&s, 8);  // world size
-		X(&r, 4);  // world rotation
-		X(&z, 4);  // world z
-		X(&c, 16); // color
+		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
+		X(x.color); // color
+		X(MVP);
 		#undef X
 	}
 
@@ -125,45 +192,29 @@ void render::immediate(std::span<Rectangle> rectangle) noexcept {
 
 	glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
 	glEnableVertexAttribArray(0); // Model position
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-	glEnableVertexAttribArray(1); // World position
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)0);
+	glEnableVertexAttribArray(1); // Color
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)0);
 	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
-	
-	glEnableVertexAttribArray(2); // World size
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(8));
-	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+	vertex_attrib_matrix(2, 16, GPU_Rectangle_Size);
 
-	glEnableVertexAttribArray(3); // World R
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(16));
-	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(4); // World Z
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(20));
-	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(5); // Color
-	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(24));
-	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	Rectanglef view;
-	view.pos = current_camera.pos - current_camera.frame_size / 2;
-	view.size = current_camera.frame_size;
-
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_Batched);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_3D_Batched);
 	shader.use();
-	shader.set_window_size(Environment.window_size);
-	shader.set_view(view);
+	shader.set_uniform("VP", VP);
 
-	glBindVertexArray(quad_vao);
+	Matrix4f MVP = Matrix4f::scale({1, 1, 1});
+	MVP = Matrix4f::scale(Vector3f{5, 0.5, 0}) * VP;
+	MVP = Matrix4f::translation(Vector3f{0.1, 0.1, 0}) * MVP;
+	shader.set_uniform("MVP", MVP);
+
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
 
 	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
 }
-void render::immediate(std::span<Circle> circles) noexcept {
-	constexpr size_t GPU_Instance_Size = 8 + 8 + 4 + 4 + 16;
+void render::immediate3d(std::span<Circle> circles) noexcept {
+	constexpr size_t GPU_Instance_Size = 16 * 4 + 16;
 	constexpr size_t Half_Prec = 30;
 
 	thread_local GLuint instance_vbo = 0;
@@ -173,6 +224,7 @@ void render::immediate(std::span<Circle> circles) noexcept {
 	thread_local GLuint instance_vao = 0;
 	thread_local GLuint vbo = 0;
 
+	auto& cam = current_camera.Camera3D_;
 
 	if (instance_vbo_size < circles.size()) {
 		size_t new_size = (instance_vbo_size * 5) / 3;
@@ -193,10 +245,11 @@ void render::immediate(std::span<Circle> circles) noexcept {
 		const float cos_inc = cos(ang_inc);
 		const float sin_inc = sin(ang_inc);
 
-		GLfloat vertices[2 * Half_Prec * 2];
+		GLfloat vertices[3 * Half_Prec * 2];
 		unsigned coord_idx = 0;
 
 		vertices[coord_idx++] = 1.0f;
+		vertices[coord_idx++] = 0.0f;
 		vertices[coord_idx++] = 0.0f;
 
 		float xc = 1.0f;
@@ -208,12 +261,15 @@ void render::immediate(std::span<Circle> circles) noexcept {
 
 			vertices[coord_idx++] = xc;
 			vertices[coord_idx++] = yc;
+			vertices[coord_idx++] = 0.0f;
 
 			vertices[coord_idx++] = xc;
 			vertices[coord_idx++] = -yc;
+			vertices[coord_idx++] = 0.0f;
 		}
 
 		vertices[coord_idx++] = -1.0f;
+		vertices[coord_idx++] = 0.0f;
 		vertices[coord_idx++] = 0.0f;
 
 		glGenVertexArrays(1, &instance_vao);
@@ -222,7 +278,7 @@ void render::immediate(std::span<Circle> circles) noexcept {
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(
-			GL_ARRAY_BUFFER, 2 * Half_Prec * 2 * sizeof(GLfloat), vertices, GL_STATIC_DRAW
+			GL_ARRAY_BUFFER, 3 * Half_Prec * 2 * sizeof(GLfloat), vertices, GL_STATIC_DRAW
 		);
 #ifdef GL_DEBUG
 		auto label = "circle_info_vbo";
@@ -234,19 +290,17 @@ void render::immediate(std::span<Circle> circles) noexcept {
 	instance_data.clear();
 	instance_data.resize(circles.size() * GPU_Instance_Size);
 	size_t off = 0;
+	Matrix4f VP = cam.get_VP();
 	for (auto& x : circles) {
-		Vector2f p = x.pos;
-		Vector2f s = V2F(x.r);
-		float z = x.z;
+		Vector3f p = V3F(x.pos, x.z);
+		Vector3f s = {x.r, x.r, 1.f};
 		Vector4f c = x.color;
-		float r = 0;
 
-		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
-		X(&p, 8);  // world pos
-		X(&s, 8);  // world size
-		X(&r, 4);  // world r
-		X(&z, 4);  // world z
-		X(&c, 16); // color
+		Matrix4f MVP = VP * Matrix4f::translation(p) * Matrix4f::scale(s);
+
+		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
+		X(c); // color
+		X(MVP);
 		#undef X
 	}
 
@@ -262,46 +316,23 @@ void render::immediate(std::span<Circle> circles) noexcept {
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glEnableVertexAttribArray(0); // Model position
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-	glEnableVertexAttribArray(1); // World position
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glEnableVertexAttribArray(1); // Color
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
 	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
-	
-	glEnableVertexAttribArray(2); // World size
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(8));
-	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+	vertex_attrib_matrix(2, 16, GPU_Instance_Size);
 
-	glEnableVertexAttribArray(3); // World R
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(16));
-	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(4); // World Z
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(20));
-	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(5); // Color
-	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(24));
-	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	Rectanglef view;
-	view.pos = current_camera.pos - current_camera.frame_size / 2;
-	view.size = current_camera.frame_size;
-
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_Batched);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_3D_Batched);
 	shader.use();
-	shader.set_window_size(Environment.window_size);
-	shader.set_view(view);
 
-	glBindVertexArray(instance_vao);
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 2 * Half_Prec, (GLsizei)instance_vbo_size);
 
 	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
 }
-void render::immediate(std::span<Arrow> arrows) noexcept {
-	constexpr size_t GPU_Instance_Size = 8 + 8 + 4 + 4 + 16;
-	constexpr size_t Half_Prec = 30;
+void render::immediate3d(std::span<Arrow> arrows) noexcept {
+	constexpr size_t GPU_Instance_Size = 16 * 4 + 16;
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
@@ -312,6 +343,7 @@ void render::immediate(std::span<Arrow> arrows) noexcept {
 	thread_local GLuint head_vbo = 0;
 	thread_local GLuint quad_vbo = 0;
 
+	auto& cam = current_camera.Camera3D_;
 
 	if (instance_vbo_size < arrows.size()) {
 		size_t new_size = (instance_vbo_size * 5) / 3;
@@ -322,16 +354,16 @@ void render::immediate(std::span<Arrow> arrows) noexcept {
 		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
 		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_STATIC_DRAW);
 #ifdef GL_DEBUG
-		auto label = "circle_batch_instance_buffer";
+		auto label = "arrow_batch_instance_buffer";
 		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
 #endif
 	}
 
 	if (!instance_head_vao) {
 		static float head_vertices[] = {
-			+0.0f, +0.0f,
-			-1.0f, +1.0f,
-			-1.0f, -1.0f,
+			+0.0f, +0.0f, 0.f,
+			-1.0f, +1.0f, 0.f,
+			-1.0f, -1.0f, 0.f
 		};
 
 		// setup plane VAO
@@ -343,10 +375,10 @@ void render::immediate(std::span<Arrow> arrows) noexcept {
 
 		static float quad_vertices[] = {
 			// positions    
-			0.0f, +0.5f,
-			0.0f, -0.5f,
-			1.0f, +0.5f,
-			1.0f, -0.5f
+			0.0f, +0.5f, 0.f,
+			0.0f, -0.5f, 0.f,
+			1.0f, +0.5f, 0.f,
+			1.0f, -0.5f, 0.f
 		};
 
 		// setup plane VAO
@@ -357,31 +389,24 @@ void render::immediate(std::span<Arrow> arrows) noexcept {
 		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
 	}
 
-	Rectanglef view;
-	view.pos = current_camera.pos - current_camera.frame_size / 2;
-	view.size = current_camera.frame_size;
-
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_Batched);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_3D_Batched);
 	shader.use();
-	shader.set_window_size(Environment.window_size);
-	shader.set_view(view);
 
 	instance_data.clear();
 	instance_data.resize(arrows.size() * GPU_Instance_Size);
 	size_t off = 0;
+	Matrix4f VP = cam.get_VP();
 	for (auto& x : arrows) {
-		Vector2f p = x.b;
-		Vector2f s = V2F((x.a - x.b).length() / 10.f);
-		float z = x.z;
-		float r = (float)(x.b - x.a).angleX();
 		Vector4f c = x.color;
+		Matrix4f MVP = VP * (
+			Matrix4f::translation(V3F(x.b, x.z)) *
+			Matrix4f::scale(V3F(V2F((x.a - x.b).length() / 10.f), 1.f))
+			* Matrix4f::rotationz((float)(x.b - x.a).angleX())
+		);
 
-		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
-		X(&p, 8);  // world pos
-		X(&s, 8);  // world size
-		X(&r, 4);  // world r
-		X(&z, 4);  // world z
-		X(&c, 16); // color
+		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
+		X(c); // color
+		X(MVP);
 		#undef X
 	}
 
@@ -400,40 +425,28 @@ void render::immediate(std::span<Arrow> arrows) noexcept {
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-	glEnableVertexAttribArray(1); // World position
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glEnableVertexAttribArray(1); // Color
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
+
 	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
-	
-	glEnableVertexAttribArray(2); // World size
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(8));
-	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+	vertex_attrib_matrix(2, 16, GPU_Instance_Size);
 
-	glEnableVertexAttribArray(3); // World R
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(16));
-	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(4); // World Z
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(20));
-	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(5); // Color
-	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(24));
-	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
-
-
-	glBindVertexArray(instance_head_vao);
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 3, (GLsizei)instance_vbo_size);
 
-	for (size_t i = 0; i < arrows.size(); ++i) {
-		size_t off = i * GPU_Instance_Size;
-		auto& x = arrows[i];
-		Vector2f size = V2F((x.a - x.b).length() / 10.f);;
-		size = { (x.a - x.b).length() - size.x, size.y };
-		Vector2f pos = x.a;
+	instance_data.clear();
+	instance_data.resize(arrows.size() * GPU_Instance_Size);
+	off = 0;
+	for (auto& x : arrows) {
+		Vector4f c = x.color;
+		Matrix4f MVP = (
+			Matrix4f::translation(V3F(x.a, x.z)) *
+			Matrix4f::scale(V3F(V2F((x.a - x.b).length() / 10.f), 1.f))
+			* Matrix4f::rotationz((float)(x.b - x.a).angleX())
+		) * VP;
 
-		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
-		X(&pos, 8);
-		X(&size, 8);
+		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
+		X(c); // color
+		X(MVP);
 		#undef X
 	}
 
@@ -452,28 +465,11 @@ void render::immediate(std::span<Arrow> arrows) noexcept {
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-	glEnableVertexAttribArray(1); // World position
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glEnableVertexAttribArray(1); // Color
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
 	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
-	
-	glEnableVertexAttribArray(2); // World size
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(8));
-	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+	vertex_attrib_matrix(2, 16, GPU_Instance_Size);
 
-	glEnableVertexAttribArray(3); // World R
-	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(16));
-	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(4); // World Z
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(20));
-	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	glEnableVertexAttribArray(5); // Color
-	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(24));
-	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
-
-
-	glBindVertexArray(instance_quad_vao);
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
 
 	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
@@ -532,9 +528,10 @@ void render::immediate(Circle circle) noexcept {
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	}
 	
+	auto& cam = current_camera.Camera_;
 	Rectanglef view;
-	view.pos = current_camera.pos - current_camera.frame_size / 2;
-	view.size = current_camera.frame_size;
+	view.pos = cam.pos - cam.frame_size / 2;
+	view.size = cam.frame_size;
 
 	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default);
 	shader.use();
@@ -581,9 +578,10 @@ void render::immediate(Rectangle rec) noexcept {
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	}
 
+	auto& cam = current_camera.Camera_;
 	Rectanglef view;
-	view.pos = current_camera.pos - current_camera.frame_size / 2;
-	view.size = current_camera.frame_size;
+	view.pos = cam.pos - cam.frame_size / 2;
+	view.size = cam.frame_size;
 
 	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default);
 	shader.use();
@@ -646,9 +644,11 @@ void render::immediate(Arrow info) noexcept {
 	}
 
 
+	auto& cam = current_camera.Camera_;
 	Rectanglef view;
-	view.pos = current_camera.pos - current_camera.frame_size / 2;
-	view.size = current_camera.frame_size;
+	view.pos = cam.pos - cam.frame_size / 2;
+	view.size = cam.frame_size;
+
 
 	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default);
 	shader.use();
@@ -771,9 +771,11 @@ void render::immediate(Sprite info) noexcept {
 		asset::Store.get_albedo(info.texture).bind(4);
 		auto normal = asset::Store.get_normal(info.texture); if (normal) normal->bind(5);
 	}
+
+	auto& cam = current_camera.Camera_;
 	Rectanglef view;
-	view.pos = current_camera.pos - current_camera.frame_size / 2;
-	view.size = current_camera.frame_size;
+	view.pos = cam.pos - cam.frame_size / 2;
+	view.size = cam.frame_size;
 
 	if (!info.shader) info.shader = asset::Shader_Id::Default;
 
@@ -850,14 +852,19 @@ void render::immediate(Model info) noexcept {
 	vertices.upload(object.vertices.size() * sizeof(Object::Vertex), object.vertices.data());
 	indices.upload(object.faces.size() * sizeof(unsigned short), object.faces.data());
 
+	auto& cam = current_camera.Camera3D_;
+
+	auto scale = Vector3f(info.scale, info.scale, info.scale);
+	auto model = Matrix4f::scale(Vector3f(1, 1, 1));
+	model *= Matrix4f::translation(info.pos);
+	model *= Matrix4f::scale(Vector3f(info.scale, info.scale, info.scale));
+
 	if (!info.shader_id) info.shader_id = asset::Shader_Id::Default_3D;
 	auto& shader = asset::Store.get_shader(info.shader_id);
 	texture.bind(4);
 	shader.use();
-	shader.set_uniform("world_position", info.pos);
 	shader.set_texture(4);
-	shader.set_uniform("view", current_camera_3d.get_view({0, 0, 1}));
-	shader.set_uniform("proj", perspective(3.141592f * current_camera_3d.fov / 180, 16/9.f, 100, 0.01f));
+	shader.set_uniform("MVP", cam.get_VP() * model);
 
 	glBindVertexArray(vao);
 	glBindBuffer(vertices.target, vertices.buffer);
@@ -874,5 +881,518 @@ void render::immediate(Model info) noexcept {
 	glBindBuffer(indices.target, indices.buffer);
 	glDrawElements(GL_TRIANGLES, object.vertices.size() * 3, GL_UNSIGNED_SHORT, (void*)0);
 
-	for (size_t i = 0; i < 2; ++i) glDisableVertexAttribArray(i);
+	for (size_t i = 0; i < 3; ++i) glDisableVertexAttribArray(i);
+}
+
+
+void render::immediate2d(std::span<Rectangle> rectangle) noexcept {
+	constexpr size_t GPU_Rectangle_Size = 8 + 8 + 4 + 4 + 16;
+
+	thread_local GLuint instance_vbo = 0;
+	thread_local size_t instance_vbo_size = 0;
+	thread_local std::vector<std::uint8_t> instance_data;
+
+	thread_local GLuint quad_vao = 0;
+	thread_local GLuint quad_vbo = 0;
+
+	auto& cam = current_camera.Camera_;
+
+	if (instance_vbo_size < rectangle.size()) {
+		size_t new_size = (instance_vbo_size * 5) / 3;
+		instance_vbo_size = std::max(new_size, rectangle.size());
+
+		if (instance_vbo) glDeleteBuffers(1, &instance_vbo);
+		glGenBuffers(1, &instance_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Rectangle_Size, NULL, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "rectangle_batch_instance_buffer";
+		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	if (!quad_vao) {
+		static float quad_vertices[] = {
+			// positions    
+			0.0f, 1.0f,
+			0.0f, 0.0f,
+			1.0f, 1.0f,
+			1.0f, 0.0f
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &quad_vao);
+		glBindVertexArray(quad_vao);
+		glGenBuffers(1, &quad_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "rectangle_info_vbo";
+		glObjectLabel(GL_BUFFER, quad_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	auto& i = instance_data;
+	instance_data.clear();
+	instance_data.resize(rectangle.size() * GPU_Rectangle_Size);
+	size_t off = 0;
+	for (auto& x : rectangle) {
+		Vector2f p = x.pos;
+		Vector2f s = x.size;
+		float z = x.z;
+		Vector4f c = x.color;
+		float r = 0;
+
+		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
+		X(&p, 8);  // world pos
+		X(&s, 8);  // world size
+		X(&r, 4);  // world rotation
+		X(&z, 4);  // world z
+		X(&c, 16); // color
+		#undef X
+	}
+
+	glBindVertexArray(quad_vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instance_data.size(),
+		instance_data.data(),
+		GL_STATIC_DRAW
+	);
+
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+	glEnableVertexAttribArray(0); // Model position
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glEnableVertexAttribArray(1); // World position
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)0);
+	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
+	
+	glEnableVertexAttribArray(2); // World size
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(8));
+	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(3); // World R
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(16));
+	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(4); // World Z
+	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(20));
+	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(5); // Color
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Rectangle_Size, (void*)(24));
+	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	Rectanglef view;
+	view.pos = cam.pos - cam.frame_size / 2;
+	view.size = cam.frame_size;
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_Batched);
+	shader.use();
+	shader.set_window_size(Environment.window_size);
+	shader.set_view(view);
+
+	glBindVertexArray(quad_vao);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
+
+	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
+}
+void render::immediate2d(std::span<Circle> circles) noexcept {
+	constexpr size_t GPU_Instance_Size = 8 + 8 + 4 + 4 + 16;
+	constexpr size_t Half_Prec = 30;
+
+	thread_local GLuint instance_vbo = 0;
+	thread_local size_t instance_vbo_size = 0;
+	thread_local std::vector<std::uint8_t> instance_data;
+
+	thread_local GLuint instance_vao = 0;
+	thread_local GLuint vbo = 0;
+
+	auto& cam = current_camera.Camera_;
+
+	if (instance_vbo_size < circles.size()) {
+		size_t new_size = (instance_vbo_size * 5) / 3;
+		instance_vbo_size = std::max(new_size, circles.size());
+
+		if (instance_vbo) glDeleteBuffers(1, &instance_vbo);
+		glGenBuffers(1, &instance_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "circle_batch_instance_buffer";
+		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	if (!instance_vao) {
+		const float ang_inc = 3.1415926f / Half_Prec;
+		const float cos_inc = cos(ang_inc);
+		const float sin_inc = sin(ang_inc);
+
+		GLfloat vertices[2 * Half_Prec * 2];
+		unsigned coord_idx = 0;
+
+		vertices[coord_idx++] = 1.0f;
+		vertices[coord_idx++] = 0.0f;
+
+		float xc = 1.0f;
+		float yc = 0.0f;
+		for (unsigned i = 1; i < Half_Prec; ++i) {
+			float xc_new = cos_inc * xc - sin_inc * yc;
+			yc = sin_inc * xc + cos_inc * yc;
+			xc = xc_new;
+
+			vertices[coord_idx++] = xc;
+			vertices[coord_idx++] = yc;
+
+			vertices[coord_idx++] = xc;
+			vertices[coord_idx++] = -yc;
+		}
+
+		vertices[coord_idx++] = -1.0f;
+		vertices[coord_idx++] = 0.0f;
+
+		glGenVertexArrays(1, &instance_vao);
+		glBindVertexArray(instance_vao);
+
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(
+			GL_ARRAY_BUFFER, 2 * Half_Prec * 2 * sizeof(GLfloat), vertices, GL_STATIC_DRAW
+		);
+#ifdef GL_DEBUG
+		auto label = "circle_info_vbo";
+		glObjectLabel(GL_BUFFER, vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	auto& i = instance_data;
+	instance_data.clear();
+	instance_data.resize(circles.size() * GPU_Instance_Size);
+	size_t off = 0;
+	for (auto& x : circles) {
+		Vector2f p = x.pos;
+		Vector2f s = V2F(x.r);
+		float z = x.z;
+		Vector4f c = x.color;
+		float r = 0;
+
+		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
+		X(&p, 8);  // world pos
+		X(&s, 8);  // world size
+		X(&r, 4);  // world r
+		X(&z, 4);  // world z
+		X(&c, 16); // color
+		#undef X
+	}
+
+	glBindVertexArray(instance_vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instance_data.size(),
+		instance_data.data(),
+		GL_STATIC_DRAW
+	);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glEnableVertexAttribArray(0); // Model position
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glEnableVertexAttribArray(1); // World position
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
+	
+	glEnableVertexAttribArray(2); // World size
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(8));
+	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(3); // World R
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(16));
+	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(4); // World Z
+	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(20));
+	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(5); // Color
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(24));
+	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	Rectanglef view;
+	view.pos = cam.pos - cam.frame_size / 2;
+	view.size = cam.frame_size;
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_Batched);
+	shader.use();
+	shader.set_window_size(Environment.window_size);
+	shader.set_view(view);
+
+	glBindVertexArray(instance_vao);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 2 * Half_Prec, (GLsizei)instance_vbo_size);
+
+	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
+}
+void render::immediate2d(std::span<Arrow> arrows) noexcept {
+	constexpr size_t GPU_Instance_Size = 8 + 8 + 4 + 4 + 16;
+	constexpr size_t Half_Prec = 30;
+
+	thread_local GLuint instance_vbo = 0;
+	thread_local size_t instance_vbo_size = 0;
+	thread_local std::vector<std::uint8_t> instance_data;
+
+	thread_local GLuint instance_head_vao = 0;
+	thread_local GLuint instance_quad_vao = 0;
+	thread_local GLuint head_vbo = 0;
+	thread_local GLuint quad_vbo = 0;
+
+	auto& cam = current_camera.Camera_;
+
+	if (instance_vbo_size < arrows.size()) {
+		size_t new_size = (instance_vbo_size * 5) / 3;
+		instance_vbo_size = std::max(new_size, arrows.size());
+
+		if (instance_vbo) glDeleteBuffers(1, &instance_vbo);
+		glGenBuffers(1, &instance_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "circle_batch_instance_buffer";
+		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	if (!instance_head_vao) {
+		static float head_vertices[] = {
+			+0.0f, +0.0f,
+			-1.0f, +1.0f,
+			-1.0f, -1.0f,
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &instance_head_vao);
+		glBindVertexArray(instance_head_vao);
+		glGenBuffers(1, &head_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, head_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(head_vertices), &head_vertices, GL_STATIC_DRAW);
+
+		static float quad_vertices[] = {
+			// positions    
+			0.0f, +0.5f,
+			0.0f, -0.5f,
+			1.0f, +0.5f,
+			1.0f, -0.5f
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &instance_quad_vao);
+		glBindVertexArray(instance_quad_vao);
+		glGenBuffers(1, &quad_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+	}
+
+	Rectanglef view;
+	view.pos = cam.pos - cam.frame_size / 2;
+	view.size = cam.frame_size;
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_Batched);
+	shader.use();
+	shader.set_window_size(Environment.window_size);
+	shader.set_view(view);
+
+	instance_data.clear();
+	instance_data.resize(arrows.size() * GPU_Instance_Size);
+	size_t off = 0;
+	for (auto& x : arrows) {
+		Vector2f p = x.b;
+		Vector2f s = V2F((x.a - x.b).length() / 10.f);
+		float z = x.z;
+		float r = (float)(x.b - x.a).angleX();
+		Vector4f c = x.color;
+
+		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
+		X(&p, 8);  // world pos
+		X(&s, 8);  // world size
+		X(&r, 4);  // world r
+		X(&z, 4);  // world z
+		X(&c, 16); // color
+		#undef X
+	}
+
+	glBindVertexArray(instance_head_vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instance_data.size(),
+		instance_data.data(),
+		GL_STATIC_DRAW
+	);
+
+	glBindBuffer(GL_ARRAY_BUFFER, head_vbo);
+	glEnableVertexAttribArray(0); // Model position
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glEnableVertexAttribArray(1); // World position
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
+	
+	glEnableVertexAttribArray(2); // World size
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(8));
+	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(3); // World R
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(16));
+	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(4); // World Z
+	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(20));
+	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(5); // Color
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(24));
+	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
+
+
+	glBindVertexArray(instance_head_vao);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 3, (GLsizei)instance_vbo_size);
+
+	for (size_t i = 0; i < arrows.size(); ++i) {
+		size_t off = i * GPU_Instance_Size;
+		auto& x = arrows[i];
+		Vector2f size = V2F((x.a - x.b).length() / 10.f);;
+		size = { (x.a - x.b).length() - size.x, size.y };
+		Vector2f pos = x.a;
+
+		#define X(a, b) memcpy(instance_data.data() + off, (uint8_t*)a, b); off += b;
+		X(&pos, 8);
+		X(&size, 8);
+		#undef X
+	}
+
+	glBindVertexArray(instance_quad_vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instance_data.size(),
+		instance_data.data(),
+		GL_STATIC_DRAW
+	);
+
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+	glEnableVertexAttribArray(0); // Model position
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glEnableVertexAttribArray(1); // World position
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
+	
+	glEnableVertexAttribArray(2); // World size
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(8));
+	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(3); // World R
+	glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(16));
+	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(4); // World Z
+	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(20));
+	glVertexAttribDivisor(4, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	glEnableVertexAttribArray(5); // Color
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(24));
+	glVertexAttribDivisor(5, 1); // tell OpenGL this is an instanced vertex attribute.
+
+
+	glBindVertexArray(instance_quad_vao);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
+
+	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
+}
+void render::immediate(std::span<Model> models) noexcept {
+	constexpr size_t GPU_Instance_Size = 16 * 4;
+
+	thread_local GLuint instance_vbo = 0;
+	thread_local size_t instance_vbo_size = 0;
+	thread_local std::vector<std::uint8_t> instance_data;
+
+	thread_local GLuint vao = 0;
+	thread_local Gpu_Vector vertices;
+	thread_local Gpu_Vector indices;
+	if (!vao) glGenVertexArrays(1, &vao);
+
+	size_t shader_id = models.front().shader_id;
+	if (!shader_id) shader_id = asset::Shader_Id::Default_3D;
+
+	auto& cam = current_camera.Camera3D_;
+	auto& texture = asset::Store.get_albedo(models.front().texture_id);
+	auto& object = asset::Store.get_object(models.front().object_id);
+	auto& shader = asset::Store.get_shader(shader_id);
+
+	if (instance_vbo_size < models.size()) {
+		size_t new_size = (instance_vbo_size * 5) / 3;
+		instance_vbo_size = std::max(new_size, models.size());
+
+		if (instance_vbo) glDeleteBuffers(1, &instance_vbo);
+		glGenBuffers(1, &instance_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "rectangle_batch_instance_buffer";
+		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+
+
+	Matrix4f VP = cam.get_VP();
+
+	auto& i = instance_data;
+	instance_data.clear();
+	instance_data.resize(models.size() * GPU_Instance_Size);
+	size_t off = 0;
+	for (auto& x : models) {
+		Vector4f c = V4F(1);
+		auto MVP =
+			VP *
+			Matrix4f::translation(V3F(x.pos, x.z)) *
+			Matrix4f::scale({x.scale, x.scale, x.scale});
+
+		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
+		X(MVP);
+		#undef X
+	}
+
+	glBindVertexArray(vao);
+	glBindBuffer(vertices.target, vertices.buffer);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)0);
+
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)12);
+
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)24);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	vertex_attrib_matrix(3, 32, GPU_Instance_Size);
+
+	texture.bind(4);
+	shader.use();
+	shader.set_texture(4);
+
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
+
+	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
 }

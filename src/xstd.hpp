@@ -23,6 +23,7 @@ namespace details {
 #define END(x) std::end(x)
 #define BEG_END(x) BEG(x), END(x)
 #define V2F(x) Vector2f{(x), (x)}
+#define V3(v2) Vector3f{(v2).x, (v2).y, (v2).z}
 #define V3F(v2, z) Vector3f{(v2).x, (v2).y, (float)(z)}
 #define V4F(x) Vector4f{(x), (x), (x), (x)}
 

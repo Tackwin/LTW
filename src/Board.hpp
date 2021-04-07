@@ -47,6 +47,8 @@ struct Projectile {
 struct Unit {
 	size_t id = 0;
 
+	float life_time = 0;
+
 	size_t current_tile = 0;
 	Vector2f pos;
 	float speed = 5.f;

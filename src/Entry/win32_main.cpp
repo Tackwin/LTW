@@ -533,9 +533,6 @@ void APIENTRY opengl_debug(
 
 
 void render_orders(render::Orders& orders, Render_Param param) noexcept {
-	static float gamma    = 0.7f;
-	static float exposure = 1.0f;
-
 	auto buffer_size = Environment.buffer_size;
 	
 	static Texture_Buffer texture_target(buffer_size);
@@ -553,14 +550,12 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_DEPTH_TEST);
-	thread_local std::vector<render::Camera> cam_stack;
-	thread_local std::vector<render::Camera3D> cam3d_stack;
+	thread_local std::vector<render::Order> cam_stack;
 	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
 	thread_local std::vector<std::vector<render::Circle>>    circle_batch;
 	thread_local std::vector<std::vector<render::Arrow>>     arrow_batch;
 
 	cam_stack.clear();
-	cam3d_stack.clear();
 	for (auto& x : rectangle_batch) x.clear();
 	for (auto& x : circle_batch) x.clear();
 	for (auto& x : arrow_batch) x.clear();
@@ -599,13 +594,33 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 				break;
 			}
 			case render::Order::Camera3D_Kind: {
-				cam3d_stack.push_back(x.Camera3D_);
-				render::current_camera_3d = cam3d_stack.back();
+				cam_stack.push_back(x.Camera3D_);
+				render::current_camera = cam_stack.back();
+				if (rectangle_batch.size() < cam_stack.size())
+					rectangle_batch.resize(cam_stack.size());
+				if (circle_batch.size() < cam_stack.size())
+					circle_batch.resize(cam_stack.size());
+				if (arrow_batch.size() < cam_stack.size())
+					arrow_batch.resize(cam_stack.size());
+
 				break;
 			}
 			case render::Order::Pop_Camera3D_Kind: {
-				cam3d_stack.pop_back();
-				if (!cam3d_stack.empty()) render::current_camera_3d = cam3d_stack.back();
+				if (auto& batch = rectangle_batch[cam_stack.size() - 1]; !batch.empty()) {
+					render::immediate(batch);
+					batch.clear();
+				}
+				if (auto& batch = circle_batch[cam_stack.size() - 1]; !batch.empty()) {
+					render::immediate(batch);
+					batch.clear();
+				}
+				if (auto& batch = arrow_batch[cam_stack.size() - 1]; !batch.empty()) {
+					render::immediate(batch);
+					batch.clear();
+				}
+
+				cam_stack.pop_back();
+				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
 				break;
 			}
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
@@ -623,6 +638,9 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 				rectangle_batch[cam_stack.size() - 1].push_back(x.Rectangle_);
 				break;
 			}
+			case render::Order::Clear_Depth_Kind: {
+				glClear(GL_DEPTH_BUFFER_BIT);
+			}
 			default: break;
 		}
 	}
@@ -637,11 +655,16 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	shader.use();
 	shader.set_uniform("ambient_light", Vector4d{1, 1, 1, 1});
 	shader.set_uniform("ambient_intensity", 1.f);
-	shader.set_uniform("debug", 0);
+	shader.set_uniform("debug", game.gui.debug_depth_buffer ? 4 : 0);
 	shader.set_uniform("n_light_points", 0);
+	shader.set_uniform("n_light_dirs", 1);
 	shader.set_uniform("buffer_albedo", 0);
 	shader.set_uniform("buffer_normal", 1);
 	shader.set_uniform("buffer_position", 2);
+
+	shader.set_uniform("light_dirs[0].intensity", 1.f);
+	shader.set_uniform("light_dirs[0].dir", Vector3f(0, 1, -1).normalize());
+	shader.set_uniform("light_dirs[0].color", Vector3f(0.8f, 0.8f, 1.f));
 
 	g_buffer.render_quad();
 
@@ -650,8 +673,8 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 
 	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
 	shader_hdr.use();
-	shader_hdr.set_uniform("gamma", gamma);
-	shader_hdr.set_uniform("exposure", exposure);
+	shader_hdr.set_uniform("gamma", param.gamma);
+	shader_hdr.set_uniform("exposure", param.exposure);
 	shader_hdr.set_uniform("hdr_texture", 0);
 	shader_hdr.set_uniform("transform_color", true);
 

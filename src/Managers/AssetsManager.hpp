@@ -31,6 +31,7 @@ namespace asset {
 		inline static size_t Send_Icon   = 12;
 		inline static size_t Dummy       = 13;
 		inline static size_t Palette     = 14;
+		inline static size_t Methane_Icon= 15;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
@@ -39,6 +40,7 @@ namespace asset {
 		inline static size_t Line    = 4;
 		inline static size_t Default_Batched = 5;
 		inline static size_t Default_3D = 6;
+		inline static size_t Default_3D_Batched = 7;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};

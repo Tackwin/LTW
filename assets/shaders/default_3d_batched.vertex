@@ -1,0 +1,20 @@
+#version 300 es
+
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec4 in_color;
+layout(location = 2) in mat4 m;
+
+out vec4 out_pos;
+out vec4 out_color;
+
+uniform mat4 VP;
+uniform mat4 MVP;
+
+void main() {
+
+	out_color = in_color;
+	//out_pos = vec4(MVP_1 + in_position * MVP_2, 1.0) * VP;
+	//out_pos = vec4(in_position, 1.0) * MVP;
+	out_pos = vec4(in_position, 1.0) * m;
+	gl_Position = out_pos;
+}

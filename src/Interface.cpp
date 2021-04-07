@@ -100,7 +100,8 @@ void Interface::render(render::Orders& orders) noexcept {
 		rec.pos.x = action.button_bounds * x + action.button_padding / 2;
 		rec.pos.y = action.button_bounds * y + action.button_padding / 2;
 		rec.pos  += action_zone.pos,
-		rec.size  = V2F(action.button_content);
+		rec.size  =
+		 V2F(action.button_content);
 		rec.color = it.actual_color;
 
 		orders.push(rec, 3);
@@ -156,5 +157,5 @@ void Interface::init_buttons() noexcept {
 	b[Action::State::Splash_Build].texture_id = asset::Texture_Id::Splash_Build_Icon;
 	b[Action::State::Cancel].texture_id       = asset::Texture_Id::Cancel_Icon;
 	b[Action::State::Send].texture_id         = asset::Texture_Id::Send_Icon;
-	b[Action::State::Send_First].texture_id   = asset::Texture_Id::Dummy;
+	b[Action::State::Send_First].texture_id   = asset::Texture_Id::Methane_Icon;
 }
