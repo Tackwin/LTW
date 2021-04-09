@@ -33,7 +33,7 @@ struct Game {
 	std::array<Board,  2>  boards;
 	std::array<Player, 2> players;
 
-	size_t board_per_line = 8;
+	size_t board_per_line = 2;
 	Vector2f board_pos_offset = { 15, 30 };
 
 	Controller controller;
@@ -53,7 +53,7 @@ struct Game {
 		camera.pos = {0, 0};
 		camera.frame_size = { 16, 9 };
 
-		camera3d.pos = {0, -1, 20};
+		camera3d.pos = {0, -10, 40};
 		camera3d.look_at({});
 	}
 

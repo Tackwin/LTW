@@ -50,6 +50,8 @@ namespace asset {
 	};
 	struct Object_Id {
 		inline static size_t Methane = 1;
+		inline static size_t Empty_Tile = 2;
+		inline static size_t Range1 = 2;
 	};
 
 

@@ -138,6 +138,6 @@ void main() {
 		frag_color = vec4(texture_fetch(buffer_position, text_coord).w);
 	}
 
-	frag_color += texture(buffer_ssao, text_coord);
-	//frag_color.rgb = texture_fetch(buffer_tag, text_coord).rgb;
+	//frag_color += texture(buffer_ssao, text_coord);
+	//oofrag_color.rgb = texture_fetch(buffer_tag, text_coord).rgb;
 }

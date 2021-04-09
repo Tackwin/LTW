@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Vector.hpp"
+#include "Rectangle.hpp"
 #include <cmath>
 
 template<size_t R, size_t C, typename T = float>
@@ -410,13 +411,22 @@ using Matrix4 = Matrix<4, 4, T>;
 using Matrix4f = Matrix4<float>;
 
 inline Matrix4f perspective(float fov, float ratio, float f, float n) noexcept {
-	float uh = 1.f / std::tanf(fov / 2);
-	float uw = uh * (1.f / ratio);
+	float uw = 1.f / std::tanf(fov / 2);
+	float uh = uw;
 
 	Matrix4f matrix;
 	matrix[0] = Vector4f{ uw, 0, 0, 0 };
 	matrix[1] = Vector4f{ 0, uh, 0, 0 };
 	matrix[2] = Vector4f{ 0, 0, (f + n) / (n - f), 2 * (f * n) / (n - f) };
 	matrix[3] = Vector4f{ 0, 0, -1, 0};
+
+	return matrix;
+}
+inline Matrix4f orthographic(Rectanglef rec, float f, float n) noexcept {
+	Matrix4f matrix;
+	matrix[0] = Vector4f{ 2 / rec.w, 0, 0,  - (2 * rec.x + rec.w) / rec.w };
+	matrix[1] = Vector4f{ 0, 2 / rec.h, 0, - (2 * rec.y + rec.h) / rec.h };
+	matrix[2] = Vector4f{ 0, 0, -2 * f / (f - n), - (f + n) / (f- n) };
+	matrix[3] = Vector4f{0, 0, 0, 1};
 	return matrix;
 }

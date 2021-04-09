@@ -93,18 +93,23 @@ void Board::render(render::Orders& order) noexcept {
 	render::Rectangle rec;
 	render::Circle circle;
 	render::Arrow arrow;
+	render::Model m;
 
 	Rectanglef tile_zone;
 	float tile_bound = tile_size + tile_padding;
 	tile_zone.pos  = -tile_bound * (Vector2f)size / 2;
 	tile_zone.size = +tile_bound * (Vector2f)size;
 
+	m.object_id = asset::Object_Id::Empty_Tile;
+	m.shader_id = asset::Shader_Id::Default_3D_Batched;
+	m.texture_id = asset::Texture_Id::Palette;
+	order.push(render::Push_Batch());
 	for2(i, j, size) {
-		rec.pos = tile_box({i, j}).pos + pos;
-		rec.size = tile_box({i, j}).size;
-		rec.color = tiles[i + j * size.x]->color;
-		order.push(rec, 0);
+		m.pos = V3F(tile_box({i, j}).center() + pos, 0);
+		m.scale = tile_box({i, j}).size.x;
+		order.push(m);
 	}
+	order.push(render::Pop_Batch());
 
 	Rectanglef start_zone;
 	start_zone.x = tile_zone.x;
@@ -162,7 +167,6 @@ void Board::render(render::Orders& order) noexcept {
 	circle.r = 0.2f;
 	circle.color = { 0.6f, 0.5f, 0.1f, 1.f };
 
-	render::Model m;
 	m.object_id = asset::Object_Id::Methane;
 	m.texture_id = asset::Texture_Id::Palette;
 	m.scale = 0.5f;
@@ -184,13 +188,24 @@ void Board::render(render::Orders& order) noexcept {
 		order.push(circle, 0.03f);
 	}
 
-	for (auto& x : towers) {
-		auto s = (tile_size + tile_padding);
-		circle.r     = 0.2f;
-		circle.pos   = tile_box(x->tile_pos).pos + s * (Vector2f)x->tile_size / 2 + pos;
-		circle.color = x->color;
+	thread_local std::unordered_map<size_t, std::vector<render::Model>> models_by_object;
+	for (auto& [_, x] : models_by_object) x.clear();
 
-		order.push(circle, 0.01);
+	for (auto& x : towers) {
+		render::Model m;
+		m.object_id = x->object_id;
+		m.shader_id = asset::Shader_Id::Default_3D_Batched;
+		m.texture_id = asset::Texture_Id::Palette;
+		m.pos = V3F(tile_box(x->tile_pos).center() + pos, 0);
+		m.scale = 0.5f;
+		m.bitmask = 0;
+		models_by_object[m.object_id].push_back(m);
+	}
+
+	for (auto& [object_id, x] : models_by_object) if (object_id != 0) {
+		order.push(render::Push_Batch());
+		for (auto& y : x) order.push(y);
+		order.push(render::Pop_Batch());
 	}
 }
 

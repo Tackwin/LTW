@@ -306,11 +306,13 @@ void windows_loop() noexcept {
 	ImGui::NewFrame();
 
 	thread_local bool render_window_open = true;
-	ImGui::Begin("Render", &render_window_open);
-	ImGui::SliderFloat("Gamma   ", &render_param.gamma    , 0, 2);
-	ImGui::SliderFloat("Exposure", &render_param.exposure , 0, 2);
-	ImGui::SliderSize ("Samples ", &render_param.n_samples, 1, 16);
-	ImGui::End();
+	if (render_window_open) {
+		ImGui::Begin("Render", &render_window_open);
+		ImGui::SliderFloat("Gamma   ", &render_param.gamma    , 0, 2);
+		ImGui::SliderFloat("Exposure", &render_param.exposure , 0, 2);
+		ImGui::SliderSize ("Samples ", &render_param.n_samples, 1, 16);
+		ImGui::End();
+	}
 
 	auto response = game_proc.update(game, dt);
 	game_proc.render(game, orders);

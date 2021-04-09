@@ -1,5 +1,4 @@
-#version 330
-precision mediump float;
+#version 450
 
 layout (location = 0) out vec4 g_albedo;
 layout (location = 1) out vec4 g_normal;
@@ -8,13 +7,17 @@ layout (location = 3) out uvec4 g_tag;
 
 uniform sampler2D color_texture;
 
-in vec2 texture_pos;
+flat in vec2 texture_pos;
 in vec3 position;
 in vec3 normal;
 flat in uint tag;
 
 void main() {
-	vec4 texel = texture(color_texture, texture_pos);
+	vec4 texel = texelFetch(
+		color_texture,
+		ivec2(vec2(8, 8) * texture_pos),
+		0
+	);
 	g_normal = vec4(normal, texel.a);
 	g_albedo = texel;
 	g_position = vec4(position, 1);

@@ -72,20 +72,14 @@ void main() {
     vec3 hdr_color = texture(hdr_texture, text_coord).rgb;
     //hdr_color = nearest_hsv(hdr_color);
     // reinhard
-    // vec3 result = hdr_color / (hdr_color + vec3q(1.0));
+    vec3 result = hdr_color / (hdr_color + vec3(1.0));
     // exposure
-    vec3 result = vec3(1.0) - exp(-hdr_color * exposure);
+    result = vec3(1.0) - exp(-hdr_color * exposure);
     // also gamma correct while we're at it       
     result = pow(result, vec3(1.0 / gamma));
 
     const float step = 1.0 / 255.0;
 
-    if (true || transform_color) frag_color = vec4(result, 1.0);
-    else                 frag_color = vec4(hdr_color, 1.0);
-    //frag_color = vec4(round(result / step) * step, 1.0);
-    //frag_color = texture(hdr_texture, text_coord).rgba;
-    //frag_color.rgb = nearest_hsv(frag_color.rgb);
-    //vec3 hsv = rgb2hsv(frag_color.rgb);
-    //hsv = round(hsv / step) * step;
-    //frag_color.rgb = hsv2rgb(hsv);
+    frag_color = vec4(result, 1.0);
+    //frag_color = vec4(hdr_color, 1.0);
 }

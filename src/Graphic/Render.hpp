@@ -31,10 +31,10 @@ namespace render {
 	struct Pop_Batch : Order_Base {};
 
 	struct Camera3D : Order_Base {
-		float fov = 90;
+		float fov = 70;
 		float ratio = 16/9.f;
-		float far_ = 100.f;
-		float near_ = 0.1f;
+		float far_ = 500.f;
+		float near_ = 0.01f;
 		Vector3f pos;
 		Vector3f dir;
 

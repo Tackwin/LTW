@@ -32,18 +32,18 @@ Matrix4f render::Camera3D::get_view(Vector3f up) noexcept {
 		x.z, y.z, z.z, 0.f,
 		0.f, 0.f, 0.f, 1.f
 	};
-	
 	Matrix4f view(comp);
 	view = view * Matrix4f::translation(-1 * pos);
 	return view;
 }
 
 Matrix4f render::Camera3D::get_VP(Vector3f up) noexcept {
-	return perspective(3.1415926 * fov / 180, ratio, far_, near_) * get_view(up);
+	return get_projection() * get_view(up);
 }
 
 Matrix4f render::Camera3D::get_projection() noexcept {
 	return perspective(3.1415926 * fov / 180, ratio, far_, near_);
+	return orthographic({-1, -1, 1, 1}, 500, 0.01f);
 }
 
 Vector2f normalize_mouse(Vector2f mouse_pos) {
@@ -64,7 +64,7 @@ Vector2f render::Camera3D::project(Vector2f mouse) noexcept {
 	};
 	Vector4f ray_nds = { ray.x, ray.y, 1, 0 };
 	Vector4f ray_clip = { ray_nds.x, ray_nds.y, 1, 0 };
-	auto ray_eye = (*perspective(3.1415926 * fov / 180, ratio, far_, near_).invert()) * ray_clip;
+	auto ray_eye = (*get_projection().invert()) * ray_clip;
 	ray_eye.z = 1;
 	ray_eye.w = 0;
 	auto ray_world = (*get_view().invert()) * ray_eye;
@@ -1411,7 +1411,8 @@ void render::immediate(std::span<Model> models) noexcept {
 	texture.bind(5);
 	shader.use();
 	shader.set_texture(5);
-	shader.set_uniform("VP", cam.get_VP());
+	shader.set_uniform("V", cam.get_view());
+	shader.set_uniform("P", cam.get_projection());
 
 	glBindBuffer(indices.target, indices.buffer);
 	glDrawElementsInstanced(

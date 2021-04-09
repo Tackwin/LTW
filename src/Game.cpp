@@ -56,7 +56,7 @@ void game_startup(Game& game) noexcept {
 	}
 
 	game.camera.pos = game.boards[game.controller.board_id].pos;
-	game.camera3d.pos = V3F(game.boards[game.controller.board_id].pos, 2);
+	game.camera3d.pos = V3F(game.boards[game.controller.board_id].pos, 5);
 	PROFILER_END_SEQ();
 }
 
@@ -79,6 +79,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 	mouse_screen_pos.y = (int)(in.mouse_pos.y * Environment.window_size.y);
 
 	if (!game.interface.input(in)) {
+
 		if (in.key_infos[Keyboard::LCTRL].pressed && in.key_infos[Keyboard::Num1].just_pressed) {
 			game.gui.board_open = true;
 		}
@@ -189,30 +190,6 @@ Game_Request game_update(Game& game, double dt) noexcept {
 
 void game_render(Game& game, render::Orders& order) noexcept {
 	order.push(game.camera3d);
-
-	order.push(render::Push_Batch());
-	render::Model m;
-	m.object_id = asset::Object_Id::Methane;
-	m.texture_id = asset::Texture_Id::Palette;
-	m.pos = V3F(game.boards[game.controller.board_id].pos, 1.f);
-	m.scale = 0.2f;
-	m.bitmask |= render::Model::Edge_Glow;
-	order.push(m);
-
-	m.object_id = asset::Object_Id::Methane;
-	m.texture_id = asset::Texture_Id::Palette;
-	m.pos = V3F(game.boards[game.controller.board_id].pos, 1.f);
-	m.pos.x += 1;
-	m.scale = 0.02f;
-
-	order.push(m);
-	m.object_id = asset::Object_Id::Methane;
-	m.texture_id = asset::Texture_Id::Palette;
-	m.pos = V3F(game.boards[game.controller.board_id].pos, 1.f);
-	m.pos.x -= 1;
-	m.scale = 0.1f;
-	order.push(m);
-	order.push(render::Pop_Batch());
 
 	for (size_t i = 0; i < game.boards.size(); ++i) {
 		auto& board = game.boards[i];

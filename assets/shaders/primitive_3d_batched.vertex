@@ -4,7 +4,7 @@ layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec4 in_color;
 layout (location = 2) in mat4 M;
 
-out vec4 color;
+flat out vec4 color;
 out vec3 position;
 
 uniform mat4 VP;

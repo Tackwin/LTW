@@ -331,7 +331,8 @@ void Store_t::load_known_objects() noexcept {
 		printf("failed :( !\n");\
 	}
 	X("assets/model/methane.ply", Methane);
-
+	X("assets/model/empty_tile.ply", Empty_Tile);
+	X("assets/model/range1.ply", Range1);
 #undef X
 }
 
