@@ -26,11 +26,15 @@ in vec2 text_coord;
 uniform sampler2DMS buffer_position;
 uniform sampler2DMS buffer_normal;
 uniform sampler2DMS buffer_albedo;
+uniform usampler2DMS buffer_tag;
+
+uniform sampler2D buffer_ssao;
 
 const int Debug_Default = 0;
 const int Debug_Albedo = 1;
 const int Debug_Normal = 2;
 const int Debug_Position = 3;
+
 const int Debug_Depth = 4;
 
 uniform int debug;
@@ -46,6 +50,15 @@ vec4 texture_fetch(sampler2DMS tex, vec2 c) {
 		ret += texelFetch(tex, tex_pixel, i);
 	}
 	return ret / float(samples);
+}
+uvec4 utexture_fetch(usampler2DMS tex, vec2 c) {
+	uvec4 ret;
+	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
+	int samples = textureSamples(tex);
+	for (int i = 0; i < samples; ++i) {
+		ret += texelFetch(tex, tex_pixel, i);
+	}
+	return ret / samples;
 }
 
 vec3 light_pixel(vec2 pix) {
@@ -124,4 +137,7 @@ void main() {
 	if (debug == Debug_Depth) {
 		frag_color = vec4(texture_fetch(buffer_position, text_coord).w);
 	}
+
+	frag_color += texture(buffer_ssao, text_coord);
+	//frag_color.rgb = texture_fetch(buffer_tag, text_coord).rgb;
 }

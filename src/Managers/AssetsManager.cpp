@@ -305,6 +305,14 @@ void Store_t::load_known_shaders() noexcept {
 		"",
 		Default_Batched
 	);
+	X(
+		"assets/shaders/primitive_3d_batched.vertex",
+		"assets/shaders/primitive_3d_batched.fragment",
+		"",
+		Primitive_3D_Batched
+	);
+	X("assets/shaders/simple.vertex", "assets/shaders/edge_glow.fragment", "", Edge_Glow);
+	X("assets/shaders/simple.vertex", "assets/shaders/blur.fragment", "", Blur);
 	X("assets/shaders/light.vertex",   "assets/shaders/light.fragment",   "", Light  );
 	X("assets/shaders/hdr.vertex",     "assets/shaders/hdr.fragment",     "", HDR    );
 #undef X

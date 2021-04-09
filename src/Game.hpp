@@ -26,6 +26,8 @@ struct Game {
 		bool board_open = true;
 		bool game_debug_open = true;
 		bool debug_depth_buffer = false;
+
+		size_t edge_blur = 1;
 	} gui;
 
 	std::array<Board,  2>  boards;

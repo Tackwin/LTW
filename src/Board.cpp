@@ -164,15 +164,17 @@ void Board::render(render::Orders& order) noexcept {
 
 	render::Model m;
 	m.object_id = asset::Object_Id::Methane;
-	m.shader_id = asset::Shader_Id::Default_3D;
 	m.texture_id = asset::Texture_Id::Palette;
 	m.scale = 0.5f;
+	m.bitmask |= render::Model::Edge_Glow;
+	order.push(render::Push_Batch());
 	for (auto& x : units) {
 		m.pos.x = x.pos.x + pos.x;
 		m.pos.y = x.pos.y + pos.y;
 		m.pos.z = std::sinf(x.life_time) * 0.1f + 0.15f;
 		order.push(m, 0.02f);
 	}
+	order.push(render::Pop_Batch());
 
 	for (auto& x : projectiles) {
 		circle.r = x.r;

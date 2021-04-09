@@ -42,6 +42,10 @@ Matrix4f render::Camera3D::get_VP(Vector3f up) noexcept {
 	return perspective(3.1415926 * fov / 180, ratio, far_, near_) * get_view(up);
 }
 
+Matrix4f render::Camera3D::get_projection() noexcept {
+	return perspective(3.1415926 * fov / 180, ratio, far_, near_);
+}
+
 Vector2f normalize_mouse(Vector2f mouse_pos) {
 	Rectanglef viewport = {0, 0, 1, 1};
 	return {
@@ -165,18 +169,17 @@ void render::immediate3d(std::span<Rectangle> rectangle) noexcept {
 #endif
 	}
 
-	Matrix4f VP = cam.get_VP();
 
 	auto& i = instance_data;
 	instance_data.clear();
 	instance_data.resize(rectangle.size() * GPU_Rectangle_Size);
 	size_t off = 0;
 	for (auto& x : rectangle) {
-		auto MVP = VP * Matrix4f::translation(V3F(x.pos, x.z)) * Matrix4f::scale(V3F(x.size, 1));
+		auto M = Matrix4f::translation(V3F(x.pos, x.z)) * Matrix4f::scale(V3F(x.size, 1));
 
 		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
 		X(x.color); // color
-		X(MVP);
+		X(M);
 		#undef X
 	}
 
@@ -200,14 +203,9 @@ void render::immediate3d(std::span<Rectangle> rectangle) noexcept {
 	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
 	vertex_attrib_matrix(2, 16, GPU_Rectangle_Size);
 
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_3D_Batched);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Primitive_3D_Batched);
 	shader.use();
-	shader.set_uniform("VP", VP);
-
-	Matrix4f MVP = Matrix4f::scale({1, 1, 1});
-	MVP = Matrix4f::scale(Vector3f{5, 0.5, 0}) * VP;
-	MVP = Matrix4f::translation(Vector3f{0.1, 0.1, 0}) * MVP;
-	shader.set_uniform("MVP", MVP);
+	shader.set_uniform("VP", cam.get_VP());
 
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
 
@@ -324,7 +322,7 @@ void render::immediate3d(std::span<Circle> circles) noexcept {
 	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
 	vertex_attrib_matrix(2, 16, GPU_Instance_Size);
 
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_3D_Batched);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Primitive_3D_Batched);
 	shader.use();
 
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 2 * Half_Prec, (GLsizei)instance_vbo_size);
@@ -389,7 +387,7 @@ void render::immediate3d(std::span<Arrow> arrows) noexcept {
 		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
 	}
 
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Default_3D_Batched);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Primitive_3D_Batched);
 	shader.use();
 
 	instance_data.clear();
@@ -768,8 +766,8 @@ void render::immediate(Sprite info) noexcept {
 	}
 
 	if (asset::Store.textures.count(info.texture) > 0) {
-		asset::Store.get_albedo(info.texture).bind(4);
-		auto normal = asset::Store.get_normal(info.texture); if (normal) normal->bind(5);
+		asset::Store.get_albedo(info.texture).bind(5);
+		auto normal = asset::Store.get_normal(info.texture); if (normal) normal->bind(6);
 	}
 
 	auto& cam = current_camera.Camera_;
@@ -794,8 +792,8 @@ void render::immediate(Sprite info) noexcept {
 	shader.set_uniform("texture_rect", info.texture_rect);
 	shader.set_uniform("use_normal_texture", asset::Store.get_normal(info.texture) ? 1 : 0);
 	shader.set_uniform("texture_rect", info.texture_rect);
-	shader.set_uniform("normal_texture", 5);
-	shader.set_texture(4);
+	shader.set_uniform("normal_texture", 6);
+	shader.set_texture(5);
 
 	glBindVertexArray(quad_vao);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -861,9 +859,9 @@ void render::immediate(Model info) noexcept {
 
 	if (!info.shader_id) info.shader_id = asset::Shader_Id::Default_3D;
 	auto& shader = asset::Store.get_shader(info.shader_id);
-	texture.bind(4);
+	texture.bind(5);
 	shader.use();
-	shader.set_texture(4);
+	shader.set_texture(5);
 	shader.set_uniform("MVP", cam.get_VP() * model);
 
 	glBindVertexArray(vao);
@@ -1320,7 +1318,7 @@ void render::immediate2d(std::span<Arrow> arrows) noexcept {
 	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
 }
 void render::immediate(std::span<Model> models) noexcept {
-	constexpr size_t GPU_Instance_Size = 16 * 4;
+	constexpr size_t GPU_Instance_Size = 16 * 4 + 4;
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
@@ -1330,14 +1328,27 @@ void render::immediate(std::span<Model> models) noexcept {
 	thread_local Gpu_Vector vertices;
 	thread_local Gpu_Vector indices;
 	if (!vao) glGenVertexArrays(1, &vao);
+	if (models.empty()) return;
 
 	size_t shader_id = models.front().shader_id;
-	if (!shader_id) shader_id = asset::Shader_Id::Default_3D;
+	if (!shader_id) shader_id = asset::Shader_Id::Default_3D_Batched;
+
 
 	auto& cam = current_camera.Camera3D_;
 	auto& texture = asset::Store.get_albedo(models.front().texture_id);
 	auto& object = asset::Store.get_object(models.front().object_id);
 	auto& shader = asset::Store.get_shader(shader_id);
+
+	vertices.debug_name = "Vertex buffer object";
+	vertices.target = GL_ARRAY_BUFFER;
+	indices.debug_name  = "Index buffer object";
+	indices.target = GL_ELEMENT_ARRAY_BUFFER;
+
+	vertices.fit(object.vertices.size() * sizeof(Object::Vertex));
+	indices.fit(object.faces.size() * sizeof(size_t));
+
+	vertices.upload(object.vertices.size() * sizeof(Object::Vertex), object.vertices.data());
+	indices.upload(object.faces.size() * sizeof(unsigned short), object.faces.data());
 
 	if (instance_vbo_size < models.size()) {
 		size_t new_size = (instance_vbo_size * 5) / 3;
@@ -1348,12 +1359,10 @@ void render::immediate(std::span<Model> models) noexcept {
 		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
 		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_STATIC_DRAW);
 #ifdef GL_DEBUG
-		auto label = "rectangle_batch_instance_buffer";
+		auto label = "Model instancied buffer";
 		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
 #endif
 	}
-
-
 
 	Matrix4f VP = cam.get_VP();
 
@@ -1363,15 +1372,22 @@ void render::immediate(std::span<Model> models) noexcept {
 	size_t off = 0;
 	for (auto& x : models) {
 		Vector4f c = V4F(1);
-		auto MVP =
-			VP *
-			Matrix4f::translation(V3F(x.pos, x.z)) *
-			Matrix4f::scale({x.scale, x.scale, x.scale});
+		uint32_t tag = x.object_id;
+		auto M = Matrix4f::translation(x.pos) * Matrix4f::scale({x.scale, x.scale, x.scale});
 
 		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
-		X(MVP);
+		X(tag);
+		X(M);
 		#undef X
 	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instance_data.size(),
+		instance_data.data(),
+		GL_STATIC_DRAW
+	);
 
 	glBindVertexArray(vao);
 	glBindBuffer(vertices.target, vertices.buffer);
@@ -1384,15 +1400,23 @@ void render::immediate(std::span<Model> models) noexcept {
 
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)24);
-	
+
 	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-	vertex_attrib_matrix(3, 32, GPU_Instance_Size);
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, 1, GL_UNSIGNED_INT, GL_FALSE, GPU_Instance_Size, (void*)0);
 
-	texture.bind(4);
+
+	vertex_attrib_matrix(4, 4, GPU_Instance_Size);
+
+	texture.bind(5);
 	shader.use();
-	shader.set_texture(4);
+	shader.set_texture(5);
+	shader.set_uniform("VP", cam.get_VP());
 
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instance_vbo_size);
+	glBindBuffer(indices.target, indices.buffer);
+	glDrawElementsInstanced(
+		GL_TRIANGLES, object.faces.size(), GL_UNSIGNED_SHORT, (void*)0, models.size()
+	);
 
-	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
+	for (size_t i = 0; i < 8; ++i) glDisableVertexAttribArray(i);
 }

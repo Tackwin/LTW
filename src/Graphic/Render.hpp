@@ -27,6 +27,9 @@ namespace render {
 	};
 	struct Pop_Camera : Order_Base {};
 
+	struct Push_Batch : Order_Base {};
+	struct Pop_Batch : Order_Base {};
+
 	struct Camera3D : Order_Base {
 		float fov = 90;
 		float ratio = 16/9.f;
@@ -36,6 +39,7 @@ namespace render {
 		Vector3f dir;
 
 		void look_at(Vector3f target) noexcept;
+		Matrix4f get_projection() noexcept;
 		Matrix4f get_view(Vector3f up = {0, 0, 1}) noexcept;
 		Matrix4f get_VP(Vector3f up = {0, 0, 1}) noexcept;
 
@@ -63,6 +67,11 @@ namespace render {
 
 		Vector3f pos;
 		float scale = 1.f;
+
+		uint32_t bitmask = 0;
+		enum {
+			Edge_Glow = 1,
+		};
 	};
 	struct Circle : Order_Base {
 		Vector2f pos;
@@ -117,7 +126,7 @@ namespace render {
 
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
-	X(Pop_Camera3D) X(Clear_Depth)
+	X(Pop_Camera3D) X(Clear_Depth) X(Push_Batch) X(Pop_Batch)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);

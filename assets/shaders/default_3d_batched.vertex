@@ -1,20 +1,22 @@
 #version 300 es
 
-layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec4 in_color;
-layout(location = 2) in mat4 m;
+layout (location = 0) in vec3 in_position;
+layout (location = 1) in vec3 in_normal;
+layout (location = 2) in vec2 in_uv;
+layout (location = 3) in uint in_tag;
+layout (location = 4) in mat4 M;
 
-out vec4 out_pos;
-out vec4 out_color;
+out vec2 texture_pos;
+out vec3 position;
+out vec3 normal;
+flat out uint tag;
 
 uniform mat4 VP;
-uniform mat4 MVP;
 
 void main() {
-
-	out_color = in_color;
-	//out_pos = vec4(MVP_1 + in_position * MVP_2, 1.0) * VP;
-	//out_pos = vec4(in_position, 1.0) * MVP;
-	out_pos = vec4(in_position, 1.0) * m;
-	gl_Position = out_pos;
+	gl_Position = vec4(in_position, 1.0) * M * VP;
+	position = (vec4(in_position, 1.0) * M).xyz;
+	texture_pos = in_uv;
+	normal = in_normal;
+	tag = in_tag;
 }

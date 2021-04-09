@@ -41,6 +41,9 @@ namespace asset {
 		inline static size_t Default_Batched = 5;
 		inline static size_t Default_3D = 6;
 		inline static size_t Default_3D_Batched = 7;
+		inline static size_t Primitive_3D_Batched = 8;
+		inline static size_t Edge_Glow = 9;
+		inline static size_t Blur = 10;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};

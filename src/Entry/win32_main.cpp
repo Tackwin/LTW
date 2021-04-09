@@ -197,7 +197,6 @@ int WINAPI WinMain(
 
 	PROFILER_END();
 
-
 	PROFILER_BEGIN("OpenGL");
 	auto gl_context = *create_gl_context(window_handle);
 	defer{ destroy_gl_context(gl_context); };
@@ -503,7 +502,8 @@ void APIENTRY opengl_debug(
 ) noexcept {
 	constexpr GLenum To_Ignore[] = {
 		131185,
-		131204
+		131204,
+		131140
 	};
 
 	constexpr GLenum To_Break_On[] = {
@@ -531,11 +531,12 @@ void APIENTRY opengl_debug(
 	}
 }
 
-
 void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	auto buffer_size = Environment.buffer_size;
 	
 	static Texture_Buffer texture_target(buffer_size);
+	static Texture_Buffer ssao_buffer(buffer_size, "Edge Buffer");
+	static Texture_Buffer blur_buffer(buffer_size, "Blur Buffer");
 	static G_Buffer       g_buffer(buffer_size);
 	static HDR_Buffer     hdr_buffer(buffer_size);
 
@@ -554,11 +555,15 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
 	thread_local std::vector<std::vector<render::Circle>>    circle_batch;
 	thread_local std::vector<std::vector<render::Arrow>>     arrow_batch;
+	thread_local std::vector<std::vector<render::Model>>     model_batch;
+
+	size_t model_batch_stack = 0;
 
 	cam_stack.clear();
 	for (auto& x : rectangle_batch) x.clear();
 	for (auto& x : circle_batch) x.clear();
 	for (auto& x : arrow_batch) x.clear();
+	for (auto& x : model_batch) x.clear();
 
 	for (auto& x : orders) {
 		switch (x.kind) {
@@ -624,8 +629,12 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 				break;
 			}
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
-			case render::Order::Model_Kind:      render::immediate(x.Model_);     break;
 			case render::Order::Sprite_Kind:     render::immediate(x.Sprite_);    break;
+			case render::Order::Model_Kind: {
+				assert(model_batch_stack > 0);
+				model_batch[model_batch_stack - 1].push_back(x.Model_);
+				break;
+			}
 			case render::Order::Arrow_Kind: {
 				arrow_batch[cam_stack.size() - 1].push_back(x.Arrow_);
 				break;
@@ -640,14 +649,56 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 			}
 			case render::Order::Clear_Depth_Kind: {
 				glClear(GL_DEPTH_BUFFER_BIT);
+				break;
+			}
+			case render::Order::Push_Batch_Kind: {
+				model_batch_stack++;
+				if (model_batch_stack >= model_batch.size()) model_batch.resize(model_batch_stack);
+				break;
+			}
+			case render::Order::Pop_Batch_Kind: {
+				assert(model_batch_stack > 0);
+				
+				render::immediate(model_batch[model_batch_stack - 1]);
+				model_batch[model_batch_stack - 1].clear();
+				model_batch_stack--;
+				break;
 			}
 			default: break;
 		}
 	}
 	glDisable(GL_DEPTH_TEST);
 
+	ssao_buffer.set_active();
+	g_buffer.set_active_texture();
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	auto& edge_shader = asset::Store.get_shader(asset::Shader_Id::Edge_Glow);
+	edge_shader.use();
+	edge_shader.set_uniform("buffer_normal", 1);
+	edge_shader.set_uniform("buffer_position", 2);
+	edge_shader.set_uniform("buffer_tag", 3);
+	edge_shader.set_uniform("cam_pos", game.camera3d.pos);
+
+	glDisable(GL_DEPTH_TEST);
+	ssao_buffer.render_quad();
+
+	blur_buffer.set_active();
+	ssao_buffer.set_active_texture(0);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
+	blur_shader.use();
+	blur_shader.set_uniform("radius", (int)game.gui.edge_blur);
+	blur_shader.set_uniform("image", 0);
+
+	blur_buffer.render_quad();
+
 	hdr_buffer.set_active();
 	g_buffer.set_active_texture();
+	blur_buffer.set_active_texture(10);
 	glClearColor(0.4f, 0.2f, 0.3f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -661,6 +712,8 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	shader.set_uniform("buffer_albedo", 0);
 	shader.set_uniform("buffer_normal", 1);
 	shader.set_uniform("buffer_position", 2);
+	shader.set_uniform("buffer_tag", 3);
+	shader.set_uniform("buffer_ssao", 10);
 
 	shader.set_uniform("light_dirs[0].intensity", 1.f);
 	shader.set_uniform("light_dirs[0].dir", Vector3f(0, 1, -1).normalize());

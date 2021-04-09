@@ -37,6 +37,7 @@ struct G_Buffer {
 
 	std::uint32_t g_buffer{ 0 };
 	std::uint32_t pos_buffer{ 0 };
+	std::uint32_t tag_buffer{ 0 };
 	std::uint32_t normal_buffer{ 0 };
 	std::uint32_t albedo_buffer{ 0 };
 	std::uint32_t depth_rbo{ 0 };
@@ -78,7 +79,7 @@ struct Texture_Buffer {
 	Texture_Buffer(Texture_Buffer&&) = default;
 	Texture_Buffer& operator=(Texture_Buffer&&) = default;
 
-	Texture_Buffer(Vector2u size) noexcept;
+	Texture_Buffer(Vector2u size, std::string name = "Texture buffer") noexcept;
 	~Texture_Buffer() noexcept;
 
 	std::uint32_t get_frame_buffer_id() const noexcept;
@@ -86,13 +87,12 @@ struct Texture_Buffer {
 	const Texture& get_texture() const noexcept;
 
 	void set_active() noexcept;
-	void set_active_texture() noexcept;
+	void set_active_texture(size_t n) noexcept;
 
 	void render_quad() noexcept;
 
 	void clear(Vector4f color) noexcept;
 
-private:
 	std::uint32_t frame_buffer{ 0 };
 	std::uint32_t rbo_buffer{ 0 };
 	std::uint32_t quad_VAO{ 0 };
@@ -112,7 +112,7 @@ struct SSAO_Buffer {
 	void set_active_ssao() noexcept;
 	void set_active_blur() noexcept;
 
-	void set_active_texture_for_blur() noexcept;
+	void set_active_texture_for_blur(size_t n) noexcept;
 	void set_active_texture(size_t n) noexcept;
 	void render_quad() noexcept;
 

@@ -323,13 +323,14 @@ struct Vector : public __vec_member<D, T> {
 		return (*this - other).pseudoAngleX();
 	}
 
-	Vector<D, T>& normalize() {
+	Vector<D, T> normalize() {
 		const auto& l = length();
 		if (l == 0) return *this;
+		auto cpy = *this;
 		for (size_t i = 0u; i < D; ++i) {
-			this->components[i] /= l;
+			cpy.components[i] /= l;
 		}
-		return *this;
+		return cpy;
 	}
 
 	constexpr Vector<D, T> normed() const noexcept {

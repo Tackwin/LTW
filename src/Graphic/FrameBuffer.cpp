@@ -77,9 +77,34 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	glObjectLabel(GL_TEXTURE, pos_buffer, (GLsizei)strlen(label) - 1, label);
 #endif
 
+	// - position color buffer
+	glGenTextures(1, &tag_buffer);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tag_buffer);
+	glTexImage2DMultisample(
+		GL_TEXTURE_2D_MULTISAMPLE,
+		n_samples,
+		GL_R32UI,
+		(GLsizei)size.x,
+		(GLsizei)size.y,
+		GL_TRUE
+	);
+	glFramebufferTexture2D(
+		GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D_MULTISAMPLE, tag_buffer, 0
+	);
+#ifdef GL_DEBUG
+	label = "Tag buffer";
+	glObjectLabel(GL_TEXTURE, tag_buffer, (GLsizei)strlen(label) - 1, label);
+#endif
+
+	// object bitmask
+	// mask_texture.create_mask_null(size);
+	// glFramebufferTexture2D(
+		// GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, mask_texture.get_texture_id(), 0
+	// );
+
 	// - tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
 	unsigned int attachments[] = {
-		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2
+		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
 	};
 	glDrawBuffers(sizeof(attachments) / sizeof(unsigned int), attachments);
 
@@ -97,6 +122,8 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	label = "geometry_depth";
 	glObjectLabel(GL_RENDERBUFFER, depth_rbo, (GLsizei)strlen(label) - 1, label);
 #endif
+
+
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
@@ -134,7 +161,7 @@ void G_Buffer::clear(Vector4d color) noexcept {
 	Vector4f f = (Vector4f)color;
 #ifdef ES
 	unsigned int attachments[] = {
-		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2
+		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
 	};
 	glDrawBuffers(sizeof(attachments) / sizeof(unsigned int), attachments);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -142,6 +169,7 @@ void G_Buffer::clear(Vector4d color) noexcept {
 	glClearTexImage(albedo_buffer, 0, GL_RGBA, GL_UNSIGNED_BYTE, &f.x);
 	glClearTexImage(normal_buffer, 0, GL_RGBA, GL_FLOAT, nullptr);
 	glClearTexImage(pos_buffer, 0, GL_RGBA, GL_FLOAT, nullptr);
+	//glClearTexImage(mask_texture.get_texture_id(), 0, GL_RED, GL_FLOAT, nullptr);
 #endif
 }
 
@@ -161,6 +189,8 @@ void G_Buffer::set_active_texture() noexcept {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, normal_buffer);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pos_buffer);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tag_buffer);
 }
 
 void G_Buffer::set_disable_texture() noexcept {
@@ -170,6 +200,8 @@ void G_Buffer::set_disable_texture() noexcept {
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 
@@ -328,16 +360,14 @@ uint32_t HDR_Buffer::get_depth_id() const noexcept {
 	return rbo_buffer;
 }
 
-Texture_Buffer::Texture_Buffer(Vector2u size) noexcept {
+Texture_Buffer::Texture_Buffer(Vector2u size, std::string label) noexcept {
 	glGenFramebuffers(1, &frame_buffer);
-	auto label = "texture_target_frame_buffer";
 
 	texture.create_rgb_null(size);
 	texture.set_parameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	texture.set_parameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #ifdef GL_DEBUG
-	label = "texture_target";
-	glObjectLabel(GL_TEXTURE, texture.get_texture_id(), (GLsizei)strlen(label) - 1, label);
+	glObjectLabel(GL_TEXTURE, texture.get_texture_id(), label.size(), label.data());
 #endif
 	// attach buffers
 	glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer);
@@ -408,8 +438,8 @@ void Texture_Buffer::clear(Vector4f color) noexcept {
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void Texture_Buffer::set_active_texture() noexcept {
-	glActiveTexture(GL_TEXTURE0);
+void Texture_Buffer::set_active_texture(size_t n) noexcept {
+	glActiveTexture(GL_TEXTURE0 + n);
 	glBindTexture(GL_TEXTURE_2D, texture.get_texture_id());
 }
 
@@ -424,9 +454,17 @@ SSAO_Buffer::SSAO_Buffer(Vector2u size) noexcept {
 	glGenFramebuffers(1, &ssao_buffer);
 	glGenFramebuffers(1, &ssao_blur_buffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, ssao_buffer);
+#ifdef GL_DEBUG
+	auto label = "SSAO Buffer";
+	glObjectLabel(GL_FRAMEBUFFER, ssao_buffer, (GLsizei)strlen(label) - 1, label);
+#endif
 
 	glGenTextures(1, &color_buffer);
 	glBindTexture(GL_TEXTURE_2D, color_buffer);
+#ifdef GL_DEBUG
+	label = "SSAO Texture";
+	glObjectLabel(GL_TEXTURE, color_buffer, (GLsizei)strlen(label) - 1, label);
+#endif
 	glTexImage2D(
 		GL_TEXTURE_2D,
 		0,
@@ -503,8 +541,8 @@ void SSAO_Buffer::render_quad() noexcept {
 	glBindVertexArray(0);
 }
 
-void SSAO_Buffer::set_active_texture_for_blur() noexcept {
-	glActiveTexture(GL_TEXTURE0);
+void SSAO_Buffer::set_active_texture_for_blur(size_t n) noexcept {
+	glActiveTexture(GL_TEXTURE0 + n);
 	glBindTexture(GL_TEXTURE_2D, color_buffer);
 }
 

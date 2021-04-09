@@ -252,6 +252,10 @@ namespace xstd {
 		}
 	};
 
+	template<typename T> T lerp(T t, T a, T b) noexcept {
+		return a * (t - 1) + b * t;
+	}
+
 	template< typename T, typename Pred > typename std::vector<T>::iterator
 	insert_sorted(std::vector<T> & vec, T const& item, Pred pred) {
 		return vec.insert(

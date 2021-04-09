@@ -105,6 +105,21 @@ void Texture::create_depth_null(Vector2u size) const {
 	);
 	glGenerateMipmap(GL_TEXTURE_2D);
 }
+void Texture::create_mask_null(Vector2u size) const {
+	return;
+	bind();
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_R32UI,
+		(GLsizei)size.x,
+		(GLsizei)size.y,
+		0,
+		GL_RED_INTEGER,
+		GL_UNSIGNED_INT,
+		NULL
+	);
+}
 
 void Texture::set_parameteri(int parameter, int value) const {
 	bind();

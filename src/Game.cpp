@@ -91,7 +91,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 		}
 
 		if (in.key_infos[Keyboard::O].pressed) {
-			game.boards[game.controller.board_id].spawn_unit(Unit());
+			for (size_t i = 0; i < 500; ++i) game.boards[game.controller.board_id].spawn_unit(Unit());
 		}
 
 		if (in.mouse_infos[Mouse::Left].just_pressed)
@@ -106,6 +106,9 @@ Game_Request game_update(Game& game, double dt) noexcept {
 		int temp = 0;
 
 		ImGui::Begin("Game Debug", &game.gui.game_debug_open);
+		if (ImGui::CollapsingHeader("SSAO")) {
+			ImGui::SliderSize("radius", &game.gui.edge_blur, 0, 10);
+		}
 		ImGui::Checkbox("render path", &board.gui.render_path);
 		ImGui::Checkbox("depth buffer", &game.gui.debug_depth_buffer);
 		ImGui::SliderFloat("Cam speed", &game.camera_speed, 0, 10);
@@ -118,6 +121,9 @@ Game_Request game_update(Game& game, double dt) noexcept {
 		}
 		ImGui::SliderFloat("Fov", &game.camera3d.fov, 0, 180);
 		ImGui::Text("Fps %zu", (size_t)(1 / dt));
+		size_t units = 0;
+		for (auto& x : game.boards) units += x.units.size();
+		ImGui::Text("Units: %zu", units);
 		ImGui::End();
 	}
 
@@ -184,11 +190,13 @@ Game_Request game_update(Game& game, double dt) noexcept {
 void game_render(Game& game, render::Orders& order) noexcept {
 	order.push(game.camera3d);
 
+	order.push(render::Push_Batch());
 	render::Model m;
 	m.object_id = asset::Object_Id::Methane;
 	m.texture_id = asset::Texture_Id::Palette;
 	m.pos = V3F(game.boards[game.controller.board_id].pos, 1.f);
 	m.scale = 0.2f;
+	m.bitmask |= render::Model::Edge_Glow;
 	order.push(m);
 
 	m.object_id = asset::Object_Id::Methane;
@@ -204,6 +212,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 	m.pos.x -= 1;
 	m.scale = 0.1f;
 	order.push(m);
+	order.push(render::Pop_Batch());
 
 	for (size_t i = 0; i < game.boards.size(); ++i) {
 		auto& board = game.boards[i];

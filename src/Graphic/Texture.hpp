@@ -31,6 +31,7 @@ public:
 	bool load_file(std::filesystem::path path);
 	void create_rgb_null(Vector2u size) const;
 	void create_depth_null(Vector2u size) const;
+	void create_mask_null(Vector2u size) const;
 
 	void set_parameteri(int parameter, int value) const;
 	void set_parameterfv(int parameter, float* value) const;
