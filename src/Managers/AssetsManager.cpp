@@ -312,6 +312,7 @@ void Store_t::load_known_shaders() noexcept {
 		Primitive_3D_Batched
 	);
 	X("assets/shaders/simple.vertex", "assets/shaders/edge_glow.fragment", "", Edge_Glow);
+	X("assets/shaders/simple.vertex", "assets/shaders/ssao.fragment", "", SSAO);
 	X("assets/shaders/simple.vertex", "assets/shaders/blur.fragment", "", Blur);
 	X("assets/shaders/light.vertex",   "assets/shaders/light.fragment",   "", Light  );
 	X("assets/shaders/hdr.vertex",     "assets/shaders/hdr.fragment",     "", HDR    );
@@ -333,6 +334,8 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/methane.ply", Methane);
 	X("assets/model/empty_tile.ply", Empty_Tile);
 	X("assets/model/range1.ply", Range1);
+	X("assets/model/proj.ply", Projectile);
+	X("assets/model/sharp.ply", Sharp);
 #undef X
 }
 

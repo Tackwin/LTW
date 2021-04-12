@@ -65,10 +65,10 @@ Vector2f render::Camera3D::project(Vector2f mouse) noexcept {
 	Vector4f ray_nds = { ray.x, ray.y, 1, 0 };
 	Vector4f ray_clip = { ray_nds.x, ray_nds.y, 1, 0 };
 	auto ray_eye = (*get_projection().invert()) * ray_clip;
-	ray_eye.z = 1;
+	ray_eye.z = -1;
 	ray_eye.w = 0;
 	auto ray_world = (*get_view().invert()) * ray_eye;
-	ray = Vector3f{ ray_world.x, ray_world.y, ray_world.z }.normalize();
+	ray = Vector3f{ ray_world.x, ray_world.y, -ray_world.z }.normalize();
 
 	return Rayf{pos, ray}.intersect_plane();
 }
@@ -1333,7 +1333,6 @@ void render::immediate(std::span<Model> models) noexcept {
 	size_t shader_id = models.front().shader_id;
 	if (!shader_id) shader_id = asset::Shader_Id::Default_3D_Batched;
 
-
 	auto& cam = current_camera.Camera3D_;
 	auto& texture = asset::Store.get_albedo(models.front().texture_id);
 	auto& object = asset::Store.get_object(models.front().object_id);
@@ -1364,13 +1363,41 @@ void render::immediate(std::span<Model> models) noexcept {
 #endif
 	}
 
+	glBindVertexArray(vao);
+	glBindBuffer(vertices.target, vertices.buffer);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)0);
+
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)12);
+
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)24);
+
+	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, 1, GL_UNSIGNED_INT, GL_FALSE, GPU_Instance_Size, (void*)0);
+
+	vertex_attrib_matrix(4, 4, GPU_Instance_Size);
+
+	texture.bind(5);
+	shader.use();
+	shader.set_texture(5);
+	shader.set_uniform("VP", cam.get_VP());
+
+	constexpr size_t Batch_Size = 50'000;
+
+	for (size_t i = 0; i < models.size(); i += Batch_Size) {
+
+	auto batch = std::span<Model>(models.begin() + i, std::min(models.size() - i, Batch_Size));
+
 	Matrix4f VP = cam.get_VP();
 
-	auto& i = instance_data;
 	instance_data.clear();
-	instance_data.resize(models.size() * GPU_Instance_Size);
+	instance_data.resize(batch.size() * GPU_Instance_Size);
 	size_t off = 0;
-	for (auto& x : models) {
+	for (auto& x : batch) {
 		Vector4f c = V4F(1);
 		uint32_t tag = x.object_id;
 		auto M = Matrix4f::translation(x.pos) * Matrix4f::scale({x.scale, x.scale, x.scale});
@@ -1389,35 +1416,11 @@ void render::immediate(std::span<Model> models) noexcept {
 		GL_STATIC_DRAW
 	);
 
-	glBindVertexArray(vao);
-	glBindBuffer(vertices.target, vertices.buffer);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)0);
-
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)12);
-
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)24);
-
-	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(3, 1, GL_UNSIGNED_INT, GL_FALSE, GPU_Instance_Size, (void*)0);
-
-
-	vertex_attrib_matrix(4, 4, GPU_Instance_Size);
-
-	texture.bind(5);
-	shader.use();
-	shader.set_texture(5);
-	shader.set_uniform("V", cam.get_view());
-	shader.set_uniform("P", cam.get_projection());
-
 	glBindBuffer(indices.target, indices.buffer);
 	glDrawElementsInstanced(
-		GL_TRIANGLES, object.faces.size(), GL_UNSIGNED_SHORT, (void*)0, models.size()
+		GL_TRIANGLES, object.faces.size(), GL_UNSIGNED_SHORT, (void*)0, batch.size()
 	);
 
+	}
 	for (size_t i = 0; i < 8; ++i) glDisableVertexAttribArray(i);
 }

@@ -102,13 +102,15 @@ vec3 light_pixel(vec2 pix) {
 	for (int i = 0; i < n_light_dirs; i++) {
 		vec3 L = light_dirs[i].dir;
 
-		float factor = max(dot(N, L), 0.01) * light_dirs[i].intensity;
+		float factor = max(dot(N, L), 0.00);
+		factor *= factor;
+		factor *= light_dirs[i].intensity;
 
 		factor = pow(abs(factor), 0.5);
 
 		result =
 			result +
-			albedo.rgb * light_dirs[i].color * factor;
+			albedo.rgb * light_dirs[i].color * factor * 1;
 	}
 
 	return result;
@@ -138,6 +140,7 @@ void main() {
 		frag_color = vec4(texture_fetch(buffer_position, text_coord).w);
 	}
 
-	//frag_color += texture(buffer_ssao, text_coord);
+	//frag_color = vec4(texture_fetch(buffer_position, text_coord).zzz, 1);
+	frag_color.xyz += vec3(0.1 * pow(texture(buffer_ssao, text_coord).x, 5));
 	//oofrag_color.rgb = texture_fetch(buffer_tag, text_coord).rgb;
 }

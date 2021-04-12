@@ -192,18 +192,18 @@ struct Vector : public __vec_member<D, T> {
 		std::default_random_engine rng = std::default_random_engine()
 		) {
 		Vector<D, T> r;
-        
+
 		if constexpr (std::is_integral_v<T>) {
 			for (size_t i = 0u; i < D; ++i) {
 				r[i] = std::uniform_int_distribution<T>(min[i], max[i])(rng);
 			}
 			return r;
 		}
-        
+
 		for (size_t i = 0u; i < D; ++i) {
 			r[i] = std::uniform_real_distribution<T>(min[i], max[i])(rng);
 		}
-        
+
 		return r;
 	}
 #pragma endregion
@@ -224,6 +224,10 @@ struct Vector : public __vec_member<D, T> {
 	__vec_member<3, T>(x, y, z)
 	{}
 
+	template<size_t Dp = D>
+		constexpr Vector(Vector<2, T> v2, std::enable_if_t<Dp == 3, T> z) :
+	__vec_member<3, T>(v2.x, v2.y, z)
+	{}
 
     
 	template<size_t Dp = D>

@@ -1,0 +1,75 @@
+#version 450 core
+out vec4 FragColor;
+
+in vec2 TexCoords;
+
+uniform sampler2DMS gPosition;
+uniform sampler2DMS gNormal;
+uniform sampler2D texNoise;
+
+uniform vec3 samples[512];
+
+uniform int kernelSize;
+uniform float radius;
+uniform float bias;
+
+// tile noise texture over screen based on screen dimensions divided by noise size
+uniform vec2 noiseScale; 
+
+uniform mat4 projection;
+uniform mat4 view;
+
+vec4 texture_fetch(sampler2DMS tex, vec2 c) {
+	vec4 ret;
+	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
+	int samples = textureSamples(tex);
+	for (int i = 0; i < 1; ++i) {
+		ret += texelFetch(tex, tex_pixel, i);
+	}
+	return ret / float(samples);
+}
+float linearize_depth(float d,float zNear,float zFar)
+{
+    return zNear * zFar / (zFar + d * (zNear - zFar));
+}
+
+void main() {
+    // get input for SSAO algorithm
+    vec3 fragPos = (texture_fetch(gPosition, TexCoords) * view).xyz;
+    vec3 normal = texture_fetch(gNormal, TexCoords).xyz;
+    vec3 randomVec = texture(texNoise, TexCoords * noiseScale).xyz;
+
+    // create TBN change-of-basis matrix: from tangent-space to view-space
+    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+    vec3 bitangent = cross(normal, tangent);
+    mat3 TBN = mat3(tangent, bitangent, normal);
+    
+    // iterate over the sample kernel and calculate occlusion factor
+    float occlusion = 0.0;
+
+    int at = 0;
+    int n = kernelSize;
+    for(int i = at; i < at + n; ++i) {
+        // get sample position
+        vec3 ssao_sample = TBN * samples[i]; // from tangent to view-space
+        ssao_sample = fragPos + ssao_sample * radius; 
+        
+        // project sample position (to sample texture) (to get position on screen/texture)
+        vec4 offset = vec4(ssao_sample, 1.0);
+        offset = offset * projection; // from view to clip-space
+        offset.xyz /= offset.w; // perspective divide
+        offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
+        
+        // get sample depth
+        float sampleDepth = (texture_fetch(gPosition, offset.xy) * view).z; // get depth value of kernel sample
+        //FragColor = vec4(vec3(linearize_depth(fragPos.z, 0.1, 500)), 1);
+        //FragColor = vec4(vec3(linearize_depth(sampleDepth, 0.1, 500)), 1);
+
+        // range check & accumulate
+        float rangeCheck = smoothstep(0.0, radius / abs(fragPos.z - sampleDepth), 1.0);
+        occlusion += (sampleDepth >= ssao_sample.z + bias ? 1.0 : 0.0);// * rangeCheck;           
+    }
+    occlusion = occlusion / n;
+    
+    FragColor = vec4(vec3(occlusion), 1);
+}

@@ -44,14 +44,16 @@ void main() {
     vec3 normal   = texture_fetch(buffer_normal, TexCoords).xyz;
     if (normal.z == 1) discard;
 
-    float edge_width = 3;
+    float edge_width = 5;
     float edge_mult = 1;
-    if (length(frag_pos - cam_pos) > 1.0) {
-        edge_mult = 0.25 / length(frag_pos - cam_pos);
+
+    float d = length(frag_pos - cam_pos);
+    if (d > 1.0) {
+        edge_mult = 1.0 / (d + 0.1 * (d - 1));
     }
 
     float dt_drag_pos = length(diff(buffer_position, TexCoords, edge_width));
     if (dt_drag_pos > 1) discard;
 
-    FragColor = vec4(diff(buffer_normal, TexCoords, edge_width), 1.0);
+    FragColor = vec4(edge_mult * diff(buffer_normal, TexCoords, edge_width), 1.0);
 }

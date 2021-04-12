@@ -93,6 +93,15 @@ struct Rectangle_t {
 	Rectangle_t(Rectangle_t&&) = default;
 	Rectangle_t& operator=(Rectangle_t&&) = default;
 
+	constexpr Rectangle_t<T> canonical() const noexcept {
+		auto ret = *this;
+		ret.x = std::min(x, x + w);
+		ret.y = std::min(y, y + h);
+		ret.w = std::abs(w);
+		ret.h = std::abs(h);
+		return ret;
+	}
+
 	constexpr Vector2f get_normal_to(Rectangle_t<T> r) noexcept {
 		std::array<std::tuple<float, Vector2f>, 4> arr;
 		arr[0] = {std::abs(x + w - r.x),     { +1,  0 }};

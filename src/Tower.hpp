@@ -7,11 +7,20 @@
 #include "Managers/AssetsManager.hpp"
 
 struct Tower_Base {
-	Vector2u tile_pos;
-	Vector2u tile_size = {1, 1};
+	union {
+		Rectangleu tile_rec;
+		struct {
+			Vector2u tile_pos;
+			Vector2u tile_size = {1, 1};
+		};
+	};
 	Vector4f color = {1, 0, 0, 1};
 
 	size_t object_id = 0;
+
+	size_t gold_cost = 5;
+
+	Tower_Base() noexcept {}
 };
 
 struct Archer : public Tower_Base {
@@ -22,6 +31,7 @@ struct Archer : public Tower_Base {
 
 	Archer() noexcept {
 		color = {1, 0, 0, 1};
+		tile_size = {1, 1};
 		object_id = asset::Object_Id::Range1;
 	}
 };
@@ -30,7 +40,11 @@ struct Sharp : public Tower_Base {
 	float range  = 1.0f;
 	float damage = 0.1f;
 
-	Sharp() noexcept { color = {1, 1, 0, 1}; }
+	Sharp() noexcept {
+		color = {1, 1, 0, 1};
+		tile_size = {2, 2};
+		object_id = asset::Object_Id::Sharp;
+	}
 };
 
 #define TOWER_LIST(X) X(Archer) X(Sharp)

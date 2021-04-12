@@ -37,9 +37,9 @@ struct Projectile {
 
 	Vector2f pos;
 	Vector4f color;
-	float r = 0.05f;
-	float speed = 20.f;
-	float damage = 0.1f;
+	float r = 0.1f;
+	float speed = 5.f;
+	float damage = 0.5f;
 
 	bool to_remove = false;
 };
@@ -51,9 +51,13 @@ struct Unit {
 
 	size_t current_tile = 0;
 	Vector2f pos;
-	float speed = 5.f;
+	float speed = 0.5f;
 
 	float health = 1.f;
+
+	size_t income = 1;
+	size_t cost   = 5;
+	size_t batch  = 5;
 
 	bool to_remove = false;
 };
@@ -64,7 +68,7 @@ struct Board {
 	} gui;
 
 	Vector2f pos = {0, 0};
-	Vector2u size = { 20, 50 };
+	Vector2u size = { 16, 50 };
 	float tile_size = 0.49f;
 	float tile_padding = 0.01f;
 
@@ -75,6 +79,8 @@ struct Board {
 	xstd::Pool<Unit> units;
 	xstd::Pool<Tower> towers;
 	xstd::Pool<Projectile> projectiles;
+
+	size_t tower_selected = 0;
 
 	std::vector<size_t> next_tile;
 	struct Path_Construction {
@@ -94,6 +100,7 @@ struct Board {
 	Tile& tile(Vector2u pos) noexcept;
 	Rectanglef tile_box(Vector2u pos) noexcept;
 	Rectanglef tile_box(size_t idx) noexcept { return tile_box({ idx % size.x, idx / size.x }); }
+	Rectanglef tower_box(const Tower& tower) noexcept;
 
 	void soft_compute_paths() noexcept;
 	void compute_paths() noexcept;
@@ -103,6 +110,10 @@ struct Board {
 
 	void insert_tower(Tower t) noexcept;
 	void remove_tower(Vector2u p) noexcept;
+	void remove_tower(Tower& p) noexcept;
 
 	void spawn_unit(Unit u) noexcept;
+
+	float bounding_tile_size() noexcept { return tile_size + tile_padding; };
+	bool can_place_at(Rectangleu zone) noexcept;
 };

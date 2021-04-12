@@ -8,51 +8,57 @@
 #include "Math/Rectangle.hpp"
 
 #include "Managers/InputsManager.hpp"
+#include "Tower.hpp"
+
+enum class Ui_State {
+	Null,
+	Main,
+	Build,
+	Up,
+	Left,
+	Down,
+	Right,
+	Archer_Build,
+	Splash_Build,
+	Cancel,
+	Send,
+	Send_First,
+	Sell,
+	Count
+};
+using Ui_Table = std::array<Ui_State, 4*4>;
+#define TABLE(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) {\
+	(m), (n), (o), (p),\
+	(i), (j), (k), (l),\
+	(e), (f), (g), (h),\
+	(a), (b), (c), (d)\
+}
 
 struct Action {
 	static constexpr size_t N = 4;
-	enum class State {
-		Null,
-		Main,
-		Build,
-		Up,
-		Left,
-		Down,
-		Right,
-		Archer_Build,
-		Splash_Build,
-		Cancel,
-		Send,
-		Send_First,
-		Count
-	};
+	static constexpr Ui_Table Main_Table = TABLE(
+		Ui_State::Null,    Ui_State::Null, Ui_State::Null,  Ui_State::Null,
+		Ui_State::Cancel,  Ui_State::Up,   Ui_State::Null,  Ui_State::Null,
+		Ui_State::Left,    Ui_State::Down, Ui_State::Right, Ui_State::Null,
+		Ui_State::Build,   Ui_State::Send, Ui_State::Null,  Ui_State::Null
+	);
+	static constexpr Ui_Table Build_Table = TABLE(
+		Ui_State::Null,         Ui_State::Null,         Ui_State::Null, Ui_State::Null,
+		Ui_State::Null,         Ui_State::Null,         Ui_State::Null, Ui_State::Null,
+		Ui_State::Archer_Build, Ui_State::Splash_Build, Ui_State::Null, Ui_State::Null,
+		Ui_State::Main,         Ui_State::Null,         Ui_State::Null, Ui_State::Null
+	);
+	static constexpr Ui_Table Send1_Table = TABLE(
+		Ui_State::Null,       Ui_State::Null, Ui_State::Null, Ui_State::Null,
+		Ui_State::Send_First, Ui_State::Null, Ui_State::Null, Ui_State::Null,
+		Ui_State::Null,       Ui_State::Null, Ui_State::Null, Ui_State::Null,
+		Ui_State::Main,       Ui_State::Null, Ui_State::Null, Ui_State::Null
+	);
 
-	using Tranistion_Table =
-		std::array<State, N*N>;
-
-	static constexpr Tranistion_Table Main_Table = {
-		State::Build,   State::Send, State::Null,  State::Null,
-		State::Left,    State::Down, State::Right, State::Null,
-		State::Cancel,  State::Up,   State::Null,  State::Null,
-		State::Null,    State::Null, State::Null,  State::Null
-	};
-	static constexpr Tranistion_Table Build_Table = {
-		State::Main,         State::Null,         State::Null, State::Null,
-		State::Archer_Build, State::Splash_Build, State::Null, State::Null,
-		State::Null,         State::Null,         State::Null, State::Null,
-		State::Null,         State::Null,         State::Null, State::Null
-	};
-	static constexpr Tranistion_Table Send1_Table = {
-		State::Main,       State::Null, State::Null, State::Null,
-		State::Null,       State::Null, State::Null, State::Null,
-		State::Send_First, State::Null, State::Null, State::Null,
-		State::Null,       State::Null, State::Null, State::Null
-	};
-
-	inline static std::unordered_map<State, Tranistion_Table> Button_Nav_Map = {
-		{State::Main,  Main_Table},
-		{State::Build, Build_Table},
-		{State::Send,  Send1_Table}
+	inline static std::unordered_map<Ui_State, Ui_Table> Button_Nav_Map = {
+		{Ui_State::Main,  Main_Table},
+		{Ui_State::Build, Build_Table},
+		{Ui_State::Send,  Send1_Table}
 	};
 	
 	float button_content = 0.18f / N;
@@ -71,11 +77,15 @@ struct Action {
 	};
 
 
-	std::unordered_map<State, Button> state_button;
-	State current_state = State::Main;
+	std::unordered_map<Ui_State, Button> state_button;
+	Ui_State current_state = Ui_State::Main;
 
 	Rectanglef get_zone() noexcept;
 	void back_to_main() noexcept;
+};
+
+namespace Tower_Interface {
+	Ui_Table get_table(const Tower& tower) noexcept;
 };
 
 struct Interface {
@@ -90,6 +100,10 @@ struct Interface {
 
 	Ressource_Info ressources;
 
+	float dragging = false;
+	Rectanglef drag_selection;
+
+	Tower tower_selected = nullptr;
 
 	bool input(const Input_Info& info) noexcept;
 	void update(double dt) noexcept;

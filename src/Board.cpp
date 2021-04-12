@@ -104,7 +104,7 @@ void Board::render(render::Orders& order) noexcept {
 	m.shader_id = asset::Shader_Id::Default_3D_Batched;
 	m.texture_id = asset::Texture_Id::Palette;
 	order.push(render::Push_Batch());
-	for2(i, j, size) {
+	for2(i, j, size) if (tiles[i + j * size.x].typecheck(Tile::Empty_Kind)) {
 		m.pos = V3F(tile_box({i, j}).center() + pos, 0);
 		m.scale = tile_box({i, j}).size.x;
 		order.push(m);
@@ -175,18 +175,19 @@ void Board::render(render::Orders& order) noexcept {
 	for (auto& x : units) {
 		m.pos.x = x.pos.x + pos.x;
 		m.pos.y = x.pos.y + pos.y;
-		m.pos.z = std::sinf(x.life_time) * 0.1f + 0.15f;
+		m.pos.z = std::sinf(x.life_time) * 0.1f + 0.3f;
 		order.push(m, 0.02f);
 	}
 	order.push(render::Pop_Batch());
 
+	m.object_id = asset::Object_Id::Projectile;
+	order.push(render::Push_Batch());
 	for (auto& x : projectiles) {
-		circle.r = x.r;
-		circle.pos = x.pos + pos;
-		circle.color = x.color;
-
-		order.push(circle, 0.03f);
+		m.scale = x.r;
+		m.pos = V3F(x.pos + pos, 1);
+		order.push(m);
 	}
+	order.push(render::Pop_Batch());
 
 	thread_local std::unordered_map<size_t, std::vector<render::Model>> models_by_object;
 	for (auto& [_, x] : models_by_object) x.clear();
@@ -196,8 +197,12 @@ void Board::render(render::Orders& order) noexcept {
 		m.object_id = x->object_id;
 		m.shader_id = asset::Shader_Id::Default_3D_Batched;
 		m.texture_id = asset::Texture_Id::Palette;
-		m.pos = V3F(tile_box(x->tile_pos).center() + pos, 0);
-		m.scale = 0.5f;
+		m.scale = x->tile_size.x * tile_size;
+		m.pos = Vector3f(
+			Rectanglef{tile_box(x->tile_pos).pos, tile_box(x->tile_pos).size * x->tile_size.x}.center(), 0
+		);
+		m.pos.x += pos.x;
+		m.pos.y += pos.y;
 		m.bitmask = 0;
 		models_by_object[m.object_id].push_back(m);
 	}
@@ -306,19 +311,29 @@ std::optional<Vector2u> Board::get_tile_at(Vector2f x) noexcept {
 
 void Board::insert_tower(Tower t) noexcept {
 	auto pos = t->tile_pos;
-	if (pos.y < cease_zone_height) return;
-	if (size.y - pos.y <= start_zone_height) return;
 
 	towers.push_back(std::move(t));
-	tiles[pos.x + pos.y * size.x] = Block{};
+	for2 (i, j, t->tile_size) tiles[(pos.x + i) + (pos.y + j) * size.x] = Block{};
 	invalidate_paths();
 }
 
 void Board::remove_tower(Vector2u p) noexcept {
-	tiles[p.x + p.y * size.x] = Empty{};
+	Tower* to_remove = nullptr;
 	for (auto& x : towers) {
 		if (x->tile_pos.x <= p.x && p.x < x->tile_pos.x + x->tile_size.x)
-		if (x->tile_pos.y <= p.y && p.y < x->tile_pos.y + x->tile_size.y) x.to_remove = true;
+		if (x->tile_pos.y <= p.y && p.y < x->tile_pos.y + x->tile_size.y) to_remove = &x;
+	}
+
+	if (!to_remove) return;
+	remove_tower(*to_remove);
+}
+
+void Board::remove_tower(Tower& to_remove) noexcept {
+	to_remove.to_remove = true;
+	auto& t = to_remove;
+	for (size_t i = 0; i < t->tile_size.x; ++i)
+	for (size_t j = 0; j < t->tile_size.y; ++j) {
+		tiles[(t->tile_pos.x + i) + (t->tile_pos.y + j) * size.x] = Empty{};
 	}
 	invalidate_paths();
 }
@@ -345,7 +360,30 @@ void Board::spawn_unit(Unit u) noexcept {
 
 	u.current_tile = (size_t)(first + xstd::random() * (final - first));
 	u.pos = tile_box({u.current_tile % size.x, u.current_tile / size.x}).center();
-	u.speed = 5.f;
 
 	units.push_back(u);
+}
+
+bool Board::can_place_at(Rectangleu zone) noexcept {
+	if (zone.y < cease_zone_height) return false;
+	if (zone.y + zone.h > size.y - start_zone_height) return false;
+
+	for (size_t i = zone.x; i < zone.x + zone.w; ++i)
+	for (size_t j = zone.y; j < zone.y + zone.h; ++j) {
+		if (!tiles[i + j * size.x].typecheck(Tile::Empty_Kind)) return false;
+	}
+
+	return true;
+}
+
+Rectanglef Board::tower_box(const Tower& tower) noexcept {
+	Rectanglef rec;
+	rec.pos = pos;
+	rec.x -= size.x * bounding_tile_size() / 2.f;
+	rec.y -= size.y * bounding_tile_size() / 2.f;
+	rec.x += tower->tile_rec.x * bounding_tile_size();
+	rec.y += tower->tile_rec.y * bounding_tile_size();
+	rec.w = tower->tile_rec.w * bounding_tile_size();
+	rec.h = tower->tile_rec.h * bounding_tile_size();
+	return rec;
 }

@@ -27,6 +27,8 @@ namespace details {
 #define V3F(v2, z) Vector3f{(v2).x, (v2).y, (float)(z)}
 #define V4F(x) Vector4f{(x), (x), (x), (x)}
 
+#define AT2(i, j, w) (i) + (j) * (w)
+
 #define dbgbool(x) printf(#x " = %s\n", (x) ? "true" : "false");
 #define dbgstr(x) printf(#x " = %s\n", x);
 
@@ -186,7 +188,7 @@ namespace xstd {
 
 	template<typename T>
 	struct Pool {
-		inline static size_t ID = 0;
+		inline static size_t ID = 1;
 		std::vector<size_t> indexes;
 		std::vector<T> pool;
 		std::unordered_map<size_t, size_t> pool_ids;
@@ -215,6 +217,7 @@ namespace xstd {
 			pool_ids.erase(indexes[idx]);
 			for (auto& [_, x] : pool_ids) if (x > idx) x--;
 			pool.erase(std::begin(pool) + idx);
+			indexes.erase(std::begin(indexes) + idx);
 		}
 
 		auto begin() noexcept {

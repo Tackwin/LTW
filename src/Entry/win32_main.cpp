@@ -116,6 +116,9 @@ struct Render_Param {
 	float gamma = 0.7f;
 	float exposure = 1.0f;
 	size_t n_samples = 4;
+
+	float ssao_radius = 1.f;
+	float ssao_bias = 1.f;
 };
 void render_orders(render::Orders& orders, Render_Param param) noexcept;
 
@@ -311,6 +314,8 @@ void windows_loop() noexcept {
 		ImGui::SliderFloat("Gamma   ", &render_param.gamma    , 0, 2);
 		ImGui::SliderFloat("Exposure", &render_param.exposure , 0, 2);
 		ImGui::SliderSize ("Samples ", &render_param.n_samples, 1, 16);
+		ImGui::SliderFloat("SSAO R  ", &render_param.ssao_radius, 0, 1);
+		ImGui::SliderFloat("SSAo bias ", &render_param.ssao_bias, 0, 1);
 		ImGui::End();
 	}
 
@@ -533,6 +538,59 @@ void APIENTRY opengl_debug(
 	}
 }
 
+
+std::vector<Vector3f> generate_ssao_samples(size_t n) noexcept {
+	std::uniform_real_distribution<float> unit(0.f, 1.f);
+	std::uniform_real_distribution<float> angle(0.f, 3.1415926);
+	std::default_random_engine generator;
+	std::vector<Vector3f> result;
+	for (unsigned int i = 0; i < n; ++i) {
+		float angles[2] = { angle(generator), angle(generator) };
+		auto sample = Vector3f::createUnitVector(angles);
+		sample *= unit(generator);
+		float scale = i / (float)n;
+		scale = xstd::lerp(0.1f, 1.0f, scale * scale);
+		sample *= scale;
+
+		result.push_back(sample);
+	}
+	return result;
+}
+
+uint32_t get_noise_texture() noexcept {
+	static std::optional<uint32_t> noise_texture;
+	if (!noise_texture) {
+
+		std::uniform_real_distribution<float> float_dist(-1, 1);
+		std::default_random_engine generator(0);
+
+		std::vector<Vector3f> noise;
+
+		for (unsigned int i = 0; i < 16; i++) {
+			Vector3f noise_vec;
+			noise_vec.x = float_dist(generator);
+			noise_vec.z = float_dist(generator);
+			noise_vec.z = 1;
+
+			noise.push_back(noise_vec);
+		}
+		
+		noise_texture = 0;
+		glGenTextures(1, &*noise_texture);
+		glBindTexture(GL_TEXTURE_2D, *noise_texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, 4, 4, 0, GL_RGB, GL_FLOAT, &noise[0]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	}
+	return *noise_texture;
+}
+
+void render_world(render::Orders& orders, Render_Param param) noexcept;
+void render_ssao(G_Buffer& g_buffer, Render_Param param) noexcept;
+
 void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	auto buffer_size = Environment.buffer_size;
 	
@@ -542,9 +600,7 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	static G_Buffer       g_buffer(buffer_size);
 	static HDR_Buffer     hdr_buffer(buffer_size);
 
-	if (g_buffer.n_samples != param.n_samples){
-		g_buffer = G_Buffer(buffer_size, param.n_samples);
-	}
+	if (g_buffer.n_samples != param.n_samples) g_buffer = G_Buffer(buffer_size, param.n_samples);
 
 	glViewport(0, 0, (GLsizei)buffer_size.x, (GLsizei)buffer_size.y);
 
@@ -552,6 +608,116 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 	g_buffer.clear({});
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	render_world(orders, param);
+
+	ssao_buffer.set_active();
+	g_buffer.set_active_texture();
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+#if 1
+	auto& edge_shader = asset::Store.get_shader(asset::Shader_Id::Edge_Glow);
+	edge_shader.use();
+	edge_shader.set_uniform("buffer_normal", 1);
+	edge_shader.set_uniform("buffer_position", 2);
+	edge_shader.set_uniform("buffer_tag", 3);
+	edge_shader.set_uniform("cam_pos", game.camera3d.pos);
+#else
+
+	auto samples = generate_ssao_samples(64);
+	auto noise_texture = get_noise_texture();
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, noise_texture);
+
+	auto& ssao_shader = asset::Store.get_shader(asset::Shader_Id::SSAO);
+	ssao_shader.use();
+	ssao_shader.set_uniform("gNormal", 1);
+	ssao_shader.set_uniform("gPosition", 2);
+	ssao_shader.set_uniform("texNoise", 6);
+	ssao_shader.set_uniform("kernelSize", 64);
+	ssao_shader.set_uniform("radius", param.ssao_radius);
+	ssao_shader.set_uniform("bias", param.ssao_bias);
+	ssao_shader.set_uniform("noiseScale", (Vector2f)Environment.window_size / 4);
+	for (size_t i = 0; i < 64; ++i)
+		ssao_shader.set_uniform("samples[" + std::to_string(i) + "]", samples[i]);
+	ssao_shader.set_uniform("projection", game.camera3d.get_projection());
+	ssao_shader.set_uniform("view", game.camera3d.get_view());
+#endif
+
+	glDisable(GL_DEPTH_TEST);
+	ssao_buffer.render_quad();
+
+	blur_buffer.set_active();
+	ssao_buffer.set_active_texture(0);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
+	blur_shader.use();
+	blur_shader.set_uniform("radius", (int)game.gui.edge_blur);
+	blur_shader.set_uniform("image", 0);
+
+	blur_buffer.render_quad();
+
+	hdr_buffer.set_active();
+	g_buffer.set_active_texture();
+	blur_buffer.set_active_texture(10);
+	glClearColor(0.4f, 0.2f, 0.3f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Light);
+	shader.use();
+	shader.set_uniform("ambient_light", Vector4d{1, 1, 1, 1});
+	shader.set_uniform("ambient_intensity", 1.f);
+	shader.set_uniform("debug", game.gui.debug_depth_buffer ? 4 : 0);
+	shader.set_uniform("n_light_points", 0);
+	shader.set_uniform("n_light_dirs", 1);
+	shader.set_uniform("buffer_albedo", 0);
+	shader.set_uniform("buffer_normal", 1);
+	shader.set_uniform("buffer_position", 2);
+	shader.set_uniform("buffer_tag", 3);
+	shader.set_uniform("buffer_ssao", 10);
+
+	shader.set_uniform("light_dirs[0].intensity", 1.f);
+	shader.set_uniform("light_dirs[0].dir", Vector3f(0, 1, -1).normalize());
+	shader.set_uniform("light_dirs[0].color", Vector3f(0.8f, 0.8f, 1.f));
+
+	g_buffer.render_quad();
+
+	texture_target.set_active();
+	hdr_buffer.set_active_texture();
+
+	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
+	shader_hdr.use();
+	shader_hdr.set_uniform("gamma", param.gamma);
+	shader_hdr.set_uniform("exposure", param.exposure);
+	shader_hdr.set_uniform("hdr_texture", 0);
+	shader_hdr.set_uniform("transform_color", true);
+
+	Rectanglef viewport_rect{
+		0.f, 0.f, (float)Environment.window_size.x, (float)Environment.window_size.y
+	};
+	viewport_rect = viewport_rect.fitDownRatio({16, 9});
+
+	glViewport(
+		(Environment.window_size.x - (GLsizei)viewport_rect.w) / 2,
+		(Environment.window_size.y - (GLsizei)viewport_rect.h) / 2,
+		(GLsizei)viewport_rect.w,
+		(GLsizei)viewport_rect.h
+	);
+
+	hdr_buffer.render_quad();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	
+	shader_hdr.set_uniform("transform_color", false);
+	
+	texture_target.render_quad();
+	hdr_buffer.set_disable_texture();
+}
+
+void render_world(render::Orders& orders, Render_Param param) noexcept {
 	glEnable(GL_DEPTH_TEST);
 	thread_local std::vector<render::Order> cam_stack;
 	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
@@ -670,88 +836,4 @@ void render_orders(render::Orders& orders, Render_Param param) noexcept {
 		}
 	}
 	glDisable(GL_DEPTH_TEST);
-
-	ssao_buffer.set_active();
-	g_buffer.set_active_texture();
-
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	auto& edge_shader = asset::Store.get_shader(asset::Shader_Id::Edge_Glow);
-	edge_shader.use();
-	edge_shader.set_uniform("buffer_normal", 1);
-	edge_shader.set_uniform("buffer_position", 2);
-	edge_shader.set_uniform("buffer_tag", 3);
-	edge_shader.set_uniform("cam_pos", game.camera3d.pos);
-
-	glDisable(GL_DEPTH_TEST);
-	ssao_buffer.render_quad();
-
-	blur_buffer.set_active();
-	ssao_buffer.set_active_texture(0);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
-	blur_shader.use();
-	blur_shader.set_uniform("radius", (int)game.gui.edge_blur);
-	blur_shader.set_uniform("image", 0);
-
-	blur_buffer.render_quad();
-
-	hdr_buffer.set_active();
-	g_buffer.set_active_texture();
-	blur_buffer.set_active_texture(10);
-	glClearColor(0.4f, 0.2f, 0.3f, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Light);
-	shader.use();
-	shader.set_uniform("ambient_light", Vector4d{1, 1, 1, 1});
-	shader.set_uniform("ambient_intensity", 1.f);
-	shader.set_uniform("debug", game.gui.debug_depth_buffer ? 4 : 0);
-	shader.set_uniform("n_light_points", 0);
-	shader.set_uniform("n_light_dirs", 1);
-	shader.set_uniform("buffer_albedo", 0);
-	shader.set_uniform("buffer_normal", 1);
-	shader.set_uniform("buffer_position", 2);
-	shader.set_uniform("buffer_tag", 3);
-	shader.set_uniform("buffer_ssao", 10);
-
-	shader.set_uniform("light_dirs[0].intensity", 1.f);
-	shader.set_uniform("light_dirs[0].dir", Vector3f(0, 1, -1).normalize());
-	shader.set_uniform("light_dirs[0].color", Vector3f(0.8f, 0.8f, 1.f));
-
-	g_buffer.render_quad();
-
-	texture_target.set_active();
-	hdr_buffer.set_active_texture();
-
-	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
-	shader_hdr.use();
-	shader_hdr.set_uniform("gamma", param.gamma);
-	shader_hdr.set_uniform("exposure", param.exposure);
-	shader_hdr.set_uniform("hdr_texture", 0);
-	shader_hdr.set_uniform("transform_color", true);
-
-	Rectanglef viewport_rect{
-		0.f, 0.f, (float)Environment.window_size.x, (float)Environment.window_size.y
-	};
-	viewport_rect = viewport_rect.fitDownRatio({16, 9});
-
-	glViewport(
-		(Environment.window_size.x - (GLsizei)viewport_rect.w) / 2,
-		(Environment.window_size.y - (GLsizei)viewport_rect.h) / 2,
-		(GLsizei)viewport_rect.w,
-		(GLsizei)viewport_rect.h
-	);
-
-	hdr_buffer.render_quad();
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-	
-	shader_hdr.set_uniform("transform_color", false);
-	
-	texture_target.render_quad();
-	hdr_buffer.set_disable_texture();
 }

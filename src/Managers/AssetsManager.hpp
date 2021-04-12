@@ -44,6 +44,7 @@ namespace asset {
 		inline static size_t Primitive_3D_Batched = 8;
 		inline static size_t Edge_Glow = 9;
 		inline static size_t Blur = 10;
+		inline static size_t SSAO = 11;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};
@@ -52,6 +53,8 @@ namespace asset {
 		inline static size_t Methane = 1;
 		inline static size_t Empty_Tile = 2;
 		inline static size_t Range1 = 2;
+		inline static size_t Projectile = 3;
+		inline static size_t Sharp = 4;
 	};
 
 

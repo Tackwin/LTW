@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <vector>
+#include <optional>
 
 #include "Graphic/Render.hpp"
 
@@ -13,12 +15,19 @@
 
 struct Player {
 	size_t gold = 0;
+	size_t income = 25;
 };
 
 struct Controller {
 	size_t board_id  = 0;
 	size_t player_id = 0;
 	Tower placing = nullptr;
+
+	std::optional<Vector2f> start_drag_selection;
+	Vector2f end_drag_selection;
+	bool ended_drag_selection = false;
+
+	size_t tower_selected = 0;
 };
 
 struct Game {
@@ -41,19 +50,16 @@ struct Game {
 	Input_Record input_record;
 	Interface interface;
 
-	render::Camera camera;
 	render::Camera3D camera3d;
 	float camera_speed = 1.f;
-	
+
 	Vector2f zqsd_vector;
 
-	size_t golds = 0;
+	float time_to_income = 0.f;
+	float income_interval = 15.f;
 
 	Game() noexcept {
-		camera.pos = {0, 0};
-		camera.frame_size = { 16, 9 };
-
-		camera3d.pos = {0, -10, 40};
+		camera3d.pos = {0, -12, 30};
 		camera3d.look_at({});
 	}
 
@@ -65,7 +71,7 @@ struct Game {
 #define EXTERN extern __declspec(dllexport)
 #else
 #define EXTERN extern
-#endif
+#endif	
 
 struct Game_Request {
 	bool confine_cursor = false;

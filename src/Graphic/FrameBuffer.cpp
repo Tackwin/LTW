@@ -64,7 +64,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	glTexImage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
-		GL_RGBA16F,
+		GL_RGBA32F,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
 		GL_TRUE
@@ -111,7 +111,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	glGenRenderbuffers(1, &depth_rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, depth_rbo);
 	glRenderbufferStorageMultisample(
-		GL_RENDERBUFFER, n_samples, GL_DEPTH_COMPONENT16, (GLsizei)size.x, (GLsizei)size.y
+		GL_RENDERBUFFER, n_samples, GL_DEPTH_COMPONENT32, (GLsizei)size.x, (GLsizei)size.y
 	);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rbo);
 	// finally check if framebuffer is complete
@@ -382,7 +382,7 @@ Texture_Buffer::Texture_Buffer(Vector2u size, std::string label) noexcept {
 
 	glGenRenderbuffers(1, &rbo_buffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo_buffer);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, (GLsizei)size.x, (GLsizei)size.y);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, (GLsizei)size.x, (GLsizei)size.y);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_buffer);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {

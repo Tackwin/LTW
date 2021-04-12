@@ -412,7 +412,7 @@ using Matrix4f = Matrix4<float>;
 
 inline Matrix4f perspective(float fov, float ratio, float f, float n) noexcept {
 	float uw = 1.f / std::tanf(fov / 2);
-	float uh = uw;
+	float uh = uw * ratio;
 
 	Matrix4f matrix;
 	matrix[0] = Vector4f{ uw, 0, 0, 0 };
