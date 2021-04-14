@@ -58,8 +58,8 @@ struct Game {
 	float camera_speed = 1.f;
 
 	size_t wave = 0;
-	float wave_timer = 10.f;
-	float wave_time = 10.f;
+	float wave_timer = 25.f;
+	float wave_time = 25.f;
 
 	Vector2f zqsd_vector;
 

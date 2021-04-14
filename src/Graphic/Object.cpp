@@ -49,6 +49,8 @@ std::optional<Object> Object::load_from_file(
 		cursor += 4;
 		obj.faces.push_back((std::uint16_t)*reinterpret_cast<std::uint32_t*>(file.data() + cursor));
 		cursor += 4;
+
+		
 	}
 
 	return obj;

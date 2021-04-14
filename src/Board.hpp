@@ -39,7 +39,7 @@ struct Projectile {
 	Vector2f pos;
 	Vector4f color;
 	float r = 0.1f;
-	float speed = 0.5f;
+	float speed = 5.f;
 	float damage = 0.5f;
 
 	bool to_remove = false;
@@ -66,6 +66,7 @@ struct Board {
 	size_t tower_selected = 0;
 
 	std::vector<size_t> next_tile;
+	std::vector<size_t> dist_tile;
 	struct Path_Construction {
 		std::vector<bool> closed;
 		std::vector<size_t> open;
@@ -81,6 +82,7 @@ struct Board {
 	void render(render::Orders& orders) noexcept;
 
 	Tile& tile(Vector2u pos) noexcept;
+	Rectanglef tile_box(Rectangleu rec) noexcept { return tile_box(rec.pos, rec.size); }
 	Rectanglef tile_box(Vector2u pos, Vector2u size = {1, 1}) noexcept;
 	Rectanglef tile_box(size_t idx) noexcept { return tile_box({ idx % size.x, idx / size.x }); }
 	Rectanglef tower_box(const Tower& tower) noexcept;
@@ -96,6 +98,8 @@ struct Board {
 	void remove_tower(Tower& p) noexcept;
 
 	void spawn_unit(Unit u) noexcept;
+
+	void pick_new_target(Archer& tower) noexcept;
 
 	float bounding_tile_size() noexcept { return tile_size + tile_padding; };
 	bool can_place_at(Rectangleu zone) noexcept;

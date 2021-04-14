@@ -37,7 +37,7 @@ void Board::update(double dt) noexcept {
 		x->pos += dt_vec * x->speed * dt;
 	}
 	for (auto& x : units) if (!x.to_remove) {
-		x.to_remove = x->health < 0;
+		x.to_remove = x->health <= 0;
 		if (x.to_remove) gold_gained += 1;
 	}
 
@@ -52,16 +52,25 @@ void Board::update(double dt) noexcept {
 			x.attack_cd -= dt;
 			if (x.attack_cd > 0) continue;
 
-			for (auto& y : units) if ((world_pos - y->pos).length2() < x.range * x.range) {
-				Projectile new_projectile;
-				new_projectile.from = tiles[i].id;
-				new_projectile.to = y.id;
+			Vector2f tower_pos = tile_box(x.tile_pos, x.tile_size).center();
+			auto r2 = x.range * x.range;
 
-				new_projectile.pos = world_pos;
-				new_projectile.color = x.color * 0.5f;
-				projectiles.push_back(new_projectile);
-				x.attack_cd = x.attack_speed;
-				break;
+			if (!units.exist(x.target_id) || tower_pos.dist_to2(units.id(x.target_id)->pos) > r2) {
+				pick_new_target(x);
+			}
+
+			if (units.exist(x.target_id)) {
+				auto& y = units.id(x.target_id);
+				if ((world_pos - y->pos).length2() < x.range * x.range) {
+					Projectile new_projectile;
+					new_projectile.from = tiles[i].id;
+					new_projectile.to = y.id;
+
+					new_projectile.pos = world_pos;
+					new_projectile.color = x.color * 0.5f;
+					projectiles.push_back(new_projectile);
+					x.attack_cd = x.attack_speed;
+				}
 			}
 		} else if (towers[i].typecheck(Tower::Sharp_Kind)) {
 			auto& x = towers[i].Sharp_;
@@ -212,9 +221,13 @@ void Board::compute_paths() noexcept {
 	next_tile.clear();
 	next_tile.resize(tiles.size(), SIZE_MAX);
 
+	dist_tile.clear();
+	dist_tile.resize(tiles.size(), SIZE_MAX);
+
 	for (size_t i = 0; i < size.x; ++i) {
 		path.open.push_back(i);
 		path.closed[i] = true;;
+		dist_tile[i] = 0;
 	}
 
 	auto neighbors_list = std::initializer_list<Vector2i>{ {0, +1}, {0, -1}, {-1, 0}, {+1, 0} };
@@ -233,6 +246,7 @@ void Board::compute_paths() noexcept {
 			if (path.closed[t]) continue;
 
 			next_tile[t] = it;
+			dist_tile[t] = dist_tile[it] + 1;
 			path.open.push_back(t);
 			path.closed[t] = true;
 		}
@@ -245,6 +259,7 @@ void Board::compute_paths() noexcept {
 void Board::soft_compute_paths() noexcept {
 	auto& path = path_construction;
 	next_tile.resize(tiles.size(), SIZE_MAX);
+	dist_tile.resize(tiles.size(), SIZE_MAX);
 
 	auto neighbors_list = std::initializer_list<Vector2i>{ {0, +1}, {0, -1}, {-1, 0}, {+1, 0} };
 
@@ -260,6 +275,7 @@ void Board::soft_compute_paths() noexcept {
 		if (path.closed[t]) continue;
 
 		next_tile[t] = it;
+		dist_tile[t] = dist_tile[it] + 1;
 		path.open.push_back(t);
 		path.closed[t] = true;
 	}
@@ -318,9 +334,12 @@ void Board::invalidate_paths() noexcept {
 	path.closed.clear();
 	path.closed.resize(size.x * size.y, false);
 	next_tile.clear();
+	dist_tile.clear();
+	dist_tile.resize(tiles.size(), SIZE_MAX);
 
 	for (size_t i = 0; i < size.x; ++i) {
 		path.open.push_back(i);
+		dist_tile[i] = 0;
 		path.closed[i] = true;
 	}
 }
@@ -362,3 +381,39 @@ Rectanglef Board::tower_box(const Tower& tower) noexcept {
 	rec.h = tower->tile_rec.h * bounding_tile_size();
 	return rec;
 }
+
+void Board::pick_new_target(Archer& tower) noexcept {
+	auto tower_pos = tile_box(tower.tile_rec).center();
+
+	auto r = tower.range * tower.range;
+
+	tower.target_id = 0;
+	switch (tower.target_mode) {
+		case Tower_Base::Target_Mode::First: {
+			Unit* candidate = nullptr;
+			for (auto& x : units) {
+				if (!candidate) candidate = &x;
+
+				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
+				auto d_current   = x->pos.dist_to2(tower_pos);
+				if (d_current < r && d_current < d_candidate) candidate = &x;
+			}
+
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) < r)
+				tower.target_id = candidate->id;
+		}
+		case Tower_Base::Target_Mode::Random: {
+			Unit* candidate = nullptr;
+			for (size_t i = 1; auto& x : units) {
+				if (!candidate)
+					candidate = &x;
+				else if (x->pos.dist_to2(tower_pos) < r * r && xstd::random() < 1 / (float)(i++))
+					candidate = &x;
+			}
+
+			if (candidate) tower.target_id = candidate->id;
+		}
+		default: break;
+	}
+}
+

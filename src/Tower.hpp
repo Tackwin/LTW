@@ -26,6 +26,7 @@ struct Tower_Base {
 
 	size_t object_id = 0;
 	size_t gold_cost = 5;
+	size_t target_id = 0;
 
 	Tower_Base() noexcept {}
 };

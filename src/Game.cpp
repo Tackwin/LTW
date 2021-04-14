@@ -255,7 +255,7 @@ Game_Request Game::update(double dt) noexcept {
 			controller.player_id = temp;
 		}
 		ImGui::SliderFloat("Fov", &camera3d.fov, 0, 180);
-		ImGui::Text("Fps %zu", (size_t)(1 / dt));
+		ImGui::Text("Fps % 4d, ms: % 5.2lf", (int)(1 / dt), 1000 * dt);
 		size_t units = 0;
 		for (auto& x : boards) units += x.units.size();
 		ImGui::Text("Units: %zu", units);
