@@ -30,6 +30,10 @@ struct Controller {
 	size_t tower_selected = 0;
 };
 
+struct Game_Request {
+	bool confine_cursor = false;
+};
+
 struct Game {
 	struct Gui {
 		bool board_open = true;
@@ -42,7 +46,7 @@ struct Game {
 	std::array<Board,  1>  boards;
 	std::array<Player, 1> players;
 
-	size_t board_per_line = 2;
+	size_t board_per_line = 1;
 	Vector2f board_pos_offset = { 15, 30 };
 
 	Controller controller;
@@ -54,6 +58,8 @@ struct Game {
 	float camera_speed = 1.f;
 
 	size_t wave = 0;
+	float wave_timer = 10.f;
+	float wave_time = 10.f;
 
 	Vector2f zqsd_vector;
 
@@ -65,6 +71,11 @@ struct Game {
 		camera3d.look_at({});
 	}
 
+	void input(Input_Info in) noexcept;
+	Game_Request update(double dt) noexcept;
+
+	void next_wave() noexcept;
+
 	Interface::Ressource_Info construct_interface_ressource_info() noexcept;
 };
 
@@ -74,10 +85,6 @@ struct Game {
 #else
 #define EXTERN extern
 #endif	
-
-struct Game_Request {
-	bool confine_cursor = false;
-};
 
 EXTERN Game_Request game_update(Game& game, double dt) noexcept;
 EXTERN void game_render(Game& game, render::Orders& orders) noexcept;

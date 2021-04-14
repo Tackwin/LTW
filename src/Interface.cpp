@@ -178,7 +178,13 @@ void Interface::render(render::Orders& orders) noexcept {
 	text.text_length = temp_string.size();
 	orders.push(text, 3);
 
-	temp_string = "Wave: #" + std::to_string(current_wave);
+	temp_string = "Wave: #" + std::to_string(current_wave + 1);
+	temp_string += " Next in: ";
+	if (seconds_to_wave < 1) {
+		temp_string += std::to_string((size_t)(seconds_to_wave * 10) / 10.f).substr(0, 3);
+	} else {
+		temp_string += std::to_string((size_t)seconds_to_wave);
+	}
 	text.pos.x = 0.01f;
 	text.pos.y = ui_camera.frame_size.y - info_bar_height / 2;
 	text.text = orders.string(temp_string.c_str());

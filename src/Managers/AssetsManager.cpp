@@ -340,6 +340,7 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/proj.ply", Projectile);
 	X("assets/model/sharp.ply", Sharp);
 	X("assets/model/water.ply", Water);
+	X("assets/model/base.ply", Base);
 #undef X
 }
 

@@ -59,6 +59,7 @@ namespace asset {
 		inline static size_t Projectile = 3;
 		inline static size_t Sharp = 4;
 		inline static size_t Water = 5;
+		inline static size_t Base = 6;
 	};
 
 

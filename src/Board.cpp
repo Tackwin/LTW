@@ -23,14 +23,15 @@ void Board::update(double dt) noexcept {
 
 	for (auto& x : units) if (!x.to_remove) {
 		auto next = next_tile[x->current_tile];
-		if (next == SIZE_MAX) continue;
+		if (next == SIZE_MAX && x->target_tile == SIZE_MAX) continue;
+		else if (next != SIZE_MAX) x->target_tile = next;
 
 		auto last_pos = tile_box(x->current_tile).center();
-		auto next_pos = tile_box(next).center();
+		auto next_pos = tile_box(x->target_tile).center();
 
 		auto dt_vec = next_pos - x->pos;
 
-		if (dt_vec.length2() < (last_pos - x->pos).length2()) x->current_tile = next;
+		if (dt_vec.length2() < (last_pos - x->pos).length2()) x->current_tile = x->target_tile;
 
 		dt_vec = dt_vec.normed();
 		x->pos += dt_vec * x->speed * dt;
@@ -91,15 +92,9 @@ void Board::update(double dt) noexcept {
 }
 
 void Board::render(render::Orders& order) noexcept {
-	render::Rectangle rec;
 	render::Circle circle;
 	render::Arrow arrow;
 	render::Model m;
-
-	Rectanglef tile_zone;
-	float tile_bound = tile_size + tile_padding;
-	tile_zone.pos  = -tile_bound * (Vector2f)size / 2;
-	tile_zone.size = +tile_bound * (Vector2f)size;
 
 	m.object_id = asset::Object_Id::Empty_Tile;
 	m.shader_id = asset::Shader_Id::Default_3D_Batched;
@@ -111,28 +106,6 @@ void Board::render(render::Orders& order) noexcept {
 		order.push(m);
 	}
 	order.push(render::Pop_Batch());
-
-	Rectanglef start_zone;
-	start_zone.x = tile_zone.x;
-	start_zone.y = tile_zone.y + tile_zone.h - start_zone_height * tile_bound;
-	start_zone.w = tile_zone.w;
-	start_zone.h = start_zone_height * tile_bound;
-
-	rec.pos   = start_zone.pos + pos;
-	rec.size  = start_zone.size;
-	rec.color = {.8f, .8f, .8f, 1.f};
-	order.push(rec, 0.01f);
-
-	Rectanglef cease_zone;
-	cease_zone.x = tile_zone.x;
-	cease_zone.y = tile_zone.y;
-	cease_zone.w = tile_zone.w;
-	cease_zone.h = cease_zone_height * tile_bound;
-
-	rec.pos   = cease_zone.pos + pos;
-	rec.size  = cease_zone.size;
-	rec.color = {.8f, .8f, .8f, 1.f};
-	order.push(rec, 0.01f);
 
 	if (gui.render_path) {
 		for (size_t i = 0; i < next_tile.size(); ++i)
@@ -185,12 +158,13 @@ void Board::render(render::Orders& order) noexcept {
 		m.shader_id = asset::Shader_Id::Default_3D_Batched;
 		m.texture_id = asset::Texture_Id::Palette;
 		m.scale = x->tile_size.x * tile_size;
-		m.pos = Vector3f(
-			Rectanglef{tile_box(x->tile_pos).pos, tile_box(x->tile_pos).size * x->tile_size.x}.center(), 0
-		);
-		m.pos.x += pos.x;
-		m.pos.y += pos.y;
+		m.pos = Vector3f(tile_box(x->tile_pos, x->tile_size).center() + pos, 0.3f);
 		m.bitmask = 0;
+		models_by_object[m.object_id].push_back(m);
+
+		m.object_id = asset::Object_Id::Base;
+		m.scale = x->tile_size.x * tile_size;
+		m.pos.z = 0;
 		models_by_object[m.object_id].push_back(m);
 	}
 	
@@ -215,18 +189,17 @@ void Board::render(render::Orders& order) noexcept {
 Tile& Board::tile(Vector2u pos) noexcept {
 	return tiles[pos.x + pos.y * size.x];
 }
-Rectanglef Board::tile_box(Vector2u pos) noexcept {
+Rectanglef Board::tile_box(Vector2u pos, Vector2u size) noexcept {
 	Rectanglef rec;
 
-	float tile_offset = tile_size + tile_padding;
-	rec.pos = V2F(-tile_size / 2);
-	rec.size = V2F(tile_size);
+	rec.size = (Vector2f)size * bounding_tile_size();
+	rec.pos = {};
 
-	rec.pos.x -= (size.x - 1) * tile_offset / 2;
-	rec.pos.y -= (size.y - 1) * tile_offset / 2;
+	rec.pos.x -= (this->size.x - 1) * bounding_tile_size() / 2;
+	rec.pos.y -= (this->size.y - 1) * bounding_tile_size() / 2;
 
-	rec.pos.x += tile_offset * pos.x;
-	rec.pos.y += tile_offset * pos.y;
+	rec.pos.x += bounding_tile_size() * pos.x;
+	rec.pos.y += bounding_tile_size() * pos.y;
 	return rec;
 }
 
@@ -357,7 +330,11 @@ void Board::spawn_unit(Unit u) noexcept {
 	size_t final = size.x * size.y;
 
 	u->current_tile = (size_t)(first + xstd::random() * (final - first));
-	u->pos = tile_box({u->current_tile % size.x, u->current_tile / size.x}).center();
+
+	auto rec = tile_box({u->current_tile % size.x, u->current_tile / size.x});
+
+	u->pos.x = rec.x + xstd::random() * rec.w;
+	u->pos.y = rec.y + xstd::random() * rec.h;
 
 	units.push_back(u);
 }

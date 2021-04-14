@@ -23,7 +23,9 @@ struct Object {
 		return *this;
 	}
 
-	static std::optional<Object> load_from_file(const std::filesystem::path& path) noexcept;
+	static std::optional<Object> load_from_file(
+		const std::filesystem::path& path
+	) noexcept;
 
 	std::filesystem::path material_file;
 	std::string material;

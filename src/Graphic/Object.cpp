@@ -4,7 +4,9 @@
 
 #include "OS/file.hpp"
 
-std::optional<Object> Object::load_from_file(const std::filesystem::path& path) noexcept {
+std::optional<Object> Object::load_from_file(
+	const std::filesystem::path& path
+) noexcept {
 	auto opt_str = file::read_whole_text(path);
 	if (!opt_str) return std::nullopt;
 

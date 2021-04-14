@@ -81,7 +81,7 @@ struct Board {
 	void render(render::Orders& orders) noexcept;
 
 	Tile& tile(Vector2u pos) noexcept;
-	Rectanglef tile_box(Vector2u pos) noexcept;
+	Rectanglef tile_box(Vector2u pos, Vector2u size = {1, 1}) noexcept;
 	Rectanglef tile_box(size_t idx) noexcept { return tile_box({ idx % size.x, idx / size.x }); }
 	Rectanglef tower_box(const Tower& tower) noexcept;
 

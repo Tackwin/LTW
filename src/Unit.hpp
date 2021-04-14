@@ -10,6 +10,7 @@ struct Unit_Base {
 	float life_time = 0;
 
 	size_t current_tile = 0;
+	size_t target_tile  = SIZE_MAX;
 	Vector2f pos;
 	float speed = 0.5f;
 

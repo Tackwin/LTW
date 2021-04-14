@@ -114,6 +114,7 @@ struct Interface {
 	Tower_Interface tower_interface;
 
 	size_t current_wave = 0;
+	float seconds_to_wave = 0;
 
 	bool input(const Input_Info& info) noexcept;
 	void update(double dt) noexcept;

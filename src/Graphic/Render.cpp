@@ -805,7 +805,7 @@ struct Gpu_Vector {
 
 	void upload(size_t size, void* data) noexcept {
 		glBindBuffer(target, buffer);
-		glBufferData(target, size, data, GL_STATIC_DRAW);
+		glBufferData(target, size, data, GL_DYNAMIC_DRAW);
 	}
 
 	void fit(size_t new_size) noexcept {
@@ -816,7 +816,7 @@ struct Gpu_Vector {
 			if (buffer) glDeleteBuffers(1, &buffer);
 			glGenBuffers(1, &buffer);
 			glBindBuffer(target, buffer);
-			glBufferData(target, capacity, NULL, GL_STATIC_DRAW);
+			glBufferData(target, capacity, NULL, GL_DYNAMIC_DRAW);
 	#ifdef GL_DEBUG
 			glObjectLabel(GL_BUFFER, buffer, debug_name.size(), debug_name.data());
 	#endif
@@ -1356,7 +1356,7 @@ void render::immediate(std::span<Model> models) noexcept {
 		if (instance_vbo) glDeleteBuffers(1, &instance_vbo);
 		glGenBuffers(1, &instance_vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_DYNAMIC_DRAW);
 #ifdef GL_DEBUG
 		auto label = "Model instancied buffer";
 		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
@@ -1386,7 +1386,7 @@ void render::immediate(std::span<Model> models) noexcept {
 	shader.set_texture(5);
 	shader.set_uniform("VP", cam.get_VP());
 
-	constexpr size_t Batch_Size = 50'000;
+	constexpr size_t Batch_Size = 10'000;
 
 	for (size_t i = 0; i < models.size(); i += Batch_Size) {
 
@@ -1413,7 +1413,7 @@ void render::immediate(std::span<Model> models) noexcept {
 		GL_ARRAY_BUFFER,
 		instance_data.size(),
 		instance_data.data(),
-		GL_STATIC_DRAW
+		GL_DYNAMIC_DRAW
 	);
 
 	glBindBuffer(indices.target, indices.buffer);
