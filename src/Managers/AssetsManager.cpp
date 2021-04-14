@@ -253,6 +253,9 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/dummy.png", Dummy);
 	X("assets/textures/palette.png", Palette);
 	X("assets/textures/methane_icon.png", Methane_Icon);
+	X("assets/textures/dice_icon.png", Dice_Icon);
+	X("assets/textures/first_icon.png", First_Icon);
+	X("assets/textures/target_icon.png", Target_Icon);
 
 #undef X
 }
@@ -336,6 +339,7 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/range1.ply", Range1);
 	X("assets/model/proj.ply", Projectile);
 	X("assets/model/sharp.ply", Sharp);
+	X("assets/model/water.ply", Water);
 #undef X
 }
 

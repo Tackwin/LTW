@@ -7,6 +7,12 @@
 #include "Managers/AssetsManager.hpp"
 
 struct Tower_Base {
+	enum Target_Mode {
+		First = 0,
+		Random,
+		Count
+	};
+
 	union {
 		Rectangleu tile_rec;
 		struct {
@@ -16,8 +22,9 @@ struct Tower_Base {
 	};
 	Vector4f color = {1, 0, 0, 1};
 
-	size_t object_id = 0;
+	Target_Mode target_mode;
 
+	size_t object_id = 0;
 	size_t gold_cost = 5;
 
 	Tower_Base() noexcept {}

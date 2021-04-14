@@ -7,6 +7,7 @@
 #include "Managers/InputsManager.hpp"
 #include "Math/Vector.hpp"
 #include "Tower.hpp"
+#include "Unit.hpp"
 
 struct Common_Tile {
 	Vector2u tile_pos = {0, 0};
@@ -38,26 +39,8 @@ struct Projectile {
 	Vector2f pos;
 	Vector4f color;
 	float r = 0.1f;
-	float speed = 5.f;
-	float damage = 0.5f;
-
-	bool to_remove = false;
-};
-
-struct Unit {
-	size_t id = 0;
-
-	float life_time = 0;
-
-	size_t current_tile = 0;
-	Vector2f pos;
 	float speed = 0.5f;
-
-	float health = 1.f;
-
-	size_t income = 1;
-	size_t cost   = 5;
-	size_t batch  = 5;
+	float damage = 0.5f;
 
 	bool to_remove = false;
 };

@@ -39,8 +39,8 @@ struct Game {
 		size_t edge_blur = 1;
 	} gui;
 
-	std::array<Board,  2>  boards;
-	std::array<Player, 2> players;
+	std::array<Board,  1>  boards;
+	std::array<Player, 1> players;
 
 	size_t board_per_line = 2;
 	Vector2f board_pos_offset = { 15, 30 };
@@ -52,6 +52,8 @@ struct Game {
 
 	render::Camera3D camera3d;
 	float camera_speed = 1.f;
+
+	size_t wave = 0;
 
 	Vector2f zqsd_vector;
 

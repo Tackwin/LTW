@@ -19,38 +19,39 @@ void Board::update(double dt) noexcept {
 
 	gold_gained = 0;
 
-	for (auto& x : units) x.life_time += dt;
+	for (auto& x : units) x->life_time += dt;
 
 	for (auto& x : units) if (!x.to_remove) {
-		auto next = next_tile[x.current_tile];
+		auto next = next_tile[x->current_tile];
 		if (next == SIZE_MAX) continue;
 
-		auto last_pos = tile_box(x.current_tile).center();
+		auto last_pos = tile_box(x->current_tile).center();
 		auto next_pos = tile_box(next).center();
 
-		auto dt_vec = next_pos - x.pos;
+		auto dt_vec = next_pos - x->pos;
 
-		if (dt_vec.length2() < (last_pos - x.pos).length2()) x.current_tile = next;
+		if (dt_vec.length2() < (last_pos - x->pos).length2()) x->current_tile = next;
 
 		dt_vec = dt_vec.normed();
-		x.pos += dt_vec * x.speed * dt;
+		x->pos += dt_vec * x->speed * dt;
 	}
 	for (auto& x : units) if (!x.to_remove) {
-		x.to_remove = x.health < 0;
+		x.to_remove = x->health < 0;
 		if (x.to_remove) gold_gained += 1;
 	}
 
 	for (size_t i = 0; i < towers.size(); ++i) {
 		auto world_pos = Vector2f{
-			(towers[i]->tile_pos.x - size.x / 2.f) * (tile_size + tile_padding),
-			(towers[i]->tile_pos.y - size.y / 2.f) * (tile_size + tile_padding)
+			(towers[i]->tile_pos.x - size.x / 2.f) * bounding_tile_size(),
+			(towers[i]->tile_pos.y - size.y / 2.f) * bounding_tile_size()
 		};
+
 		if (towers[i].typecheck(Tower::Archer_Kind)) {
 			auto& x = towers[i].Archer_;
 			x.attack_cd -= dt;
 			if (x.attack_cd > 0) continue;
 
-			for (auto& y : units) if ((world_pos - y.pos).length2() < x.range * x.range) {
+			for (auto& y : units) if ((world_pos - y->pos).length2() < x.range * x.range) {
 				Projectile new_projectile;
 				new_projectile.from = tiles[i].id;
 				new_projectile.to = y.id;
@@ -64,8 +65,8 @@ void Board::update(double dt) noexcept {
 		} else if (towers[i].typecheck(Tower::Sharp_Kind)) {
 			auto& x = towers[i].Sharp_;
 
-			for (auto& y : units) if ((world_pos - y.pos).length2() < x.range * x.range) {
-				y.health -= x.damage * dt;
+			for (auto& y : units) if ((world_pos - y->pos).length2() < x.range * x.range) {
+				y->health -= x.damage * dt;
 			}
 		}
 	}
@@ -74,10 +75,10 @@ void Board::update(double dt) noexcept {
 		if (!units.exist(x.to)) { x.to_remove = true; continue; }
 		auto& to = units.id(x.to);
 
-		x.pos += (to.pos - x.pos).normed() * x.speed * dt;
-		if ((to.pos - x.pos).length2() < 0.1f) {
+		x.pos += (to->pos - x.pos).normed() * x.speed * dt;
+		if ((to->pos - x.pos).length2() < 0.1f) {
 			x.to_remove = true;
-			to.health -= x.damage;
+			to->health -= x.damage;
 		}
 	}
 
@@ -167,19 +168,6 @@ void Board::render(render::Orders& order) noexcept {
 	circle.r = 0.2f;
 	circle.color = { 0.6f, 0.5f, 0.1f, 1.f };
 
-	m.object_id = asset::Object_Id::Methane;
-	m.texture_id = asset::Texture_Id::Palette;
-	m.scale = 0.5f;
-	m.bitmask |= render::Model::Edge_Glow;
-	order.push(render::Push_Batch());
-	for (auto& x : units) {
-		m.pos.x = x.pos.x + pos.x;
-		m.pos.y = x.pos.y + pos.y;
-		m.pos.z = std::sinf(x.life_time) * 0.1f + 0.3f;
-		order.push(m, 0.02f);
-	}
-	order.push(render::Pop_Batch());
-
 	m.object_id = asset::Object_Id::Projectile;
 	order.push(render::Push_Batch());
 	for (auto& x : projectiles) {
@@ -193,7 +181,6 @@ void Board::render(render::Orders& order) noexcept {
 	for (auto& [_, x] : models_by_object) x.clear();
 
 	for (auto& x : towers) {
-		render::Model m;
 		m.object_id = x->object_id;
 		m.shader_id = asset::Shader_Id::Default_3D_Batched;
 		m.texture_id = asset::Texture_Id::Palette;
@@ -204,6 +191,17 @@ void Board::render(render::Orders& order) noexcept {
 		m.pos.x += pos.x;
 		m.pos.y += pos.y;
 		m.bitmask = 0;
+		models_by_object[m.object_id].push_back(m);
+	}
+	
+	m.texture_id = asset::Texture_Id::Palette;
+	m.scale = 0.5f;
+	m.bitmask |= render::Model::Edge_Glow;
+	for (auto& x : units) {
+		m.object_id = x->object_id;
+		m.pos.x = x->pos.x + pos.x;
+		m.pos.y = x->pos.y + pos.y;
+		m.pos.z = std::sinf(x->life_time) * 0.1f + 0.3f;
 		models_by_object[m.object_id].push_back(m);
 	}
 
@@ -358,8 +356,8 @@ void Board::spawn_unit(Unit u) noexcept {
 	size_t first = (size.y - start_zone_height) * size.x;
 	size_t final = size.x * size.y;
 
-	u.current_tile = (size_t)(first + xstd::random() * (final - first));
-	u.pos = tile_box({u.current_tile % size.x, u.current_tile / size.x}).center();
+	u->current_tile = (size_t)(first + xstd::random() * (final - first));
+	u->pos = tile_box({u->current_tile % size.x, u->current_tile / size.x}).center();
 
 	units.push_back(u);
 }

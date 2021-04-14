@@ -96,7 +96,8 @@ Game_Request game_update(Game& game, double dt) noexcept {
 		}
 
 		if (in.key_infos[Keyboard::O].pressed) {
-			for (size_t i = 0; i < 500; ++i) game.boards[game.controller.board_id].spawn_unit(Unit());
+			for (size_t i = 0; i < 500; ++i)
+				game.boards[game.controller.board_id].spawn_unit(Methane());
 		}
 
 		if (in.mouse_infos[Mouse::Left].just_pressed) {
@@ -124,7 +125,14 @@ Game_Request game_update(Game& game, double dt) noexcept {
 			game.controller.start_drag_selection.reset();
 
 		if (in.mouse_infos[Mouse::Left].just_released) {
-			game.controller.ended_drag_selection = true;
+
+			auto d =
+				game.controller.start_drag_selection->dist_to2(game.controller.end_drag_selection);
+			if (d > 0.001f) {
+				game.controller.ended_drag_selection = true;
+			} else {
+				game.controller.tower_selected = 0;
+			}
 		}
 	}
 
@@ -168,7 +176,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 
 	if (game.interface.action.state_button[Ui_State::Send_First].just_pressed) {
 		size_t next = (game.controller.board_id + 1) % game.boards.size();
-		auto to_spawn = Unit();
+		auto to_spawn = Methane{};
 
 		if (player.gold >= to_spawn.cost) {
 			player.gold -= to_spawn.cost;
@@ -178,8 +186,10 @@ Game_Request game_update(Game& game, double dt) noexcept {
 		}
 	}
 
-	if (game.interface.action.state_button[Ui_State::Cancel].just_pressed)
+	if (game.interface.action.state_button[Ui_State::Cancel].just_pressed) {
 		game.controller.placing = nullptr;
+		game.controller.tower_selected = 0;
+	}
 
 	if (!game.controller.placing.typecheck(Tower::None_Kind)) {
 		auto tile_size = board.tile_size + board.tile_padding;
@@ -211,6 +221,31 @@ Game_Request game_update(Game& game, double dt) noexcept {
 
 		game.controller.tower_selected = 0;
 	}
+	if (game.interface.action.state_button[Ui_State::Next_Wave].just_pressed) {
+		for (auto& x : game.boards) {
+			for (size_t i = 0; i < 10 * game.wave; ++i) {
+				if (game.wave % 2) {
+					x.spawn_unit(Methane{});
+				} else {
+					x.spawn_unit(Water{});
+				}
+			}
+		}
+		game.wave++;
+	}
+	if (game.controller.tower_selected) {
+		std::unordered_map<Ui_State, Tower_Base::Target_Mode> button_to_target_mode = {
+			{Ui_State::Target_First, Tower_Base::First},
+			{Ui_State::Target_Random, Tower_Base::Random}
+		};
+
+		for (auto& [b, t] : button_to_target_mode) {
+			if (game.interface.action.state_button[b].just_pressed) {
+				board.towers.id(game.controller.tower_selected)->target_mode = t;
+				break;
+			}
+		}
+	}
 
 	if (game.controller.ended_drag_selection) {
 		Rectanglef world_selection;
@@ -237,6 +272,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 	if (game.controller.tower_selected)
 		game.interface.tower_selected = board.towers.id(game.controller.tower_selected);
 	game.interface.ressources = game.construct_interface_ressource_info();
+	game.interface.current_wave = game.wave;
 	game.interface.update(dt);
 
 	board.input(in, game.camera3d.project(in.mouse_pos));

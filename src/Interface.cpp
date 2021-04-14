@@ -27,6 +27,7 @@ bool Interface::input(const Input_Info& info) noexcept {
 	for (auto& [_, x] : action.state_button) x.hovered = false;
 	for (auto& [_, x] : action.state_button) x.pressed = false;
 	for (auto& [_, x] : action.state_button) x.just_pressed = false;
+	action.any_just_pressed = false;
 
 	constexpr std::array<Keyboard::Key, Action::N * Action::N> key_map = TABLE(
 		Keyboard::Num1, Keyboard::Num2, Keyboard::Num3, Keyboard::Num4,
@@ -35,7 +36,11 @@ bool Interface::input(const Input_Info& info) noexcept {
 		Keyboard::W,    Keyboard::X,    Keyboard::C,    Keyboard::V
 	);
 
-	if (tower_selected.kind != Tower::None_Kind) table = Tower_Interface::get_table(tower_selected);
+	for (auto& x : key_map) {
+		action.any_just_pressed |= info.key_infos[x].just_pressed;
+	}
+
+	if (tower_selected.kind != Tower::None_Kind) table = tower_interface.get_table(tower_selected);
 
 	for (size_t i = 0; i < Action::N * Action::N; ++i) {
 		auto& it = action.state_button[table[i]];
@@ -65,6 +70,20 @@ bool Interface::input(const Input_Info& info) noexcept {
 }
 
 void Interface::update(double dt) noexcept {
+	if (tower_selected.kind != Tower::None_Kind) {
+		auto table = tower_interface.get_table(tower_selected);
+
+		if (action.state_button[Ui_State::Pick_Target_Mode].just_pressed) {
+			tower_interface.picking_target_mode = !tower_interface.picking_target_mode;
+		} else {
+			if (tower_interface.picking_target_mode) {
+				if (action.any_just_pressed) {
+					tower_interface.picking_target_mode = false;
+				}
+			}
+		}
+	}
+
 	for (auto& [s, x] : action.state_button) if (s != Ui_State::Null) {
 		x.actual_color += (x.target_color - x.actual_color) * dt;
 		if (x.hovered) x.actual_color = std::max(x.target_color * 1.3f, x.actual_color);
@@ -100,7 +119,7 @@ void Interface::render(render::Orders& orders) noexcept {
 
 	// left down actions buttons
 	auto table = action.Button_Nav_Map[action.current_state];
-	if (tower_selected.kind != Tower::None_Kind) table = Tower_Interface::get_table(tower_selected);
+	if (tower_selected.kind != Tower::None_Kind) table = tower_interface.get_table(tower_selected);
 	for2(x, y, V2F(Action::N)) {
 		auto& it  = action.state_button[table[x + y * Action::N]];
 		rec.pos.x = action.button_bounds * x + action.button_padding / 2;
@@ -155,35 +174,57 @@ void Interface::render(render::Orders& orders) noexcept {
 	text.color = {1, 1, 1, 1};
 	text.height = info_bar_height * 0.5f;
 	text.font_id = asset::Font_Id::Consolas;
-	text.text = temp_string.data();
+	text.text = orders.string(temp_string.c_str());
+	text.text_length = temp_string.size();
+	orders.push(text, 3);
+
+	temp_string = "Wave: #" + std::to_string(current_wave);
+	text.pos.x = 0.01f;
+	text.pos.y = ui_camera.frame_size.y - info_bar_height / 2;
+	text.text = orders.string(temp_string.c_str());
 	text.text_length = temp_string.size();
 	orders.push(text, 3);
 }
 
 void Interface::init_buttons() noexcept {
 	auto& b = action.state_button;
-	b[Ui_State::Build].texture_id        = asset::Texture_Id::Build_Icon;
-	b[Ui_State::Main].texture_id         = asset::Texture_Id::Back_Icon;
-	b[Ui_State::Null].texture_id         = asset::Texture_Id::Null_Icon;
-	b[Ui_State::Up].texture_id           = asset::Texture_Id::Up_Icon;
-	b[Ui_State::Left].texture_id         = asset::Texture_Id::Left_Icon;
-	b[Ui_State::Down].texture_id         = asset::Texture_Id::Down_Icon;
-	b[Ui_State::Right].texture_id        = asset::Texture_Id::Right_Icon;
-	b[Ui_State::Archer_Build].texture_id = asset::Texture_Id::Archer_Build_Icon;
-	b[Ui_State::Splash_Build].texture_id = asset::Texture_Id::Splash_Build_Icon;
-	b[Ui_State::Cancel].texture_id       = asset::Texture_Id::Cancel_Icon;
-	b[Ui_State::Send].texture_id         = asset::Texture_Id::Send_Icon;
-	b[Ui_State::Send_First].texture_id   = asset::Texture_Id::Methane_Icon;
-	b[Ui_State::Sell].texture_id         = asset::Texture_Id::Gold_Icon;
+	b[Ui_State::Build].texture_id             = asset::Texture_Id::Build_Icon;
+	b[Ui_State::Main].texture_id              = asset::Texture_Id::Back_Icon;
+	b[Ui_State::Null].texture_id              = asset::Texture_Id::Null_Icon;
+	b[Ui_State::Up].texture_id                = asset::Texture_Id::Up_Icon;
+	b[Ui_State::Left].texture_id              = asset::Texture_Id::Left_Icon;
+	b[Ui_State::Down].texture_id              = asset::Texture_Id::Down_Icon;
+	b[Ui_State::Right].texture_id             = asset::Texture_Id::Right_Icon;
+	b[Ui_State::Archer_Build].texture_id      = asset::Texture_Id::Archer_Build_Icon;
+	b[Ui_State::Splash_Build].texture_id      = asset::Texture_Id::Splash_Build_Icon;
+	b[Ui_State::Cancel].texture_id            = asset::Texture_Id::Cancel_Icon;
+	b[Ui_State::Send].texture_id              = asset::Texture_Id::Send_Icon;
+	b[Ui_State::Send_First].texture_id        = asset::Texture_Id::Methane_Icon;
+	b[Ui_State::Sell].texture_id              = asset::Texture_Id::Gold_Icon;
+	b[Ui_State::Next_Wave].texture_id         = asset::Texture_Id::Left_Icon;
+	b[Ui_State::Pick_Target_Mode].texture_id  = asset::Texture_Id::Target_Icon;
+	b[Ui_State::Target_First].texture_id      = asset::Texture_Id::First_Icon;
+	b[Ui_State::Target_Random].texture_id     = asset::Texture_Id::Dice_Icon;
 }
 
 Ui_Table Tower_Interface::get_table(const Tower& tower) noexcept {
+	std::unordered_map<Tower_Base::Target_Mode, Ui_State> target_mode_to_icon = {
+		{Tower_Base::First,  Ui_State::Target_First},
+		{Tower_Base::Random, Ui_State::Target_Random}
+	};
+	
 	Ui_Table table = TABLE(
 		Ui_State::Sell,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
 		Ui_State::Cancel, Ui_State::Null, Ui_State::Null, Ui_State::Null,
 		Ui_State::Null,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Null,   Ui_State::Null, Ui_State::Null, Ui_State::Null
+		Ui_State::Pick_Target_Mode,   Ui_State::Null, Ui_State::Null, Ui_State::Null
 	);
+
+	if (picking_target_mode) {
+		for (size_t i = 0; i < Tower_Base::Target_Mode::Count; ++i) {
+			table[4 + i] = target_mode_to_icon[(Tower_Base::Target_Mode)i];
+		}
+	}
 
 	return table;
 }

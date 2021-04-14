@@ -137,17 +137,37 @@ namespace render {
 	struct Orders {
 		std::vector<Order> commands;
 
+		size_t frame_ptr = 0;
+		std::vector<std::uint8_t> frame_data;
+
+		Orders() noexcept {
+			frame_data.resize(100'000, 0);
+		}
+
 		void push(Order o) noexcept;
 		void push(Order o, float z) noexcept;
 
 		void reserve(size_t n) noexcept { commands.reserve(n); }
-		void clear() noexcept { commands.clear(); }
+		void clear() noexcept {
+			commands.clear();
+			memset(frame_data.data(), 0, frame_data.size());
+			frame_ptr = 0;
+		}
 
 		auto begin() noexcept -> auto {
 			return std::begin(commands);
 		}
 		auto end() noexcept -> auto {
 			return std::end(commands);
+		}
+
+		char* string(const char* str) noexcept {
+			char* ptr = (char*)frame_data.data() + frame_ptr;
+			while (*str && frame_ptr < frame_data.size()) {
+				frame_data[frame_ptr++] = *(str++);
+			}
+			frame_data[frame_ptr++] = 0;
+			return ptr;
 		}
 	};
 

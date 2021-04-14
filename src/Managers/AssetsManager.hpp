@@ -32,6 +32,9 @@ namespace asset {
 		inline static size_t Dummy       = 13;
 		inline static size_t Palette     = 14;
 		inline static size_t Methane_Icon= 15;
+		inline static size_t Dice_Icon   = 16;
+		inline static size_t First_Icon  = 17;
+		inline static size_t Target_Icon = 18;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
@@ -55,6 +58,7 @@ namespace asset {
 		inline static size_t Range1 = 2;
 		inline static size_t Projectile = 3;
 		inline static size_t Sharp = 4;
+		inline static size_t Water = 5;
 	};
 
 

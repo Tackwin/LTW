@@ -24,6 +24,10 @@ enum class Ui_State {
 	Send,
 	Send_First,
 	Sell,
+	Next_Wave,
+	Pick_Target_Mode,
+	Target_First,
+	Target_Random,
 	Count
 };
 using Ui_Table = std::array<Ui_State, 4*4>;
@@ -40,7 +44,7 @@ struct Action {
 		Ui_State::Null,    Ui_State::Null, Ui_State::Null,  Ui_State::Null,
 		Ui_State::Cancel,  Ui_State::Up,   Ui_State::Null,  Ui_State::Null,
 		Ui_State::Left,    Ui_State::Down, Ui_State::Right, Ui_State::Null,
-		Ui_State::Build,   Ui_State::Send, Ui_State::Null,  Ui_State::Null
+		Ui_State::Build,   Ui_State::Send, Ui_State::Next_Wave,  Ui_State::Null
 	);
 	static constexpr Ui_Table Build_Table = TABLE(
 		Ui_State::Null,         Ui_State::Null,         Ui_State::Null, Ui_State::Null,
@@ -76,6 +80,7 @@ struct Action {
 		bool just_pressed = false;
 	};
 
+	bool any_just_pressed = false;
 
 	std::unordered_map<Ui_State, Button> state_button;
 	Ui_State current_state = Ui_State::Main;
@@ -84,7 +89,9 @@ struct Action {
 	void back_to_main() noexcept;
 };
 
-namespace Tower_Interface {
+struct Tower_Interface {
+	bool picking_target_mode = false;
+
 	Ui_Table get_table(const Tower& tower) noexcept;
 };
 
@@ -104,6 +111,9 @@ struct Interface {
 	Rectanglef drag_selection;
 
 	Tower tower_selected = nullptr;
+	Tower_Interface tower_interface;
+
+	size_t current_wave = 0;
 
 	bool input(const Input_Info& info) noexcept;
 	void update(double dt) noexcept;
@@ -115,5 +125,4 @@ struct Interface {
 		ui_camera.frame_size = {1.6f, 0.9f};
 		ui_camera.pos = ui_camera.frame_size / 2;
 	}
-	
 };
