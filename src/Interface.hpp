@@ -28,6 +28,8 @@ enum class Ui_State {
 	Pick_Target_Mode,
 	Target_First,
 	Target_Random,
+	Target_Closest,
+	Target_Farthest,
 	Count
 };
 using Ui_Table = std::array<Ui_State, 4*4>;
@@ -65,7 +67,7 @@ struct Action {
 		{Ui_State::Send,  Send1_Table}
 	};
 	
-	float button_content = 0.18f / N;
+	float button_content = 0.22f / N;
 	float button_padding = button_content / 20;
 	float button_bounds  = button_content + button_padding;
 
@@ -89,10 +91,21 @@ struct Action {
 	void back_to_main() noexcept;
 };
 
-struct Tower_Interface {
+struct Tower_Selection {
+	Vector2f pos;
+
+	xstd::Pool<Tower>* pool = nullptr;
+	std::vector<size_t> selection;
+
+	static constexpr size_t N = 4;
+
+	float content_size = 0.232f;
 	bool picking_target_mode = false;
 
-	Ui_Table get_table(const Tower& tower) noexcept;
+	void input(const Input_Info& info) noexcept;
+	void render(render::Orders& orders) noexcept;
+
+	Ui_Table get_selected_table() noexcept;
 };
 
 struct Interface {
@@ -110,8 +123,7 @@ struct Interface {
 	float dragging = false;
 	Rectanglef drag_selection;
 
-	Tower tower_selected = nullptr;
-	Tower_Interface tower_interface;
+	Tower_Selection tower_selection;
 
 	size_t current_wave = 0;
 	float seconds_to_wave = 0;

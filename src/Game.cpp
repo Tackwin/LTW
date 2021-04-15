@@ -66,6 +66,7 @@ void game_shutdown(Game&) noexcept {
 
 
 void Game::input(Input_Info in) noexcept {
+	if (!in.focused) return;
 	controller.ended_drag_selection = false;
 
 	auto& board  = boards[controller.board_id];
@@ -92,7 +93,7 @@ void Game::input(Input_Info in) noexcept {
 		}
 
 		if (in.key_infos[Keyboard::O].pressed) {
-			for (size_t i = 0; i < 500; ++i)
+			for (size_t i = 0; i < 0; ++i)
 				boards[controller.board_id].spawn_unit(Methane());
 		}
 
@@ -117,19 +118,23 @@ void Game::input(Input_Info in) noexcept {
 			controller.end_drag_selection = in.mouse_pos;
 		}
 
-		if (controller.start_drag_selection && !in.mouse_infos[Mouse::Left].pressed)
-			controller.start_drag_selection.reset();
-
-		if (in.mouse_infos[Mouse::Left].just_released) {
+		if (controller.start_drag_selection && in.mouse_infos[Mouse::Left].just_released) {
 
 			auto d =
 				controller.start_drag_selection->dist_to2(controller.end_drag_selection);
 			if (d > 0.001f) {
 				controller.ended_drag_selection = true;
 			} else {
-				controller.tower_selected = 0;
+				controller.tower_selected.clear();
 			}
 		}
+
+		if (in.mouse_infos[Mouse::Right].just_pressed && !controller.tower_selected.empty()) {
+			controller.tower_selected.clear();
+		}
+
+		if (controller.start_drag_selection && !in.mouse_infos[Mouse::Left].pressed)
+			controller.start_drag_selection.reset();
 	}
 
 	zqsd_vector = {};
@@ -158,7 +163,7 @@ void Game::input(Input_Info in) noexcept {
 
 	if (interface.action.state_button[Ui_State::Cancel].just_pressed) {
 		controller.placing = nullptr;
-		controller.tower_selected = 0;
+		controller.tower_selected.clear();
 	}
 
 	if (!controller.placing.typecheck(Tower::None_Kind)) {
@@ -182,14 +187,16 @@ void Game::input(Input_Info in) noexcept {
 		interface.action.back_to_main();
 	}
 	if (interface.action.state_button[Ui_State::Sell].just_pressed) {
-		assert(controller.tower_selected);
+		assert(!controller.tower_selected.empty());
 
-		auto& tower = board.towers.id(controller.tower_selected);
-		player.gold += tower->gold_cost / 2;
-		board.remove_tower(tower);
+		for (auto& x : controller.tower_selected) {
+			auto& tower = board.towers.id(x);
+			player.gold += tower->gold_cost / 2;
+			board.remove_tower(tower);
+		}
+
 		interface.action.back_to_main();
-
-		controller.tower_selected = 0;
+		controller.tower_selected.clear();
 	}
 	
 	if (interface.action.state_button[Ui_State::Next_Wave].just_pressed) {
@@ -197,15 +204,18 @@ void Game::input(Input_Info in) noexcept {
 		wave_timer = wave_time;
 	}
 
-	if (controller.tower_selected) {
+	if (!controller.tower_selected.empty()) {
+		// >TOWER_TARGET_MODE:
 		std::unordered_map<Ui_State, Tower_Base::Target_Mode> button_to_target_mode = {
 			{Ui_State::Target_First, Tower_Base::First},
+			{Ui_State::Target_Farthest, Tower_Base::Farthest},
+			{Ui_State::Target_Closest, Tower_Base::Closest},
 			{Ui_State::Target_Random, Tower_Base::Random}
 		};
 
 		for (auto& [b, t] : button_to_target_mode) {
 			if (interface.action.state_button[b].just_pressed) {
-				board.towers.id(controller.tower_selected)->target_mode = t;
+				for (auto& x : controller.tower_selected) board.towers.id(x)->target_mode = t;
 				break;
 			}
 		}
@@ -218,11 +228,11 @@ void Game::input(Input_Info in) noexcept {
 			camera3d.project(controller.end_drag_selection) - world_selection.pos;
 		world_selection = world_selection.canonical();
 
-		controller.tower_selected = 0;
+		controller.tower_selected.clear();
 		for (auto& x : board.towers) if (world_selection.intersect(board.tower_box(x))) {
-			controller.tower_selected = x.id;
-			break;
+			controller.tower_selected.push_back(x.id);
 		}
+		controller.start_drag_selection.reset();
 	}
 }
 
@@ -277,9 +287,8 @@ Game_Request Game::update(double dt) noexcept {
 	}
 
 
-	interface.tower_selected = nullptr;
-	if (controller.tower_selected)
-		interface.tower_selected = board.towers.id(controller.tower_selected);
+	interface.tower_selection.pool = &board.towers;
+	interface.tower_selection.selection = controller.tower_selected;
 	interface.ressources = construct_interface_ressource_info();
 	interface.current_wave = wave;
 	interface.seconds_to_wave = wave_timer;
@@ -344,6 +353,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 		game.interface.drag_selection.pos  = *game.controller.start_drag_selection;
 		game.interface.drag_selection.size =
 			game.controller.end_drag_selection - *game.controller.start_drag_selection;
+		game.interface.drag_selection = game.interface.drag_selection.canonical();
 
 		game.interface.drag_selection.x *= 1.6f;
 		game.interface.drag_selection.w *= 1.6f;

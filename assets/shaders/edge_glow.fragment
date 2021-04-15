@@ -11,7 +11,7 @@ uniform vec3 cam_pos;
 vec4 texture_fetch(sampler2DMS tex, vec2 c) {
 	vec4 ret;
 	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
-	int samples = textureSamples(tex);
+	int samples = 1;// textureSamples(tex);
 	for (int i = 0; i < samples; ++i) {
 		ret += texelFetch(tex, tex_pixel, i);
 	}
@@ -44,7 +44,7 @@ void main() {
     vec3 normal   = texture_fetch(buffer_normal, TexCoords).xyz;
     if (normal.z == 1) discard;
 
-    float edge_width = 5;
+    float edge_width = 3;
     float edge_mult = 1;
 
     float d = length(frag_pos - cam_pos);

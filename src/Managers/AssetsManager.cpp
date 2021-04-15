@@ -256,6 +256,10 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/dice_icon.png", Dice_Icon);
 	X("assets/textures/first_icon.png", First_Icon);
 	X("assets/textures/target_icon.png", Target_Icon);
+	X("assets/textures/closest_icon.png", Closest_Icon);
+	X("assets/textures/farthest_icon.png", Farthest_Icon);
+	X("assets/textures/range1_icon.png", Range1_Icon);
+	X("assets/textures/sharp_icon.png", Sharp_Icon);
 
 #undef X
 }

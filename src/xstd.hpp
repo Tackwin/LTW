@@ -43,6 +43,7 @@ template<bool flag = false> void static_no_match() noexcept {
 #define sum_type_X_cst(x) else if constexpr (std::is_same_v<T, x>) {\
 	kind = x##_Kind; new (&x##_) x; x##_ = (y);\
 }
+#define sum_type_X_case_cst_kind(x) case x##_Kind: new(&x##_) x; break;
 #define sum_type_X_case_cpy(x) case x##_Kind: new(&x##_) x; x##_ = that.x##_; break;
 #define sum_type_X_case_mve(x) case x##_Kind: new(&x##_) x; x##_ = std::move(that.x##_); break;
 #define sum_type_X_dst(x) case x##_Kind: x##_ .x::~x (); break;
@@ -54,6 +55,13 @@ template<bool flag = false> void static_no_match() noexcept {
 		union { list(sum_type_X_Union) };\
 		enum Kind { None_Kind = 0 list(sum_type_X_Kind) } kind;\
 		n() noexcept { kind = None_Kind; }\
+		explicit n(Kind k) noexcept {\
+			kind = k;\
+			switch(kind) {\
+				list(sum_type_X_case_cst_kind);\
+				default: break;\
+			}\
+		}\
 		template<typename T> n(const T& y) noexcept {\
 			if constexpr (false);\
 			list(sum_type_X_cst)\

@@ -128,7 +128,7 @@ void Board::render(render::Orders& order) noexcept {
 			arrow.color = V4F(0.5f);
 			arrow.color.a = 1.f;
 
-			order.push(arrow, 0.03f);
+			order.push(arrow, 0.5f);
 		}
 
 		auto& path = path_construction;
@@ -137,13 +137,13 @@ void Board::render(render::Orders& order) noexcept {
 			circle.r = 0.1f;
 			circle.color = {0, 0, 1, 1};
 			circle.pos = tile_box(x).center() + pos;
-			order.push(circle, 0.02f);
+			order.push(circle, 0.5f);
 		}
 		for (size_t i = 0; i < path.closed.size(); ++i) if (path.closed[i]) {
 			circle.r = 0.05f;
 			circle.color = {0, 1, 0, 1};
 			circle.pos = tile_box(i).center() + pos;
-			order.push(circle, 0.02f);
+			order.push(circle, 0.5f);
 		}
 	}
 
@@ -373,8 +373,8 @@ bool Board::can_place_at(Rectangleu zone) noexcept {
 Rectanglef Board::tower_box(const Tower& tower) noexcept {
 	Rectanglef rec;
 	rec.pos = pos;
-	rec.x -= size.x * bounding_tile_size() / 2.f;
-	rec.y -= size.y * bounding_tile_size() / 2.f;
+	rec.x -= (size.x - 1) * bounding_tile_size() / 2.f;
+	rec.y -= (size.y - 1) * bounding_tile_size() / 2.f;
 	rec.x += tower->tile_rec.x * bounding_tile_size();
 	rec.y += tower->tile_rec.y * bounding_tile_size();
 	rec.w = tower->tile_rec.w * bounding_tile_size();
@@ -394,6 +394,20 @@ void Board::pick_new_target(Archer& tower) noexcept {
 			for (auto& x : units) {
 				if (!candidate) candidate = &x;
 
+				auto d_candidate = dist_tile[(*candidate)->current_tile];
+				auto d_current   = dist_tile[x->current_tile];
+				if (d_current < r && d_current < d_candidate) candidate = &x;
+			}
+
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) < r)
+				tower.target_id = candidate->id;
+			break;
+		}
+		case Tower_Base::Target_Mode::Closest: {
+			Unit* candidate = nullptr;
+			for (auto& x : units) {
+				if (!candidate) candidate = &x;
+
 				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
 				auto d_current   = x->pos.dist_to2(tower_pos);
 				if (d_current < r && d_current < d_candidate) candidate = &x;
@@ -401,17 +415,32 @@ void Board::pick_new_target(Archer& tower) noexcept {
 
 			if (candidate && (*candidate)->pos.dist_to2(tower_pos) < r)
 				tower.target_id = candidate->id;
+			break;
+		}
+		case Tower_Base::Target_Mode::Farthest: {
+			Unit* candidate = nullptr;
+			for (auto& x : units) {
+				if (!candidate) candidate = &x;
+
+				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
+				auto d_current   = x->pos.dist_to2(tower_pos);
+				if (d_current < r && d_current > d_candidate) candidate = &x;
+			}
+
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) < r)
+				tower.target_id = candidate->id;
+			break;
 		}
 		case Tower_Base::Target_Mode::Random: {
 			Unit* candidate = nullptr;
 			for (size_t i = 1; auto& x : units) {
-				if (!candidate)
+				if (x->pos.dist_to2(tower_pos) < r && xstd::random() < 1.f / (i++)) {
 					candidate = &x;
-				else if (x->pos.dist_to2(tower_pos) < r * r && xstd::random() < 1 / (float)(i++))
-					candidate = &x;
+				}
 			}
 
 			if (candidate) tower.target_id = candidate->id;
+			break;
 		}
 		default: break;
 	}

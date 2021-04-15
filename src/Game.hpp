@@ -27,7 +27,7 @@ struct Controller {
 	Vector2f end_drag_selection;
 	bool ended_drag_selection = false;
 
-	size_t tower_selected = 0;
+	std::vector<size_t> tower_selected;
 };
 
 struct Game_Request {

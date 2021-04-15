@@ -1,6 +1,9 @@
 #include "Interface.hpp"
 #include "Managers/AssetsManager.hpp"
 
+#include <map>
+#include <iterator>
+
 Rectanglef Action::get_zone() noexcept {
 	Rectanglef zone;
 	zone.pos = {0.f, 0.f};
@@ -13,7 +16,88 @@ void Action::back_to_main() noexcept {
 }
 
 
+void Tower_Selection::input(const Input_Info& info) noexcept {
+
+}
+
+void Tower_Selection::render(render::Orders& orders) noexcept {
+	Rectanglef zone;
+	zone.pos = pos;
+	zone.size = V2F(content_size);
+
+	render::Rectangle rec;
+	render::Sprite sprite;
+	render::Text text;
+
+	if (!pool) return;
+	if (selection.empty()) return;
+
+	rec.rec = zone;
+	rec.color = {0.0f, 0.15f, 0.15f, 1.0f};
+	orders.push(rec);
+
+	thread_local std::map<Tower::Kind, size_t> n_by_kind;
+	thread_local std::vector<std::pair<size_t, Tower::Kind>> kind_by_n;
+	n_by_kind.clear();
+	kind_by_n.clear();
+	for (auto& x : selection) n_by_kind[pool->id(x).kind]++;
+	for (auto& [a, b] : n_by_kind) kind_by_n.push_back({b, a});
+	std::sort(BEG_END(kind_by_n), [] (const auto& a, const auto& b) { return a.first > b.first; });
+
+	sprite.shader = asset::Shader_Id::Default;
+	sprite.pos.x = 0.1f * content_size;
+	sprite.pos.y = zone.y + (N - 1) * zone.h / N;
+	sprite.size = V2F(content_size * 0.9f / N);
+	text.font_id = asset::Font_Id::Consolas;
+	text.height = sprite.size.y * 0.3f;
+	text.origin = {0, 0.5f};
+	for (size_t i = 0; i < N && i < kind_by_n.size(); ++i) {
+		auto it = kind_by_n[i];
+		sprite.texture = Tower(it.second)->texture_icon_id;
+
+		auto str = std::to_string(it.first);
+
+		text.pos = sprite.pos;
+		text.pos.y += sprite.size.y / 2;
+		text.pos.x += sprite.size.x + zone.w * 0.1f;
+		text.text = orders.string(str.c_str());
+		text.text_length = str.size();
+
+		orders.push(sprite);
+		orders.push(text);
+		sprite.pos.y -= content_size / N;
+	}
+
+}
+
+Ui_Table Tower_Selection::get_selected_table() noexcept {
+	// >TOWER_TARGET_MODE:
+	std::unordered_map<Tower_Base::Target_Mode, Ui_State> target_mode_to_icon = {
+		{Tower_Base::First,  Ui_State::Target_First},
+		{Tower_Base::Random, Ui_State::Target_Random},
+		{Tower_Base::Closest, Ui_State::Target_Closest},
+		{Tower_Base::Farthest, Ui_State::Target_Farthest}
+	};
+	
+	Ui_Table table = TABLE(
+		Ui_State::Sell,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
+		Ui_State::Cancel, Ui_State::Null, Ui_State::Null, Ui_State::Null,
+		Ui_State::Null,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
+		Ui_State::Pick_Target_Mode,   Ui_State::Null, Ui_State::Null, Ui_State::Null
+	);
+
+	if (picking_target_mode) {
+		for (size_t i = 0; i < Tower_Base::Target_Mode::Count; ++i) {
+			table[4 + i] = target_mode_to_icon[(Tower_Base::Target_Mode)i];
+		}
+	}
+
+	return table;
+}
+
 bool Interface::input(const Input_Info& info) noexcept {
+	tower_selection.input(info);
+
 	auto action_zone = action.get_zone();
 
 	auto mouse_pos = project_mouse_pos(info.mouse_pos, ui_camera);
@@ -40,7 +124,7 @@ bool Interface::input(const Input_Info& info) noexcept {
 		action.any_just_pressed |= info.key_infos[x].just_pressed;
 	}
 
-	if (tower_selected.kind != Tower::None_Kind) table = tower_interface.get_table(tower_selected);
+	if (!tower_selection.selection.empty()) table = tower_selection.get_selected_table();
 
 	for (size_t i = 0; i < Action::N * Action::N; ++i) {
 		auto& it = action.state_button[table[i]];
@@ -70,15 +154,18 @@ bool Interface::input(const Input_Info& info) noexcept {
 }
 
 void Interface::update(double dt) noexcept {
-	if (tower_selected.kind != Tower::None_Kind) {
-		auto table = tower_interface.get_table(tower_selected);
+
+	tower_selection.pos.y = action.get_zone().h * 1.1f;
+
+	if (!tower_selection.selection.empty()) {
+		auto table = tower_selection.get_selected_table();
 
 		if (action.state_button[Ui_State::Pick_Target_Mode].just_pressed) {
-			tower_interface.picking_target_mode = !tower_interface.picking_target_mode;
+			tower_selection.picking_target_mode = !tower_selection.picking_target_mode;
 		} else {
-			if (tower_interface.picking_target_mode) {
+			if (tower_selection.picking_target_mode) {
 				if (action.any_just_pressed) {
-					tower_interface.picking_target_mode = false;
+					tower_selection.picking_target_mode = false;
 				}
 			}
 		}
@@ -90,7 +177,7 @@ void Interface::update(double dt) noexcept {
 		if (x.pressed) x.actual_color = std::max(x.target_color * 1.8f, x.actual_color);
 	}
 
-	if (tower_selected.kind == Tower::None_Kind) {
+	if (tower_selection.selection.empty()) {
 		auto& table = action.Button_Nav_Map[action.current_state];
 		for (size_t i = 0; i < Action::N * Action::N; ++i) {
 			auto& it = action.state_button[table[i]];
@@ -107,6 +194,8 @@ void Interface::render(render::Orders& orders) noexcept {
 	orders.push(ui_camera);
 	defer { orders.push(render::Pop_Camera{}); };
 	
+	tower_selection.render(orders);
+
 	auto action_zone = action.get_zone();
 
 	render::Rectangle rec;
@@ -119,7 +208,7 @@ void Interface::render(render::Orders& orders) noexcept {
 
 	// left down actions buttons
 	auto table = action.Button_Nav_Map[action.current_state];
-	if (tower_selected.kind != Tower::None_Kind) table = tower_interface.get_table(tower_selected);
+	if (!tower_selection.selection.empty()) table = tower_selection.get_selected_table();
 	for2(x, y, V2F(Action::N)) {
 		auto& it  = action.state_button[table[x + y * Action::N]];
 		rec.pos.x = action.button_bounds * x + action.button_padding / 2;
@@ -211,26 +300,6 @@ void Interface::init_buttons() noexcept {
 	b[Ui_State::Pick_Target_Mode].texture_id  = asset::Texture_Id::Target_Icon;
 	b[Ui_State::Target_First].texture_id      = asset::Texture_Id::First_Icon;
 	b[Ui_State::Target_Random].texture_id     = asset::Texture_Id::Dice_Icon;
-}
-
-Ui_Table Tower_Interface::get_table(const Tower& tower) noexcept {
-	std::unordered_map<Tower_Base::Target_Mode, Ui_State> target_mode_to_icon = {
-		{Tower_Base::First,  Ui_State::Target_First},
-		{Tower_Base::Random, Ui_State::Target_Random}
-	};
-	
-	Ui_Table table = TABLE(
-		Ui_State::Sell,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Cancel, Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Null,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Pick_Target_Mode,   Ui_State::Null, Ui_State::Null, Ui_State::Null
-	);
-
-	if (picking_target_mode) {
-		for (size_t i = 0; i < Tower_Base::Target_Mode::Count; ++i) {
-			table[4 + i] = target_mode_to_icon[(Tower_Base::Target_Mode)i];
-		}
-	}
-
-	return table;
+	b[Ui_State::Target_Closest].texture_id    = asset::Texture_Id::Closest_Icon;
+	b[Ui_State::Target_Farthest].texture_id   = asset::Texture_Id::Farthest_Icon;
 }

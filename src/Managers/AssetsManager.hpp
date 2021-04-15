@@ -27,14 +27,18 @@ namespace asset {
 		inline static size_t Right_Icon = 8;
 		inline static size_t Archer_Build_Icon = 9;
 		inline static size_t Splash_Build_Icon = 10;
-		inline static size_t Cancel_Icon = 11;
-		inline static size_t Send_Icon   = 12;
-		inline static size_t Dummy       = 13;
-		inline static size_t Palette     = 14;
-		inline static size_t Methane_Icon= 15;
-		inline static size_t Dice_Icon   = 16;
-		inline static size_t First_Icon  = 17;
-		inline static size_t Target_Icon = 18;
+		inline static size_t Cancel_Icon   = 11;
+		inline static size_t Send_Icon     = 12;
+		inline static size_t Dummy         = 13;
+		inline static size_t Palette       = 14;
+		inline static size_t Methane_Icon  = 15;
+		inline static size_t Dice_Icon     = 16;
+		inline static size_t First_Icon    = 17;
+		inline static size_t Target_Icon   = 18;
+		inline static size_t Closest_Icon  = 19;
+		inline static size_t Farthest_Icon = 20;
+		inline static size_t Range1_Icon   = 21;
+		inline static size_t Sharp_Icon    = 22;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;

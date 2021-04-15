@@ -7,8 +7,11 @@
 #include "Managers/AssetsManager.hpp"
 
 struct Tower_Base {
+	// >TOWER_TARGET_MODE:
 	enum Target_Mode {
 		First = 0,
+		Closest,
+		Farthest,
 		Random,
 		Count
 	};
@@ -27,6 +30,7 @@ struct Tower_Base {
 	size_t object_id = 0;
 	size_t gold_cost = 5;
 	size_t target_id = 0;
+	size_t texture_icon_id = 0;
 
 	Tower_Base() noexcept {}
 };
@@ -41,6 +45,8 @@ struct Archer : public Tower_Base {
 		color = {1, 0, 0, 1};
 		tile_size = {1, 1};
 		object_id = asset::Object_Id::Range1;
+		target_mode = Target_Mode::First;
+		texture_icon_id = asset::Texture_Id::Range1_Icon;
 	}
 };
 
@@ -52,6 +58,7 @@ struct Sharp : public Tower_Base {
 		color = {1, 1, 0, 1};
 		tile_size = {2, 2};
 		object_id = asset::Object_Id::Sharp;
+		texture_icon_id = asset::Texture_Id::Sharp_Icon;
 	}
 };
 

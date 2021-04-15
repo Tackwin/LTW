@@ -12,7 +12,7 @@ struct Unit_Base {
 	size_t current_tile = 0;
 	size_t target_tile  = SIZE_MAX;
 	Vector2f pos;
-	float speed = 0.5f;
+	float speed = 0.0f;
 
 	float health = 1.f;
 

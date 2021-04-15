@@ -88,7 +88,7 @@ namespace render {
 
 		Vector2f origin;
 		Vector2f pos;
-		Vector4f color;
+		Vector4f color = {1, 1, 1, 1};
 
 		float height = 0;
 

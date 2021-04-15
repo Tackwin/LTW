@@ -10,3 +10,7 @@ output/trace/
 *.exp
 *.lib
 .vs/
+*.bin
+*.mtl
+*.gltf
+*.blend1
