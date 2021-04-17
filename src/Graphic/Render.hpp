@@ -30,6 +30,9 @@ namespace render {
 	struct Push_Batch : Order_Base {};
 	struct Pop_Batch : Order_Base {};
 
+	struct Push_Ui : Order_Base {};
+	struct Pop_Ui : Order_Base {};
+
 	struct Camera3D : Order_Base {
 		float fov = 70;
 		float ratio = 16/9.f;
@@ -66,6 +69,7 @@ namespace render {
 		size_t texture_id = 0;
 
 		Vector3f pos;
+		Vector3f dir = {1, 0, 0};
 		float scale = 1.f;
 
 		uint32_t bitmask = 0;
@@ -126,7 +130,7 @@ namespace render {
 
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
-	X(Pop_Camera3D) X(Clear_Depth) X(Push_Batch) X(Pop_Batch)
+	X(Pop_Camera3D) X(Clear_Depth) X(Push_Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -169,6 +173,12 @@ namespace render {
 			frame_data[frame_ptr++] = 0;
 			return ptr;
 		}
+
+		size_t size() const noexcept { return commands.size(); }
+
+		Order& operator[](size_t idx) noexcept {
+			return commands[idx];
+		}
 	};
 
 	extern Order current_camera;
@@ -191,4 +201,20 @@ namespace render {
 	extern void immediate3d(std::span<Rectangle> rectangles) noexcept;
 	extern void immediate3d(std::span<Circle> circles) noexcept;
 	extern void immediate3d(std::span<Arrow> arrows) noexcept;
+
+
+	struct Render_Param {
+		float gamma = 0.7f;
+		float exposure = 1.0f;
+		size_t n_samples = 4;
+
+		float ssao_radius = 1.f;
+		float ssao_bias = 1.f;
+		float edge_blur = 3.f;
+
+
+		Vector3f cam_pos;
+	};
+
+	extern void render_orders(render::Orders& orders, Render_Param param) noexcept;
 };

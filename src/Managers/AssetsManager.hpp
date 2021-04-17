@@ -64,6 +64,8 @@ namespace asset {
 		inline static size_t Sharp = 4;
 		inline static size_t Water = 5;
 		inline static size_t Base = 6;
+		inline static size_t Photon = 7;
+		inline static size_t Oxygen = 7;
 	};
 
 

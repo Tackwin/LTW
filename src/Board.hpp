@@ -30,9 +30,7 @@ struct Tile {
 	size_t id = 0;
 };
 
-struct Projectile {
-	size_t id = 0;
-
+struct Seek_Projectile {
 	size_t from = 0;
 	size_t to = 0;
 
@@ -41,7 +39,27 @@ struct Projectile {
 	float r = 0.1f;
 	float speed = 5.f;
 	float damage = 0.5f;
+};
+struct Straight_Projectile {
 
+	size_t from = 0;
+	size_t to = 0;
+
+	Vector2f pos;
+	Vector2f dir;
+
+	float r = 0.1f;
+	float speed = 1.f;
+	float damage = 0.5f;
+
+	bool to_remove = false;
+};
+
+#define PROJ_LIST(X) X(Seek_Projectile) X(Straight_Projectile)
+
+struct Projectile {
+	sum_type(Projectile, PROJ_LIST);
+	size_t id = 0;
 	bool to_remove = false;
 };
 
@@ -54,6 +72,8 @@ struct Board {
 	Vector2u size = { 16, 50 };
 	float tile_size = 0.49f;
 	float tile_padding = 0.01f;
+
+	double seconds_elapsed = 0.0;
 
 	size_t start_zone_height = 2;
 	size_t cease_zone_height = 2;

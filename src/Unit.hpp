@@ -12,24 +12,41 @@ struct Unit_Base {
 	size_t current_tile = 0;
 	size_t target_tile  = SIZE_MAX;
 	Vector2f pos;
-	float speed = 0.0f;
+	float speed = 0.5f;
 
 	float health = 1.f;
 
 	size_t income = 1;
 	size_t cost   = 5;
 	size_t batch  = 5;
-
 };
 
 struct Methane : Unit_Base {
-	Methane() noexcept { object_id = asset::Object_Id::Methane; }
+	Methane() noexcept {
+		health = 1.f;
+		life_time += xstd::random();
+		speed = 0.5f;
+		object_id = asset::Object_Id::Methane;
+	}
 };
 struct Water   : Unit_Base {
-	Water()   noexcept { object_id = asset::Object_Id::Water; }
+	Water()   noexcept {
+		life_time += xstd::random();
+		object_id = asset::Object_Id::Water;
+		health = 0.5f;
+		speed = 2;
+	}
+};
+struct Oxygen  : Unit_Base {
+	Oxygen() noexcept {
+		life_time += xstd::random();
+		object_id = asset::Object_Id::Oxygen;
+		health = 1.f;
+		speed  = 1.f;
+	}
 };
 
-#define LIST_UNIT(X) X(Methane) X(Water)
+#define LIST_UNIT(X) X(Methane) X(Water) X(Oxygen)
 
 struct Unit {
 	sum_type(Unit, LIST_UNIT);

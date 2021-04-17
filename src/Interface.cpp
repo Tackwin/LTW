@@ -188,9 +188,13 @@ void Interface::update(double dt) noexcept {
 			}
 		}
 	}
+	
 }
 
 void Interface::render(render::Orders& orders) noexcept {
+	orders.push(render::Push_Ui{});
+	defer { orders.push(render::Pop_Ui{}); };
+
 	orders.push(ui_camera);
 	defer { orders.push(render::Pop_Camera{}); };
 	

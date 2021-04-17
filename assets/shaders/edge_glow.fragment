@@ -44,12 +44,13 @@ void main() {
     vec3 normal   = texture_fetch(buffer_normal, TexCoords).xyz;
     if (normal.z == 1) discard;
 
-    float edge_width = 3;
+    float edge_width = 2;
     float edge_mult = 1;
 
     float d = length(frag_pos - cam_pos);
-    if (d > 1.0) {
-        edge_mult = 1.0 / (d + 0.1 * (d - 1));
+    float cut = 3;
+    if (d > cut) {
+        edge_mult = cut / (d + 5 * (d - cut));
     }
 
     float dt_drag_pos = length(diff(buffer_position, TexCoords, edge_width));

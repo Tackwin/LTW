@@ -730,7 +730,7 @@ void render::immediate(render::Text info) noexcept {
 		rec.pos.y += font.info.height * info.height / font.info.char_size;
 		rec.z = info.z;
 
-		// immediate(rec);
+		//immediate(rec);
 		immediate(sprite);
 
 		pos.x += glyph.width * 1.f * info.height / font.info.char_size;
@@ -1400,7 +1400,10 @@ void render::immediate(std::span<Model> models) noexcept {
 	for (auto& x : batch) {
 		Vector4f c = V4F(1);
 		uint32_t tag = x.object_id;
-		auto M = Matrix4f::translation(x.pos) * Matrix4f::scale({x.scale, x.scale, x.scale});
+		auto M =
+			Matrix4f::translation(x.pos) *
+			Matrix4f::scale({x.scale, x.scale, x.scale}) *
+			Matrix4f::rotate({1, 0, 0}, x.dir);
 
 		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
 		X(tag);

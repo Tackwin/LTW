@@ -78,8 +78,6 @@ void main() {
     // also gamma correct while we're at it       
     result = pow(result, vec3(1.0 / gamma));
 
-    const float step = 1.0 / 255.0;
-
-    frag_color = vec4(result, 1.0);
+    frag_color = vec4(vec3(result), 1.0);
     //frag_color = vec4(hdr_color, 1.0);
 }

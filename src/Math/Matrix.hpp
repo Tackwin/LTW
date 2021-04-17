@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿
+#pragma once
 #include "Vector.hpp"
 #include "Rectangle.hpp"
 #include <cmath>
@@ -44,6 +45,14 @@ struct Matrix {
 			z * x * (1 - c) - y * s, z * x * (1 - c) + x * s, c + z * z * (1 - c)    , 0,
 			0					   , 0						, 0						 , 1
 		};
+	}
+
+	// https://web.archive.org/web/20161120220649/http://math.stackexchange.com/questions/180418/
+	// calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d 
+	static Matrix<4, 4, float> rotate(Vector3f a, Vector3f b) noexcept {
+		auto v = cross(a, b).normalize();
+		auto c = a.dot(b);
+		return Matrix<4, 4, float>::rotation(v, -std::acosf(c));
 	}
 
 	template<size_t N = R>
@@ -119,7 +128,7 @@ struct Matrix {
 	}
 	template<typename U>
 	Matrix<R, C, T> operator+(const Matrix<R, C, U>& other) const {
-		Matrix<R, C, T> result;
+		Matrix<R, C, T> result = *this;
 
 		for (size_t i = 0u; i < R; ++i) {
 			auto vec = result[i];
@@ -177,7 +186,7 @@ struct Matrix {
 		return *this += (-other);
 	}
 
-	template<typename U>
+	template<typename U = T>
 	Matrix<R, C, T> operator*(std::enable_if_t<std::is_scalar_v<U>, U> scalar) const {
 		Matrix<R, C, T> result;
 

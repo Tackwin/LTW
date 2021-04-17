@@ -2,7 +2,6 @@
 in vec3 in_pos;
 
 out vec2 texture_coord;
-out vec3 pos;
 
 uniform vec2 size;
 uniform vec2 origin;
@@ -32,7 +31,7 @@ void main() {
 	object_space = rot * object_space;
 	
 
-	pos = vec3(
+	vec3 pos = vec3(
 		object_pos.x + object_space.x,
 		object_pos.y + object_space.y,
 		transform_z(world_z)

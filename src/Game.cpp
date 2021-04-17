@@ -309,10 +309,12 @@ Game_Request Game::update(double dt) noexcept {
 void Game::next_wave() noexcept {
 	for (auto& x : boards) {
 		for (size_t i = 0; i < 10 * (wave + 1); ++i) {
-			if (wave % 2) {
+			if ((wave % 3) == 0) {
 				x.spawn_unit(Methane{});
-			} else {
+			} else if ((wave % 3) == 1) {
 				x.spawn_unit(Water{});
+			} else {
+				x.spawn_unit(Oxygen{});
 			}
 		}
 	}

@@ -12,6 +12,7 @@ void Board::input(const Input_Info& in, Vector2f mouse_world_pos) noexcept {
 }
 
 void Board::update(double dt) noexcept {
+	seconds_elapsed += dt;
 	if (tiles.size() != size.x * size.y) tiles.resize(size.x * size.y, Empty{});
 
 	if (path_construction.soft_dirty) soft_compute_paths();
@@ -42,9 +43,9 @@ void Board::update(double dt) noexcept {
 	}
 
 	for (size_t i = 0; i < towers.size(); ++i) {
-		auto world_pos = Vector2f{
-			(towers[i]->tile_pos.x - size.x / 2.f) * bounding_tile_size(),
-			(towers[i]->tile_pos.y - size.y / 2.f) * bounding_tile_size()
+		auto board_pos = Vector2f{
+			(towers[i]->tile_pos.x - (size.x - 1) / 2.f + 0.5f) * bounding_tile_size(),
+			(towers[i]->tile_pos.y - (size.y - 1) / 2.f + 0.5f) * bounding_tile_size()
 		};
 
 		if (towers[i].typecheck(Tower::Archer_Kind)) {
@@ -61,12 +62,12 @@ void Board::update(double dt) noexcept {
 
 			if (units.exist(x.target_id)) {
 				auto& y = units.id(x.target_id);
-				if ((world_pos - y->pos).length2() < x.range * x.range) {
-					Projectile new_projectile;
+				if ((board_pos - y->pos).length2() < r2) {
+					Seek_Projectile new_projectile;
 					new_projectile.from = tiles[i].id;
 					new_projectile.to = y.id;
 
-					new_projectile.pos = world_pos;
+					new_projectile.pos = board_pos;
 					new_projectile.color = x.color * 0.5f;
 					projectiles.push_back(new_projectile);
 					x.attack_cd = x.attack_speed;
@@ -75,20 +76,28 @@ void Board::update(double dt) noexcept {
 		} else if (towers[i].typecheck(Tower::Sharp_Kind)) {
 			auto& x = towers[i].Sharp_;
 
-			for (auto& y : units) if ((world_pos - y->pos).length2() < x.range * x.range) {
+			for (auto& y : units) if ((board_pos - y->pos).length2() < x.range * x.range) {
 				y->health -= x.damage * dt;
 			}
 		}
 	}
 
-	for (auto& x : projectiles) if (!x.to_remove) {
-		if (!units.exist(x.to)) { x.to_remove = true; continue; }
-		auto& to = units.id(x.to);
+	for (auto& y : projectiles) {
+		if (y.to_remove) continue;
+		if (y.kind == Projectile::Seek_Projectile_Kind) {
+			auto& x = y.Seek_Projectile_;
+			if (!units.exist(x.to)) { y.to_remove = true; continue; }
+			auto& to = units.id(x.to);
 
-		x.pos += (to->pos - x.pos).normed() * x.speed * dt;
-		if ((to->pos - x.pos).length2() < 0.1f) {
-			x.to_remove = true;
-			to->health -= x.damage;
+			x.pos += (to->pos - x.pos).normed() * x.speed * dt;
+			if ((to->pos - x.pos).length2() < 0.1f) {
+				y.to_remove = true;
+				to->health -= x.damage;
+			}
+		} else if (y.kind == Projectile::Straight_Projectile_Kind) {
+			auto& x = y.Straight_Projectile_;
+
+			x.pos += x.dir * x.speed * dt;
 		}
 	}
 
@@ -150,14 +159,27 @@ void Board::render(render::Orders& order) noexcept {
 	circle.r = 0.2f;
 	circle.color = { 0.6f, 0.5f, 0.1f, 1.f };
 
-	m.object_id = asset::Object_Id::Projectile;
+	m.object_id = asset::Object_Id::Photon;
 	order.push(render::Push_Batch());
-	for (auto& x : projectiles) {
+	for (auto& y : projectiles) if (y.kind == Projectile::Seek_Projectile_Kind) {
+		auto& x = y.Seek_Projectile_;
+		m.scale = x.r;
+		m.pos = V3F(x.pos + pos, 0.5f);
+		if (units.exist(x.to)) {
+			auto target = Vector3f(units.id(x.to)->pos, m.pos.z);
+			m.dir = (target - m.pos).normalize();
+		}
+		order.push(m);
+	} else if (y.kind == Projectile::Straight_Projectile_Kind) {
+		auto& x = y.Straight_Projectile_;
 		m.scale = x.r;
 		m.pos = V3F(x.pos + pos, 1);
+		m.dir = Vector3f(x.dir, 0);
 		order.push(m);
 	}
 	order.push(render::Pop_Batch());
+
+	m.dir = {1, 0, 0};
 
 	thread_local std::unordered_map<size_t, std::vector<render::Model>> models_by_object;
 	for (auto& [_, x] : models_by_object) x.clear();
@@ -168,9 +190,16 @@ void Board::render(render::Orders& order) noexcept {
 		m.texture_id = asset::Texture_Id::Palette;
 		m.scale = x->tile_size.x * tile_size;
 		m.pos = Vector3f(tile_box(x->tile_pos, x->tile_size).center() + pos, 0.3f);
+
+		m.dir = {1, 0, 0};
+		if (x.kind == Tower::Sharp_Kind) {
+			m.dir = Vector3f(Vector2f::createUnitVector(seconds_elapsed * 3.1415926 * 5), 0);
+		}
+
 		m.bitmask = 0;
 		models_by_object[m.object_id].push_back(m);
 
+		m.dir = {1, 0, 0};
 		m.object_id = asset::Object_Id::Base;
 		m.scale = x->tile_size.x * tile_size;
 		m.pos.z = 0;
@@ -392,6 +421,7 @@ void Board::pick_new_target(Archer& tower) noexcept {
 		case Tower_Base::Target_Mode::First: {
 			Unit* candidate = nullptr;
 			for (auto& x : units) {
+				if (x->pos.dist_to2(tower_pos) > r) continue;
 				if (!candidate) candidate = &x;
 
 				auto d_candidate = dist_tile[(*candidate)->current_tile];
@@ -399,7 +429,7 @@ void Board::pick_new_target(Archer& tower) noexcept {
 				if (d_current < r && d_current < d_candidate) candidate = &x;
 			}
 
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) < r)
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
 				tower.target_id = candidate->id;
 			break;
 		}
@@ -413,7 +443,7 @@ void Board::pick_new_target(Archer& tower) noexcept {
 				if (d_current < r && d_current < d_candidate) candidate = &x;
 			}
 
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) < r)
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
 				tower.target_id = candidate->id;
 			break;
 		}
@@ -427,14 +457,14 @@ void Board::pick_new_target(Archer& tower) noexcept {
 				if (d_current < r && d_current > d_candidate) candidate = &x;
 			}
 
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) < r)
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
 				tower.target_id = candidate->id;
 			break;
 		}
 		case Tower_Base::Target_Mode::Random: {
 			Unit* candidate = nullptr;
 			for (size_t i = 1; auto& x : units) {
-				if (x->pos.dist_to2(tower_pos) < r && xstd::random() < 1.f / (i++)) {
+				if (x->pos.dist_to2(tower_pos) <= r && xstd::random() < 1.f / (i++)) {
 					candidate = &x;
 				}
 			}

@@ -14,3 +14,4 @@ output/trace/
 *.mtl
 *.gltf
 *.blend1
+*.nvuser
