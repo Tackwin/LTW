@@ -27,6 +27,7 @@ uniform sampler2DMS buffer_position;
 uniform sampler2DMS buffer_normal;
 uniform sampler2DMS buffer_albedo;
 uniform usampler2DMS buffer_tag;
+uniform sampler2DMS buffer_velocity;
 
 uniform sampler2D buffer_ssao;
 
@@ -143,4 +144,5 @@ void main() {
 	//frag_color = vec4(texture_fetch(buffer_position, text_coord).zzz, 1);
 	frag_color.xyz += vec3(0.1 * pow(texture(buffer_ssao, text_coord).x, 5));
 	//oofrag_color.rgb = texture_fetch(buffer_tag, text_coord).rgb;
+	//frag_color = texture_fetch(buffer_velocity, text_coord);
 }

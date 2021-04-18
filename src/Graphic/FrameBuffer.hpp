@@ -40,6 +40,7 @@ struct G_Buffer {
 	std::uint32_t tag_buffer{ 0 };
 	std::uint32_t normal_buffer{ 0 };
 	std::uint32_t albedo_buffer{ 0 };
+	std::uint32_t velocity_buffer{ 0 };
 	std::uint32_t depth_rbo{ 0 };
 	std::uint32_t quad_VAO{ 0 };
 	std::uint32_t quad_VBO{ 0 };
@@ -58,6 +59,7 @@ struct HDR_Buffer {
 
 	void set_active() noexcept;
 	void set_active_texture() noexcept;
+	void set_active_texture(size_t n) noexcept;
 	void set_disable_texture() noexcept;
 
 	void render_quad() noexcept;

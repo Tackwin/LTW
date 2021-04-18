@@ -1318,7 +1318,7 @@ void render::immediate2d(std::span<Arrow> arrows) noexcept {
 	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
 }
 void render::immediate(std::span<Model> models) noexcept {
-	constexpr size_t GPU_Instance_Size = 16 * 4 + 4;
+	constexpr size_t GPU_Instance_Size = 16 * 4 * 2 + 4;
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
@@ -1380,11 +1380,20 @@ void render::immediate(std::span<Model> models) noexcept {
 	glVertexAttribPointer(3, 1, GL_UNSIGNED_INT, GL_FALSE, GPU_Instance_Size, (void*)0);
 
 	vertex_attrib_matrix(4, 4, GPU_Instance_Size);
+	vertex_attrib_matrix(8, 16 * 4 + 4, GPU_Instance_Size);
 
 	texture.bind(5);
 	shader.use();
 	shader.set_texture(5);
 	shader.set_uniform("VP", cam.get_VP());
+	if (models.front().object_blur) {
+		auto t = cam.pos;
+		cam.pos = cam.last_pos;
+		shader.set_uniform("last_VP", cam.get_VP());
+		cam.pos = t;
+	} else {
+		shader.set_uniform("last_VP", cam.get_VP());
+	}
 
 	constexpr size_t Batch_Size = 10'000;
 
@@ -1404,10 +1413,17 @@ void render::immediate(std::span<Model> models) noexcept {
 			Matrix4f::translation(x.pos) *
 			Matrix4f::scale({x.scale, x.scale, x.scale}) *
 			Matrix4f::rotate({1, 0, 0}, x.dir);
+		Matrix4f last_M = M;
+		if (x.object_blur){
+			last_M = Matrix4f::translation(x.last_pos) *
+				Matrix4f::scale({x.last_scale, x.last_scale, x.last_scale}) *
+				Matrix4f::rotate({1, 0, 0}, x.last_dir);
+		}
 
 		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
 		X(tag);
 		X(M);
+		X(last_M);
 		#undef X
 	}
 

@@ -52,6 +52,7 @@ namespace asset {
 		inline static size_t Edge_Glow = 9;
 		inline static size_t Blur = 10;
 		inline static size_t SSAO = 11;
+		inline static size_t Motion = 12;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};

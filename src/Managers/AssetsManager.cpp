@@ -319,10 +319,11 @@ void Store_t::load_known_shaders() noexcept {
 		Primitive_3D_Batched
 	);
 	X("assets/shaders/simple.vertex", "assets/shaders/edge_glow.fragment", "", Edge_Glow);
-	X("assets/shaders/simple.vertex", "assets/shaders/ssao.fragment", "", SSAO);
-	X("assets/shaders/simple.vertex", "assets/shaders/blur.fragment", "", Blur);
-	X("assets/shaders/light.vertex",   "assets/shaders/light.fragment",   "", Light  );
-	X("assets/shaders/hdr.vertex",     "assets/shaders/hdr.fragment",     "", HDR    );
+	X("assets/shaders/simple.vertex", "assets/shaders/motion.fragment",    "", Motion);
+	X("assets/shaders/light.vertex",  "assets/shaders/light.fragment",     "", Light);
+	X("assets/shaders/simple.vertex", "assets/shaders/ssao.fragment",      "", SSAO);
+	X("assets/shaders/simple.vertex", "assets/shaders/blur.fragment",      "", Blur);
+	X("assets/shaders/hdr.vertex",    "assets/shaders/hdr.fragment",       "", HDR);
 #undef X
 }
 void Store_t::load_known_objects() noexcept {

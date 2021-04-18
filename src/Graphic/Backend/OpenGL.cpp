@@ -64,6 +64,7 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	static Texture_Buffer texture_target(buffer_size);
 	static Texture_Buffer ssao_buffer(buffer_size, "Edge Buffer");
 	static Texture_Buffer blur_buffer(buffer_size, "Blur Buffer");
+	static Texture_Buffer motion_buffer(buffer_size, "Motion Buffer");
 	static G_Buffer       g_buffer(buffer_size);
 	static HDR_Buffer     hdr_buffer(buffer_size);
 
@@ -112,13 +113,12 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	ssao_shader.set_uniform("view", game.camera3d.get_view());
 #endif
 
-	glDisable(GL_DEPTH_TEST);
 	ssao_buffer.render_quad();
 
 	blur_buffer.set_active();
 	ssao_buffer.set_active_texture(0);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
 	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
 	blur_shader.use();
 	blur_shader.set_uniform("radius", (int)param.edge_blur);
@@ -142,7 +142,8 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	shader.set_uniform("buffer_albedo", 0);
 	shader.set_uniform("buffer_normal", 1);
 	shader.set_uniform("buffer_position", 2);
-	shader.set_uniform("buffer_tag", 3);
+	shader.set_uniform("buffer_velocity", 3);
+	shader.set_uniform("buffer_tag", 4);
 	shader.set_uniform("buffer_ssao", 10);
 
 	shader.set_uniform("light_dirs[0].intensity", 1.f);
@@ -151,8 +152,23 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 
 	g_buffer.render_quad();
 
+
+	// motion blur
+	motion_buffer.set_active();
+	hdr_buffer.set_active_texture(5);
+	g_buffer.set_active_texture();
+
+	auto& motion_shader = asset::Store.get_shader(asset::Shader_Id::Motion);
+	motion_shader.use();
+	motion_shader.set_uniform("scale", param.motion_scale);
+	motion_shader.set_uniform("texture_input", 5);
+	motion_shader.set_uniform("texture_velocity", 3);
+
+	hdr_buffer.render_quad();
+
+
 	texture_target.set_active();
-	hdr_buffer.set_active_texture();
+	motion_buffer.set_active_texture(0);
 
 	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
 	shader_hdr.use();

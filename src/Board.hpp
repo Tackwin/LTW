@@ -118,6 +118,7 @@ struct Board {
 	void remove_tower(Tower& p) noexcept;
 
 	void spawn_unit(Unit u) noexcept;
+	void spawn_unit_at(Unit u, Vector2u tile) noexcept;
 
 	void pick_new_target(Archer& tower) noexcept;
 

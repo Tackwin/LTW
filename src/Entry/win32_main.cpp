@@ -307,6 +307,7 @@ void windows_loop() noexcept {
 		ImGui::SliderSize ("Samples ", &render_param.n_samples, 1, 16);
 		ImGui::SliderFloat("SSAO R  ", &render_param.ssao_radius, 0, 1);
 		ImGui::SliderFloat("SSAo bias ", &render_param.ssao_bias, 0, 1);
+		ImGui::SliderFloat("motion_scale", &render_param.motion_scale, 0, 1);
 		ImGui::End();
 	}
 

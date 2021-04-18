@@ -241,6 +241,8 @@ Game_Request Game::update(double dt) noexcept {
 	auto in = input_record.back();
 	input(in);
 
+	camera3d.last_pos = camera3d.pos;
+
 	auto& board  = boards[controller.board_id];
 	auto& player = players[controller.player_id];
 
@@ -347,7 +349,6 @@ void game_render(Game& game, render::Orders& order) noexcept {
 
 	}
 	order.push(render::Pop_Camera3D{});
-	order.push(render::Clear_Depth{});
 
 	game.interface.dragging = false;
 	if (game.controller.start_drag_selection) {

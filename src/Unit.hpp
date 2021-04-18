@@ -12,6 +12,7 @@ struct Unit_Base {
 	size_t current_tile = 0;
 	size_t target_tile  = SIZE_MAX;
 	Vector2f pos;
+	Vector2f last_pos;
 	float speed = 0.5f;
 
 	float health = 1.f;
@@ -19,6 +20,8 @@ struct Unit_Base {
 	size_t income = 1;
 	size_t cost   = 5;
 	size_t batch  = 5;
+
+	bool to_die = false;
 };
 
 struct Methane : Unit_Base {
@@ -55,3 +58,6 @@ struct Unit {
 	size_t id = 0;
 	bool to_remove = false;
 };
+
+struct Board;
+extern void on_death(Board& board, Unit& unit) noexcept;

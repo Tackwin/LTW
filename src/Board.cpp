@@ -35,10 +35,14 @@ void Board::update(double dt) noexcept {
 		if (dt_vec.length2() < (last_pos - x->pos).length2()) x->current_tile = x->target_tile;
 
 		dt_vec = dt_vec.normed();
+		x->last_pos = x->pos;
 		x->pos += dt_vec * x->speed * dt;
 	}
 	for (auto& x : units) if (!x.to_remove) {
-		x.to_remove = x->health <= 0;
+		if (x->health <= 0) {
+			if (!x.to_remove) x->to_die = true;
+			x.to_remove = true;
+		}
 		if (x.to_remove) gold_gained += 1;
 	}
 
@@ -75,6 +79,8 @@ void Board::update(double dt) noexcept {
 			}
 		} else if (towers[i].typecheck(Tower::Sharp_Kind)) {
 			auto& x = towers[i].Sharp_;
+			x.last_rot = x.rot;
+			x.rot += dt * 5;
 
 			for (auto& y : units) if ((board_pos - y->pos).length2() < x.range * x.range) {
 				y->health -= x.damage * dt;
@@ -98,6 +104,14 @@ void Board::update(double dt) noexcept {
 			auto& x = y.Straight_Projectile_;
 
 			x.pos += x.dir * x.speed * dt;
+		}
+	}
+
+	for (size_t i = 0; i < units.size(); ++i) {
+		auto& x = units[i];
+		if (x->to_die) {
+			on_death(*this, x);
+			x->to_die = false;
 		}
 	}
 
@@ -190,14 +204,21 @@ void Board::render(render::Orders& order) noexcept {
 		m.texture_id = asset::Texture_Id::Palette;
 		m.scale = x->tile_size.x * tile_size;
 		m.pos = Vector3f(tile_box(x->tile_pos, x->tile_size).center() + pos, 0.3f);
+		m.bitmask = 0;
 
 		m.dir = {1, 0, 0};
+		m.object_blur = false;
 		if (x.kind == Tower::Sharp_Kind) {
-			m.dir = Vector3f(Vector2f::createUnitVector(seconds_elapsed * 3.1415926 * 5), 0);
+			m.object_blur = true;
+
+			m.dir      = Vector3f(Vector2f::createUnitVector(x.Sharp_.rot), 0);
+			m.last_dir = Vector3f(Vector2f::createUnitVector(x.Sharp_.last_rot), 0);
+			m.last_pos = m.pos;
+			m.last_scale = m.scale;
 		}
 
-		m.bitmask = 0;
 		models_by_object[m.object_id].push_back(m);
+		m.object_blur = false;
 
 		m.dir = {1, 0, 0};
 		m.object_id = asset::Object_Id::Base;
@@ -210,11 +231,19 @@ void Board::render(render::Orders& order) noexcept {
 	m.scale = 0.5f;
 	m.bitmask |= render::Model::Edge_Glow;
 	for (auto& x : units) {
+		m.object_blur = true;
 		m.object_id = x->object_id;
 		m.pos.x = x->pos.x + pos.x;
 		m.pos.y = x->pos.y + pos.y;
 		m.pos.z = std::sinf(x->life_time) * 0.1f + 0.3f;
+		m.last_pos.x = x->last_pos.x + pos.x;
+		m.last_pos.y = x->last_pos.y + pos.y;
+		m.last_pos.z = std::sinf(x->life_time) * 0.1f + 0.3f;
+		m.last_scale = m.scale;
+		m.last_dir = m.dir;
 		models_by_object[m.object_id].push_back(m);
+
+		m.object_blur = false;
 	}
 
 	for (auto& [object_id, x] : models_by_object) if (object_id != 0) {
@@ -377,9 +406,13 @@ void Board::spawn_unit(Unit u) noexcept {
 	size_t first = (size.y - start_zone_height) * size.x;
 	size_t final = size.x * size.y;
 
-	u->current_tile = (size_t)(first + xstd::random() * (final - first));
+	size_t t = (size_t)(first + xstd::random() * (final - first));
+	spawn_unit_at(u, { t % size.x, t / size.x });
+}
+void Board::spawn_unit_at(Unit u, Vector2u tile) noexcept {
+	u->current_tile = tile.x + tile.y * size.x;
 
-	auto rec = tile_box({u->current_tile % size.x, u->current_tile / size.x});
+	auto rec = tile_box(tile);
 
 	u->pos.x = rec.x + xstd::random() * rec.w;
 	u->pos.y = rec.y + xstd::random() * rec.h;

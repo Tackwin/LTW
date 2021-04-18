@@ -27,6 +27,7 @@ namespace render {
 	};
 	struct Pop_Camera : Order_Base {};
 
+
 	struct Push_Batch : Order_Base {};
 	struct Pop_Batch : Order_Base {};
 
@@ -39,6 +40,7 @@ namespace render {
 		float far_ = 500.f;
 		float near_ = 0.01f;
 		Vector3f pos;
+		Vector3f last_pos;
 		Vector3f dir;
 
 		void look_at(Vector3f target) noexcept;
@@ -70,7 +72,12 @@ namespace render {
 
 		Vector3f pos;
 		Vector3f dir = {1, 0, 0};
-		float scale = 1.f;
+		float    scale = 1.f;
+
+		bool object_blur = false;
+		Vector3f last_pos;
+		Vector3f last_dir = {1, 0, 0};
+		float    last_scale = 1;
 
 		uint32_t bitmask = 0;
 		enum {
@@ -212,6 +219,7 @@ namespace render {
 		float ssao_bias = 1.f;
 		float edge_blur = 3.f;
 
+		float motion_scale = 1.f;
 
 		Vector3f cam_pos;
 	};

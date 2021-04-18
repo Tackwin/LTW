@@ -54,6 +54,9 @@ struct Sharp : public Tower_Base {
 	float range  = 1.0f;
 	float damage = 0.1f;
 
+	float rot = 0.f;
+	float last_rot = 0.f;
+
 	Sharp() noexcept {
 		color = {1, 1, 0, 1};
 		tile_size = {2, 2};
