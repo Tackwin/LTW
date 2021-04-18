@@ -52,7 +52,7 @@ struct Game {
 	Controller controller;
 
 	Input_Record input_record;
-	Interface interface;
+	Interface user_interface;
 
 	render::Camera3D camera3d;
 	float camera_speed = 1.f;

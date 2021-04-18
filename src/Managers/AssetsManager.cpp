@@ -260,6 +260,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/farthest_icon.png", Farthest_Icon);
 	X("assets/textures/range1_icon.png", Range1_Icon);
 	X("assets/textures/sharp_icon.png", Sharp_Icon);
+	X("assets/textures/volter_icon.png", Volter_Icon);
 
 #undef X
 }
@@ -348,6 +349,26 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/base.ply", Base);
 	X("assets/model/photon.ply", Photon);
 	X("assets/model/oxygen.ply", Oxygen);
+	X("assets/model/Volter.ply", Volter);
+	X("assets/model/Electron.ply", Electron);
+#undef X
+}
+
+void Store_t::load_known_sounds() noexcept {
+	std::optional<size_t> opt;
+
+#define X(str, x)\
+	printf("Loading " #x " ... ");\
+	opt = load_sound(str);\
+	if (opt) {\
+		Sound_Id::x = *opt;\
+		printf("sucess :) !\n");\
+	}\
+	else {\
+		printf("failed :( !\n");\
+	}
+	X("assets/sounds/ui_action.wav",   Ui_Action);
+	X("assets/sounds/range1_shot.wav", Range1_Shoot);
 #undef X
 }
 
@@ -429,5 +450,26 @@ void Store_t::load_from_config(std::filesystem::path config_path) noexcept {
 [[nodiscard]] std::optional<size_t> Store_t::load_object(std::filesystem::path path) noexcept {
 	size_t k = xstd::uuid();
 	if (auto opt = load_object(k, path)) return k;
+	return std::nullopt;
+}
+
+
+[[nodiscard]] ma_decoder& Store_t::get_sound(size_t k) noexcept {
+	return sounds.at(k).asset;
+}
+[[nodiscard]] bool Store_t::load_sound(size_t k, std::filesystem::path path) noexcept {
+	auto& s = sounds[k];
+	s.path = path;
+	auto res = ma_decoder_init_file(path.generic_string().c_str(), nullptr, &s.asset);
+	if (res != MA_SUCCESS) {
+		objects.erase(k);
+		return false;
+	}
+
+	return true;
+}
+[[nodiscard]] std::optional<size_t> Store_t::load_sound(std::filesystem::path path) noexcept {
+	size_t k = xstd::uuid();
+	if (auto opt = load_sound(k, path)) return k;
 	return std::nullopt;
 }

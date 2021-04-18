@@ -20,6 +20,8 @@ enum class Ui_State {
 	Right,
 	Archer_Build,
 	Splash_Build,
+	Volter_Build,
+	Surge_Spell,
 	Cancel,
 	Send,
 	Send_First,
@@ -51,7 +53,7 @@ struct Action {
 	static constexpr Ui_Table Build_Table = TABLE(
 		Ui_State::Null,         Ui_State::Null,         Ui_State::Null, Ui_State::Null,
 		Ui_State::Null,         Ui_State::Null,         Ui_State::Null, Ui_State::Null,
-		Ui_State::Archer_Build, Ui_State::Splash_Build, Ui_State::Null, Ui_State::Null,
+		Ui_State::Archer_Build, Ui_State::Splash_Build, Ui_State::Volter_Build, Ui_State::Null,
 		Ui_State::Main,         Ui_State::Null,         Ui_State::Null, Ui_State::Null
 	);
 	static constexpr Ui_Table Send1_Table = TABLE(

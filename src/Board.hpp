@@ -36,6 +36,11 @@ struct Base_Projectile {
 
 	Vector2f last_pos;
 	Vector2f last_dir;
+	float r = 0.1f;
+
+	size_t object_id = 0;
+
+	float life_time = FLT_MAX;
 };
 
 struct Seek_Projectile : Base_Projectile {
@@ -44,26 +49,31 @@ struct Seek_Projectile : Base_Projectile {
 
 	Vector4f color;
 
-	float r = 0.1f;
 	float speed = 5.f;
 	float damage = 0.5f;
+
+	Seek_Projectile() noexcept {
+		object_id = asset::Object_Id::Photon;
+	}
 };
 struct Straight_Projectile : Base_Projectile {
-
 	size_t from = 0;
-	size_t to = 0;
 
-	float r = 0.1f;
 	float speed = 1.f;
 	float damage = 0.5f;
 
 	bool to_remove = false;
+
+	Straight_Projectile() noexcept {
+		object_id = asset::Object_Id::Electron;
+	}
 };
 
 #define PROJ_LIST(X) X(Seek_Projectile) X(Straight_Projectile)
 
 struct Projectile {
 	sum_type(Projectile, PROJ_LIST);
+	sum_type_base(Base_Projectile);
 	size_t id = 0;
 	bool to_remove = false;
 };

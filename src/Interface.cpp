@@ -92,6 +92,10 @@ Ui_Table Tower_Selection::get_selected_table() noexcept {
 		}
 	}
 
+	for (auto& i : selection) if (pool->id(i).kind == Tower::Volter_Kind) {
+		table[8 + 1] = Ui_State::Surge_Spell;
+	}
+
 	return table;
 }
 
@@ -306,4 +310,6 @@ void Interface::init_buttons() noexcept {
 	b[Ui_State::Target_Random].texture_id     = asset::Texture_Id::Dice_Icon;
 	b[Ui_State::Target_Closest].texture_id    = asset::Texture_Id::Closest_Icon;
 	b[Ui_State::Target_Farthest].texture_id   = asset::Texture_Id::Farthest_Icon;
+	b[Ui_State::Volter_Build].texture_id      = asset::Texture_Id::Volter_Icon;
+	b[Ui_State::Surge_Spell].texture_id       = asset::Texture_Id::Dummy;
 }

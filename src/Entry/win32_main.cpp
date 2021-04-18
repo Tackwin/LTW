@@ -3,6 +3,9 @@
 #include <optional>
 #include <string>
 
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
+
 #include "Profiler/Tracer.hpp"
 #include "xstd.hpp"
 
@@ -37,8 +40,8 @@ std::optional<std::string> get_last_error_message() noexcept;
 std::optional<HGLRC> create_gl_context(HWND handle_window) noexcept;
 void destroy_gl_context(HGLRC gl_context) noexcept;
 
+void sound_callback(ma_device* device, void* output, const void* input, ma_uint32 frame_count);
 void windows_loop() noexcept;
-
 
 void toggle_fullscren(HWND hwnd) {
 	static WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
@@ -114,6 +117,51 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 
 Game game;
 render::Orders orders;
+
+namespace sound {
+	struct Orders {
+		bool healthy = false;
+		ma_device device;
+
+		std::vector<size_t> playing_sound;
+
+		void init() noexcept {
+			ma_device_config device_config = ma_device_config_init(ma_device_type_playback);
+			device_config.playback.format = ma_format_s16;
+			device_config.playback.channels = 1;
+			device_config.sampleRate = 44100;
+			device_config.dataCallback = sound_callback;
+			device_config.pUserData = this;
+
+			if (ma_device_init(nullptr, &device_config, &device) != MA_SUCCESS) {
+				printf("Failed to load sound :'(\n");
+				return;
+			}
+
+			if (ma_device_start(&device) != MA_SUCCESS) {
+				printf("Failed to load sound :'(\n");
+				ma_device_uninit(&device);
+				return;
+			}
+			healthy = true;
+		}
+
+		void uninit() {
+			ma_device_uninit(&device);
+		}
+
+		void callback(void* output, const void* input, ma_uint32 frame_count) {
+			//if (playing_sound.empty()) return;
+			if (!asset::Store.ready) return;
+
+			auto& decoder = asset::Store.get_sound(asset::Sound_Id::Ui_Action);
+			ma_decoder_read_pcm_frames(&decoder, output, frame_count);
+		}
+	};
+};
+sound::Orders sound_orders;
+
+
 struct Game_Proc {
 	decltype(&game_startup)  startup  = game_startup;
 	decltype(&game_shutdown) shutdown = game_shutdown;
@@ -243,6 +291,10 @@ int WINAPI WinMain(
 
 	platform::handle_dc_window = dc_window;
 	orders.reserve(1000);
+
+	PROFILER_BEGIN("Sound");
+	sound_orders.init();
+	defer { if (sound_orders.healthy) sound_orders.uninit(); };
 
 	PROFILER_BEGIN("Game");
 	game_proc.startup(game);
@@ -535,4 +587,9 @@ void APIENTRY opengl_debug(
 	if (std::find(BEG_END(To_Break_On), id) != std::end(To_Break_On)) {
 		DebugBreak();
 	}
+}
+
+void sound_callback(ma_device* device, void* output, const void* input, ma_uint32 frame_count) {
+	auto sound_orders = (sound::Orders*)device->pUserData;
+	if (sound_orders) sound_orders->callback(output, input, frame_count);
 }

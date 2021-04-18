@@ -12,6 +12,8 @@
 #include "Graphic/Texture.hpp"
 #include "OS/DLL.hpp"
 
+#include "miniaudio.h"
+
 namespace asset {
 	struct DLL_Id {
 		inline static size_t Game = 1;
@@ -39,6 +41,7 @@ namespace asset {
 		inline static size_t Farthest_Icon = 20;
 		inline static size_t Range1_Icon   = 21;
 		inline static size_t Sharp_Icon    = 22;
+		inline static size_t Volter_Icon   = 23;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
@@ -66,7 +69,13 @@ namespace asset {
 		inline static size_t Water = 5;
 		inline static size_t Base = 6;
 		inline static size_t Photon = 7;
-		inline static size_t Oxygen = 7;
+		inline static size_t Oxygen = 8;
+		inline static size_t Volter = 9;
+		inline static size_t Electron = 10;
+	};
+	struct Sound_Id {
+		inline static size_t Ui_Action = 1;
+		inline static size_t Range1_Shoot = 2;
 	};
 
 
@@ -98,13 +107,20 @@ namespace asset {
 		std::filesystem::path path;
 	};
 
+	struct Asset_Sound {
+		ma_decoder asset;
+		std::filesystem::path path;
+	};
+
 	struct Store_t {
 		bool stop{ false };
+		std::atomic<bool> ready = false;
 
 		std::unordered_map<std::string, std::uint64_t> textures_loaded;
 
 		std::unordered_map<std::uint64_t, Asset_DLL> dlls;
 		std::unordered_map<std::uint64_t, Asset_Font> fonts;
+		std::unordered_map<std::uint64_t, Asset_Sound> sounds;
 		std::unordered_map<std::uint64_t, Asset_Object> objects;
 		std::unordered_map<std::uint64_t, Asset_Shader> shaders;
 		std::unordered_map<std::uint64_t, Asset_Texture> textures;
@@ -148,11 +164,16 @@ namespace asset {
 		[[nodiscard]] bool load_object(size_t k, std::filesystem::path path) noexcept;
 		[[nodiscard]] std::optional<size_t> load_object(std::filesystem::path path) noexcept;
 
+		[[nodiscard]] ma_decoder& get_sound(size_t k) noexcept;
+		[[nodiscard]] bool load_sound(size_t k, std::filesystem::path path) noexcept;
+		[[nodiscard]] std::optional<size_t> load_sound(std::filesystem::path path) noexcept;
+
 		void monitor_path(std::filesystem::path dir) noexcept;
 
 		void load_known_textures() noexcept;
 		void load_known_shaders() noexcept;
 		void load_known_objects() noexcept;
+		void load_known_sounds() noexcept;
 		void load_known_fonts() noexcept;
 		void load_from_config(std::filesystem::path config_path) noexcept;
 	};

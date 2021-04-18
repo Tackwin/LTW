@@ -23,7 +23,6 @@ struct Tower_Base {
 			Vector2u tile_size = {1, 1};
 		};
 	};
-	Vector4f color = {1, 0, 0, 1};
 
 	Target_Mode target_mode;
 
@@ -36,13 +35,12 @@ struct Tower_Base {
 };
 
 struct Archer : public Tower_Base {
-	float range        = 5.0f;
+	float range        = 3.5f;
 	float damage       = 1.0f;
 	float attack_speed = 1.0f;
 	float attack_cd    = 0.0f;
 
 	Archer() noexcept {
-		color = {1, 0, 0, 1};
 		tile_size = {1, 1};
 		object_id = asset::Object_Id::Range1;
 		target_mode = Target_Mode::First;
@@ -58,14 +56,29 @@ struct Sharp : public Tower_Base {
 	float last_rot = 0.f;
 
 	Sharp() noexcept {
-		color = {1, 1, 0, 1};
 		tile_size = {2, 2};
 		object_id = asset::Object_Id::Sharp;
 		texture_icon_id = asset::Texture_Id::Sharp_Icon;
 	}
 };
 
-#define TOWER_LIST(X) X(Archer) X(Sharp)
+struct Volter : public Tower_Base {
+	float range = 5.0f;
+
+	bool to_surge = false;
+	bool always_surge = false;
+	float surge_timer = 0.f;
+	float surge_time  = 5.f;
+
+
+	Volter() noexcept {
+		tile_size = {3, 3};
+		object_id = asset::Object_Id::Volter;
+		texture_icon_id = asset::Texture_Id::Volter_Icon;
+	}
+};
+
+#define TOWER_LIST(X) X(Archer) X(Sharp) X(Volter)
 
 struct Tower {
 	sum_type(Tower, TOWER_LIST);

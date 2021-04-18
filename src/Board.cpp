@@ -47,17 +47,13 @@ void Board::update(double dt) noexcept {
 	}
 
 	for (size_t i = 0; i < towers.size(); ++i) {
-		auto board_pos = Vector2f{
-			(towers[i]->tile_pos.x - (size.x - 1) / 2.f + 0.5f) * bounding_tile_size(),
-			(towers[i]->tile_pos.y - (size.y - 1) / 2.f + 0.5f) * bounding_tile_size()
-		};
+		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
 
 		if (towers[i].typecheck(Tower::Archer_Kind)) {
 			auto& x = towers[i].Archer_;
 			x.attack_cd -= dt;
 			if (x.attack_cd > 0) continue;
 
-			Vector2f tower_pos = tile_box(x.tile_pos, x.tile_size).center();
 			auto r2 = x.range * x.range;
 
 			if (!units.exist(x.target_id) || tower_pos.dist_to2(units.id(x.target_id)->pos) > r2) {
@@ -66,13 +62,12 @@ void Board::update(double dt) noexcept {
 
 			if (units.exist(x.target_id)) {
 				auto& y = units.id(x.target_id);
-				if ((board_pos - y->pos).length2() < r2) {
+				if ((tower_pos - y->pos).length2() < r2) {
 					Seek_Projectile new_projectile;
 					new_projectile.from = tiles[i].id;
 					new_projectile.to = y.id;
 
-					new_projectile.pos = board_pos;
-					new_projectile.color = x.color * 0.5f;
+					new_projectile.pos = tower_pos;
 					projectiles.push_back(new_projectile);
 					x.attack_cd = x.attack_speed;
 				}
@@ -82,15 +77,35 @@ void Board::update(double dt) noexcept {
 			x.last_rot = x.rot;
 			x.rot += dt * 5;
 
-			for (auto& y : units) if ((board_pos - y->pos).length2() < x.range * x.range) {
+			for (auto& y : units) if ((tower_pos - y->pos).length2() < x.range * x.range) {
 				y->health -= x.damage * dt;
 			}
+		} else if (towers[i].kind == Tower::Volter_Kind) {
+			auto& x = towers[i].Volter_;
+			x.surge_timer -= dt;
+
+			if (x.surge_timer < 0 && x.to_surge) {
+				for (size_t j = 0; j < 100; ++j) {
+					Straight_Projectile p;
+					p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
+					p.pos = tower_pos;
+					p.from = towers[i].id;
+					p.life_time = 10;
+					projectiles.push_back(p);
+				}
+				x.surge_timer = x.surge_time;
+			}
+			x.to_surge = x.always_surge;
 		}
 	}
 
 	for (auto& y : projectiles) {
+		y->life_time -= dt;
+		if (y->life_time < 0) y.to_remove = true;
 		if (y.to_remove) continue;
+
 		if (y.kind == Projectile::Seek_Projectile_Kind) {
+			
 			auto& x = y.Seek_Projectile_;
 			if (!units.exist(x.to)) { y.to_remove = true; continue; }
 			auto& to = units.id(x.to);
@@ -181,32 +196,6 @@ void Board::render(render::Orders& order) noexcept {
 	circle.r = 0.2f;
 	circle.color = { 0.6f, 0.5f, 0.1f, 1.f };
 
-	m.object_id = asset::Object_Id::Photon;
-	m.object_blur = true;
-	order.push(render::Push_Batch());
-	for (auto& y : projectiles) if (y.kind == Projectile::Seek_Projectile_Kind) {
-		auto& x = y.Seek_Projectile_;
-		m.scale = x.r;
-		m.pos = V3F(x.pos + pos, 0.5f);
-		m.last_pos = V3F(x.last_pos + pos, 0.5f);
-
-		m.dir = Vector3f(x.dir, 0);
-		m.last_dir = Vector3f(x.last_dir, 0);
-
-
-		order.push(m);
-	} else if (y.kind == Projectile::Straight_Projectile_Kind) {
-		auto& x = y.Straight_Projectile_;
-		m.scale = x.r;
-		m.pos = V3F(x.pos + pos, 0.5f);
-		m.last_pos = V3F(x.last_pos + pos, 0.5f);
-		m.dir = Vector3f(x.dir, 0);
-		m.last_dir = Vector3f(x.last_dir, 0);
-		order.push(m);
-	}
-	order.push(render::Pop_Batch());
-
-
 	m.object_blur = false;
 	m.dir = {1, 0, 0};
 
@@ -259,6 +248,20 @@ void Board::render(render::Orders& order) noexcept {
 		models_by_object[m.object_id].push_back(m);
 
 		m.object_blur = false;
+	}
+
+	m.object_blur = true;
+	for (auto& x : projectiles) {
+		m.scale = x->r;
+		m.pos = V3F(x->pos + pos, 0.5f);
+		m.last_pos = V3F(x->last_pos + pos, 0.5f);
+
+		m.dir = Vector3f(x->dir, 0);
+		m.last_dir = Vector3f(x->last_dir, 0);
+
+		m.object_id = x->object_id;
+
+		models_by_object[m.object_id].push_back(m);
 	}
 
 	for (auto& [object_id, x] : models_by_object) if (object_id != 0) {
