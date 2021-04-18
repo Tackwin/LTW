@@ -95,10 +95,18 @@ void Board::update(double dt) noexcept {
 			if (!units.exist(x.to)) { y.to_remove = true; continue; }
 			auto& to = units.id(x.to);
 
+			x.last_dir = x.dir;
+			x.last_pos = x.pos;
+
 			x.pos += (to->pos - x.pos).normed() * x.speed * dt;
 			if ((to->pos - x.pos).length2() < 0.1f) {
 				y.to_remove = true;
 				to->health -= x.damage;
+			}
+
+			if (units.exist(x.to)) {
+				auto target = units.id(x.to)->pos;
+				x.dir = (target - x.pos).normalize();
 			}
 		} else if (y.kind == Projectile::Straight_Projectile_Kind) {
 			auto& x = y.Straight_Projectile_;
@@ -174,25 +182,32 @@ void Board::render(render::Orders& order) noexcept {
 	circle.color = { 0.6f, 0.5f, 0.1f, 1.f };
 
 	m.object_id = asset::Object_Id::Photon;
+	m.object_blur = true;
 	order.push(render::Push_Batch());
 	for (auto& y : projectiles) if (y.kind == Projectile::Seek_Projectile_Kind) {
 		auto& x = y.Seek_Projectile_;
 		m.scale = x.r;
 		m.pos = V3F(x.pos + pos, 0.5f);
-		if (units.exist(x.to)) {
-			auto target = Vector3f(units.id(x.to)->pos, m.pos.z);
-			m.dir = (target - m.pos).normalize();
-		}
+		m.last_pos = V3F(x.last_pos + pos, 0.5f);
+
+		m.dir = Vector3f(x.dir, 0);
+		m.last_dir = Vector3f(x.last_dir, 0);
+
+
 		order.push(m);
 	} else if (y.kind == Projectile::Straight_Projectile_Kind) {
 		auto& x = y.Straight_Projectile_;
 		m.scale = x.r;
-		m.pos = V3F(x.pos + pos, 1);
+		m.pos = V3F(x.pos + pos, 0.5f);
+		m.last_pos = V3F(x.last_pos + pos, 0.5f);
 		m.dir = Vector3f(x.dir, 0);
+		m.last_dir = Vector3f(x.last_dir, 0);
 		order.push(m);
 	}
 	order.push(render::Pop_Batch());
 
+
+	m.object_blur = false;
 	m.dir = {1, 0, 0};
 
 	thread_local std::unordered_map<size_t, std::vector<render::Model>> models_by_object;

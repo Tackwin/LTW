@@ -219,7 +219,9 @@ namespace render {
 		float ssao_bias = 1.f;
 		float edge_blur = 3.f;
 
-		float motion_scale = 1.f;
+		float motion_scale = 0.1f;
+		size_t target_fps = 240;
+		size_t current_fps = 60;
 
 		Vector3f cam_pos;
 	};

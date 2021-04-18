@@ -64,7 +64,7 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	static Texture_Buffer texture_target(buffer_size);
 	static Texture_Buffer ssao_buffer(buffer_size, "Edge Buffer");
 	static Texture_Buffer blur_buffer(buffer_size, "Blur Buffer");
-	static Texture_Buffer motion_buffer(buffer_size, "Motion Buffer");
+	static HDR_Buffer     motion_buffer(buffer_size);
 	static G_Buffer       g_buffer(buffer_size);
 	static HDR_Buffer     hdr_buffer(buffer_size);
 
@@ -129,7 +129,7 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	hdr_buffer.set_active();
 	g_buffer.set_active_texture();
 	blur_buffer.set_active_texture(10);
-	glClearColor(0.4f, 0.2f, 0.3f, 1.f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	auto& shader = asset::Store.get_shader(asset::Shader_Id::Light);
@@ -159,8 +159,12 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	g_buffer.set_active_texture();
 
 	auto& motion_shader = asset::Store.get_shader(asset::Shader_Id::Motion);
+
+	float motion_blur = param.motion_scale * param.target_fps / param.current_fps;
+	motion_blur = std::clamp(motion_blur, 0.f, 1.f);
+
 	motion_shader.use();
-	motion_shader.set_uniform("scale", param.motion_scale);
+	motion_shader.set_uniform("scale", motion_blur);
 	motion_shader.set_uniform("texture_input", 5);
 	motion_shader.set_uniform("texture_velocity", 3);
 

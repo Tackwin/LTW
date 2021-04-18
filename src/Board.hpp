@@ -30,23 +30,28 @@ struct Tile {
 	size_t id = 0;
 };
 
-struct Seek_Projectile {
+struct Base_Projectile {
+	Vector2f pos;
+	Vector2f dir;
+
+	Vector2f last_pos;
+	Vector2f last_dir;
+};
+
+struct Seek_Projectile : Base_Projectile {
 	size_t from = 0;
 	size_t to = 0;
 
-	Vector2f pos;
 	Vector4f color;
+
 	float r = 0.1f;
 	float speed = 5.f;
 	float damage = 0.5f;
 };
-struct Straight_Projectile {
+struct Straight_Projectile : Base_Projectile {
 
 	size_t from = 0;
 	size_t to = 0;
-
-	Vector2f pos;
-	Vector2f dir;
 
 	float r = 0.1f;
 	float speed = 1.f;

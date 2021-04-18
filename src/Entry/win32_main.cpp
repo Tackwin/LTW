@@ -248,7 +248,7 @@ int WINAPI WinMain(
 	game_proc.startup(game);
 	PROFILER_END();
 
-	wglSwapIntervalEXT(0);
+	wglSwapIntervalEXT(1);
 
 	MSG msg{};
 
@@ -282,6 +282,10 @@ void windows_loop() noexcept {
 	auto dt = xstd::seconds() - last_time_frame;
 	last_time_frame = xstd::seconds();
 
+	if (dt > 1 / 55.0) {
+		printf("Lag Spike :( %10.5lf ms\n", 1000 * dt);
+	}
+
 	// >TODO(Tackwin): handle multiple char by frame.
 	for (auto& x : posted_char) current_char = x;
 	posted_char.clear();
@@ -307,11 +311,13 @@ void windows_loop() noexcept {
 		ImGui::SliderSize ("Samples ", &render_param.n_samples, 1, 16);
 		ImGui::SliderFloat("SSAO R  ", &render_param.ssao_radius, 0, 1);
 		ImGui::SliderFloat("SSAo bias ", &render_param.ssao_bias, 0, 1);
-		ImGui::SliderFloat("motion_scale", &render_param.motion_scale, 0, 1);
+		ImGui::SliderFloat("Motion scale", &render_param.motion_scale, 0, 1);
+		ImGui::SliderSize("Target FPS", &render_param.target_fps, 60, 240);
 		ImGui::End();
 	}
 
 	render_param.cam_pos = game.camera3d.pos;
+	render_param.current_fps = (size_t)(1.0 / dt);
 	auto response = game_proc.update(game, dt);
 	game_proc.render(game, orders);
 

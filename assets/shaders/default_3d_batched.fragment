@@ -29,5 +29,10 @@ void main() {
 	
 	vec2 a = (curr_pos_proj.xy / curr_pos_proj.w);
 	vec2 b = (last_pos_proj.xy / last_pos_proj.w);
-	g_velocity = vec4((a - b), 0, 1);
+
+	float damp = 0.05;
+	vec2 dt = (a - b);
+	dt = 2 * damp / (1 + exp(-2 * dt / damp)) - damp;
+
+	g_velocity = vec4(dt, 0, 1);
 }
