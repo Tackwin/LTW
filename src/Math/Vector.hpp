@@ -38,6 +38,7 @@ using Vector4i = Vector4<std::int32_t>;
 using Vector4u = Vector4<std::size_t>;
 using Vector4f = Vector4<float>;
 using Vector4d = Vector4<double>;
+using Vector4b = Vector4<bool>;
 
 template<size_t D, typename T>
 struct __vec_member {

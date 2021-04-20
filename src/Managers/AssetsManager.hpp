@@ -57,6 +57,7 @@ namespace asset {
 		inline static size_t SSAO = 11;
 		inline static size_t Motion = 12;
 		inline static size_t Simple = 13;
+		inline static size_t Depth_Prepass = 14;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};
@@ -139,12 +140,18 @@ namespace asset {
 		
 		[[nodiscard]] Shader& get_shader(size_t k) noexcept;
 		[[nodiscard]] std::optional<size_t> load_shader(
+			std::filesystem::path vertex
+		) noexcept;
+		[[nodiscard]] std::optional<size_t> load_shader(
 			std::filesystem::path vertex, std::filesystem::path fragment
 		) noexcept;
 		[[nodiscard]] std::optional<size_t> load_shader(
 			std::filesystem::path vertex,
 			std::filesystem::path fragment,
 			std::filesystem::path geometry
+		) noexcept;
+		[[nodiscard]] bool load_shader(
+			size_t k, std::filesystem::path vertex
 		) noexcept;
 		[[nodiscard]] bool load_shader(
 			size_t k, std::filesystem::path vertex, std::filesystem::path fragment

@@ -13,6 +13,20 @@ namespace render {
 		float z = 1.f;
 	};
 
+	struct Depth_Test : Order_Base {
+		bool active = true;
+		enum Func {
+			Equal,
+			Greater,
+			Less,
+			Count
+		};
+		Func func;
+	};
+	struct Color_Mask : Order_Base {
+		Vector4b mask;
+	};
+
 	struct Clear_Depth : Order_Base {};
 	struct Camera : Order_Base {
 		union {
@@ -145,7 +159,8 @@ namespace render {
 
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
-	X(Pop_Camera3D) X(Clear_Depth) X(Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui)
+	X(Pop_Camera3D) X(Clear_Depth) X(Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui) X(Depth_Test)\
+	X(Color_Mask)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -235,6 +250,8 @@ namespace render {
 		size_t current_fps = 60;
 
 		Vector3f cam_pos;
+
+		bool render = true;
 	};
 
 	extern void render_orders(render::Orders& orders, Render_Param param) noexcept;

@@ -55,6 +55,12 @@ namespace asset {
 }
 
 [[nodiscard]] std::optional<size_t> Store_t::load_shader(
+	std::filesystem::path vertex
+) noexcept {
+	auto x = xstd::uuid();
+	return load_shader(x, vertex) ? std::optional{x} : std::nullopt;
+}
+[[nodiscard]] std::optional<size_t> Store_t::load_shader(
 	std::filesystem::path vertex, std::filesystem::path fragment
 ) noexcept {
 	auto x = xstd::uuid();
@@ -69,6 +75,23 @@ namespace asset {
 	return load_shader(x, vertex, fragment, geometry) ? std::optional{x} : std::nullopt;
 }
 
+
+[[nodiscard]] bool Store_t::load_shader(
+	size_t k, std::filesystem::path vertex
+) noexcept {
+	auto new_shader = Shader::create_shader(vertex);
+	if (!new_shader) return false;
+
+	Asset_Shader s{
+		std::move(*new_shader),
+		std::filesystem::weakly_canonical(vertex)
+	};
+
+
+	shaders.insert({ k, std::move(s) });
+
+	return true;
+}
 
 [[nodiscard]] bool Store_t::load_shader(
 	size_t k, std::filesystem::path vertex, std::filesystem::path fragment
@@ -289,7 +312,8 @@ void Store_t::load_known_shaders() noexcept {
 
 #define X(f, v, g, x)\
 	printf("Loading " #x " shader... ");\
-	if (*g == '\0') opt = load_shader(f, v);\
+	if (*v == '\0') opt = load_shader(f);\
+	else if (*g == '\0') opt = load_shader(f, v);\
 	else opt = load_shader(f, v, g);\
 	if (opt) {\
 		Shader_Id::x = *opt;\
@@ -324,7 +348,9 @@ void Store_t::load_known_shaders() noexcept {
 	X("assets/shaders/light.vertex",  "assets/shaders/light.fragment",     "", Light);
 	X("assets/shaders/simple.vertex", "assets/shaders/ssao.fragment",      "", SSAO);
 	X("assets/shaders/simple.vertex", "assets/shaders/blur.fragment",      "", Blur);
-	X("assets/shaders/hdr.vertex",    "assets/shaders/hdr.fragment",       "", HDR);
+	X("assets/shaders/simple.vertex", "assets/shaders/hdr.fragment",       "", HDR);
+	X("assets/shaders/simple.vertex", "assets/shaders/simple.fragment",    "", Simple);
+	X("assets/shaders/depth_prepass.vertex", "",    "", Depth_Prepass);
 #undef X
 }
 void Store_t::load_known_objects() noexcept {

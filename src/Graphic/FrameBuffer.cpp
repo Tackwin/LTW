@@ -64,7 +64,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	glTexImage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
-		GL_RGBA32F,
+		GL_RGBA16F,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
 		GL_TRUE
@@ -84,7 +84,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	glTexImage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
-		GL_RGBA32F,
+		GL_RGBA16F,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
 		GL_TRUE

@@ -29,7 +29,6 @@ struct Unit_Base {
 struct Methane : Unit_Base {
 	Methane() noexcept {
 		health = 1.f;
-		life_time += xstd::random();
 		speed = 0.5f;
 		object_id = asset::Object_Id::Methane;
 	}
@@ -37,7 +36,6 @@ struct Methane : Unit_Base {
 struct Ethane : Unit_Base {
 	Ethane() noexcept {
 		health = 3.f;
-		life_time += xstd::random();
 		speed = 0.4f;
 		object_id = asset::Object_Id::Ethane;
 		color /= 2;
@@ -46,7 +44,6 @@ struct Ethane : Unit_Base {
 struct Propane : Unit_Base {
 	Propane() noexcept {
 		health = 4.5f;
-		life_time += xstd::random();
 		speed = 0.3f;
 		object_id = asset::Object_Id::Propane;
 		color /= 3;
@@ -55,7 +52,6 @@ struct Propane : Unit_Base {
 struct Butane : Unit_Base {
 	Butane() noexcept {
 		health = 5.5f;
-		life_time += xstd::random();
 		speed = 0.15f;
 		object_id = asset::Object_Id::Butane;
 		color /= 5;
@@ -63,7 +59,6 @@ struct Butane : Unit_Base {
 };
 struct Water   : Unit_Base {
 	Water()   noexcept {
-		life_time += xstd::random();
 		object_id = asset::Object_Id::Water;
 		health = 0.5f;
 		speed = 2;
@@ -71,7 +66,6 @@ struct Water   : Unit_Base {
 };
 struct Oxygen  : Unit_Base {
 	Oxygen() noexcept {
-		life_time += xstd::random();
 		object_id = asset::Object_Id::Oxygen;
 		health = 1.f;
 		speed  = 1.f;

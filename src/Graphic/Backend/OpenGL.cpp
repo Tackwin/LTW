@@ -76,6 +76,10 @@ void motion_blur(
 	render::Render_Param& param
 ) noexcept;
 
+void tone_mapping(
+	HDR_Buffer& hdr_buffer, Texture_Buffer& out_buffer, render::Render_Param& param
+) noexcept;
+
 void render::render_orders(render::Orders& orders, render::Render_Param param) noexcept {
 	auto buffer_size = Environment.buffer_size;
 	
@@ -98,16 +102,17 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	edge_highlight(g_buffer, edge_buffer, param);
 	lighting(g_buffer, edge_buffer, hdr_buffer, param);
 	motion_blur(g_buffer, hdr_buffer, motion_buffer, param);
+	tone_mapping(motion_buffer, texture_target, param);
 
-	texture_target.set_active();
-	motion_buffer.set_active_texture(0);
 
-	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
-	shader_hdr.use();
-	shader_hdr.set_uniform("gamma", param.gamma);
-	shader_hdr.set_uniform("exposure", param.exposure);
-	shader_hdr.set_uniform("hdr_texture", 0);
-	shader_hdr.set_uniform("transform_color", true);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	texture_target.set_active_texture(0);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Simple);
+	shader.use();
+	shader.set_texture(0);
+
 
 	Rectanglef viewport_rect{
 		0.f, 0.f, (float)Environment.window_size.x, (float)Environment.window_size.y
@@ -121,14 +126,6 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 		(GLsizei)viewport_rect.h
 	);
 
-	hdr_buffer.render_quad();
-
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-	
-	shader_hdr.set_uniform("transform_color", false);
-	
 	texture_target.render_quad();
 	hdr_buffer.set_disable_texture();
 	render_ui(orders, param);
@@ -154,6 +151,27 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 		auto& x = orders[i];
 
 		switch (x.kind) {
+			case render::Order::Color_Mask_Kind: {
+				glColorMask(
+					x.Color_Mask_.mask.r,
+					x.Color_Mask_.mask.g,
+					x.Color_Mask_.mask.b,
+					x.Color_Mask_.mask.a
+				);
+				break;
+			}
+			case render::Order::Depth_Test_Kind: {
+				if (x.Depth_Test_.active) glEnable(GL_DEPTH_TEST);
+				else                      glDisable(GL_DEPTH_TEST);
+
+				switch (x.Depth_Test_.func) {
+					case render::Depth_Test::Equal:   glDepthFunc(GL_EQUAL); break;
+					case render::Depth_Test::Less:    glDepthFunc(GL_LESS); break;
+					case render::Depth_Test::Greater: glDepthFunc(GL_GREATER); break;
+					default: break;
+				}
+				break;
+			};
 			case render::Order::Pop_Ui_Kind: assert(false); break;
 			case render::Order::Push_Ui_Kind: {
 				size_t depth = 0;
@@ -429,6 +447,21 @@ void motion_blur(
 	motion_shader.set_uniform("scale", motion_blur);
 	motion_shader.set_uniform("texture_input", 5);
 	motion_shader.set_uniform("texture_velocity", 3);
+
+	hdr_buffer.render_quad();
+}
+
+void tone_mapping(
+	HDR_Buffer& hdr_buffer, Texture_Buffer& texture_target, render::Render_Param& param
+) noexcept {
+	texture_target.set_active();
+	hdr_buffer.set_active_texture(0);
+
+	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
+	shader_hdr.use();
+	shader_hdr.set_uniform("gamma", param.gamma);
+	shader_hdr.set_uniform("exposure", param.exposure);
+	shader_hdr.set_uniform("hdr_texture", 0);
 
 	hdr_buffer.render_quad();
 }

@@ -29,6 +29,9 @@ struct ShaderInfo {
 class Shader {
 public:
 	static std::optional<Shader> create_shader(
+		std::filesystem::path vertex
+	) noexcept;
+	static std::optional<Shader> create_shader(
 		std::filesystem::path vertex, std::filesystem::path fragment
 	) noexcept;
 	static std::optional<Shader> create_shader(

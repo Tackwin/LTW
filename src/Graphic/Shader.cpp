@@ -13,6 +13,16 @@
 #include "OS/file.hpp"
 
 std::optional<Shader> Shader::create_shader(
+	std::filesystem::path vertex
+) noexcept {
+	Shader s;
+	if (!s.load_vertex(vertex)) return std::nullopt;
+	if (!s.build_shaders()) return std::nullopt;
+
+	return s;
+}
+
+std::optional<Shader> Shader::create_shader(
 	std::filesystem::path vertex, std::filesystem::path fragment
 ) noexcept {
 	Shader s;
@@ -157,7 +167,7 @@ bool Shader::load_geometry(std::filesystem::path path) noexcept {
 bool Shader::build_shaders() noexcept {
 	info.programId = glCreateProgram();
 	glAttachShader(info.programId, info.vertexId);
-	glAttachShader(info.programId, info.fragmentId);
+	if (info.fragment_compiled) glAttachShader(info.programId, info.fragmentId);
 	if (info.geometry_compiled) glAttachShader(info.programId, info.geometryId);
 	glLinkProgram(info.programId);
 
