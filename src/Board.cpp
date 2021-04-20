@@ -37,6 +37,8 @@ void Board::update(double dt) noexcept {
 		dt_vec = dt_vec.normed();
 		x->last_pos = x->pos;
 		x->pos += dt_vec * x->speed * dt;
+
+		if (x->pos.y < cease_zone_height - size.y * bounding_tile_size() / 2) x.to_remove = true;
 	}
 	for (auto& x : units) if (!x.to_remove) {
 		if (x->health <= 0) {
@@ -84,13 +86,15 @@ void Board::update(double dt) noexcept {
 			auto& x = towers[i].Volter_;
 			x.surge_timer -= dt;
 
-			if (x.surge_timer < 0 && x.to_surge) {
+			if (x.surge_timer < 0) {
 				for (size_t j = 0; j < 100; ++j) {
 					Straight_Projectile p;
 					p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
 					p.pos = tower_pos;
+					p.r   = 0.2f;
 					p.from = towers[i].id;
 					p.life_time = 10;
+					p.damage = 0.25f;
 					projectiles.push_back(p);
 				}
 				x.surge_timer = x.surge_time;
@@ -126,7 +130,20 @@ void Board::update(double dt) noexcept {
 		} else if (y.kind == Projectile::Straight_Projectile_Kind) {
 			auto& x = y.Straight_Projectile_;
 
+			x.last_pos = x.pos;
+			x.last_dir = x.dir;
 			x.pos += x.dir * x.speed * dt;
+
+			for (auto& u : units) {
+				auto d = (x.pos - u->pos).length2();
+
+				if (d < x.r * x.r) {
+					u->health -= x.damage;
+					x.power--;
+					if (x.power == 0) y.to_remove = true;
+					break;
+				}
+			}
 		}
 	}
 
@@ -202,6 +219,46 @@ void Board::render(render::Orders& order) noexcept {
 	thread_local std::unordered_map<size_t, std::vector<render::Model>> models_by_object;
 	for (auto& [_, x] : models_by_object) x.clear();
 
+	auto push_unit = [&] (Unit& u, bool ignore_depth_test) {
+		thread_local render::Model model;
+
+		model.shader_id  = asset::Shader_Id::Default_3D_Batched;
+		model.texture_id = asset::Texture_Id::Palette;
+		model.object_id  = u->object_id;
+
+		model.pos = Vector3f(u->pos + pos, std::sinf(u->life_time) * 0.1f + 0.3f);
+		model.dir = {1, 0, 0};
+		model.scale = 1;
+
+		model.last_pos = Vector3f(u->last_pos + pos, std::sinf(u->life_time) * 0.1f + 0.3f);
+		model.last_dir = {1, 0, 0};
+		model.last_scale = 1;
+
+		model.object_blur = true;
+		model.ignore_depth_test = ignore_depth_test;
+
+		order.push(model);
+	};
+
+
+	for (auto& x : units) {
+		m.object_blur = true;
+		m.object_id = x->object_id;
+		m.pos.x = x->pos.x + pos.x;
+		m.pos.y = x->pos.y + pos.y;
+		m.pos.z = std::sinf(x->life_time) * 0.1f + 0.3f;
+		m.last_pos.x = x->last_pos.x + pos.x;
+		m.last_pos.y = x->last_pos.y + pos.y;
+		m.last_pos.z = std::sinf(x->life_time) * 0.1f + 0.3f;
+		m.scale = 1;
+		m.last_scale = m.scale;
+		m.last_dir = m.dir;
+		models_by_object[m.object_id].push_back(m);
+
+		m.object_blur = false;
+	}
+
+
 	for (auto& x : towers) {
 		m.object_id = x->object_id;
 		m.shader_id = asset::Shader_Id::Default_3D_Batched;
@@ -232,27 +289,12 @@ void Board::render(render::Orders& order) noexcept {
 	}
 	
 	m.texture_id = asset::Texture_Id::Palette;
-	m.scale = 0.5f;
 	m.bitmask |= render::Model::Edge_Glow;
-	for (auto& x : units) {
-		m.object_blur = true;
-		m.object_id = x->object_id;
-		m.pos.x = x->pos.x + pos.x;
-		m.pos.y = x->pos.y + pos.y;
-		m.pos.z = std::sinf(x->life_time) * 0.1f + 0.3f;
-		m.last_pos.x = x->last_pos.x + pos.x;
-		m.last_pos.y = x->last_pos.y + pos.y;
-		m.last_pos.z = std::sinf(x->life_time) * 0.1f + 0.3f;
-		m.last_scale = m.scale;
-		m.last_dir = m.dir;
-		models_by_object[m.object_id].push_back(m);
-
-		m.object_blur = false;
-	}
 
 	m.object_blur = true;
 	for (auto& x : projectiles) {
 		m.scale = x->r;
+		m.last_scale = x->r;
 		m.pos = V3F(x->pos + pos, 0.5f);
 		m.last_pos = V3F(x->last_pos + pos, 0.5f);
 

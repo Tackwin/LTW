@@ -70,7 +70,6 @@ struct Volter : public Tower_Base {
 	float surge_timer = 0.f;
 	float surge_time  = 5.f;
 
-
 	Volter() noexcept {
 		tile_size = {3, 3};
 		object_id = asset::Object_Id::Volter;

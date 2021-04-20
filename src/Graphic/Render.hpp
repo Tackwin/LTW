@@ -79,6 +79,8 @@ namespace render {
 		Vector3f last_dir = {1, 0, 0};
 		float    last_scale = 1;
 
+		bool ignore_depth_test = false;
+
 		uint32_t bitmask = 0;
 		enum {
 			Edge_Glow = 1,

@@ -72,6 +72,8 @@ namespace asset {
 		inline static size_t Oxygen = 8;
 		inline static size_t Volter = 9;
 		inline static size_t Electron = 10;
+		inline static size_t Ethane = 11;
+		inline static size_t Propane = 12;
 	};
 	struct Sound_Id {
 		inline static size_t Ui_Action = 1;

@@ -53,5 +53,10 @@ std::optional<Object> Object::load_from_file(
 		
 	}
 
+	Vector3f center = {};
+	for (auto& x : obj.vertices) center += x.pos;
+	center /= obj.vertices.size();
+	for (auto& x : obj.vertices) x.pos -= center;
+
 	return obj;
 }

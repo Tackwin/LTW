@@ -151,6 +151,8 @@ namespace sound {
 		}
 
 		void callback(void* output, const void* input, ma_uint32 frame_count) {
+			return;
+			
 			//if (playing_sound.empty()) return;
 			if (!asset::Store.ready) return;
 

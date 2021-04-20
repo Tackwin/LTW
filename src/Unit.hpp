@@ -32,6 +32,22 @@ struct Methane : Unit_Base {
 		object_id = asset::Object_Id::Methane;
 	}
 };
+struct Ethane : Unit_Base {
+	Ethane() noexcept {
+		health = 3.f;
+		life_time += xstd::random();
+		speed = 0.4f;
+		object_id = asset::Object_Id::Ethane;
+	}
+};
+struct Propane : Unit_Base {
+	Propane() noexcept {
+		health = 4.5f;
+		life_time += xstd::random();
+		speed = 0.3f;
+		object_id = asset::Object_Id::Propane;
+	}
+};
 struct Water   : Unit_Base {
 	Water()   noexcept {
 		life_time += xstd::random();
@@ -49,7 +65,7 @@ struct Oxygen  : Unit_Base {
 	}
 };
 
-#define LIST_UNIT(X) X(Methane) X(Water) X(Oxygen)
+#define LIST_UNIT(X) X(Methane) X(Ethane) X(Propane) X(Water) X(Oxygen)
 
 struct Unit {
 	sum_type(Unit, LIST_UNIT);

@@ -328,9 +328,9 @@ void Game::next_wave() noexcept {
 			if ((wave % 3) == 0) {
 				x.spawn_unit(Methane{});
 			} else if ((wave % 3) == 1) {
-				x.spawn_unit(Water{});
+				x.spawn_unit(Ethane{});
 			} else {
-				x.spawn_unit(Oxygen{});
+				x.spawn_unit(Propane{});
 			}
 		}
 	}

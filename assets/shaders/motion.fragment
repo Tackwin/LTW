@@ -24,7 +24,7 @@ void main() {
 	velocity *= scale;
 
 	float speed = length(velocity / texel_size);
-	if (abs(speed) > 1) speed = pow(speed, 1 / 3.0);
+	if (abs(speed) > 1) speed = pow(speed, 1 / 2.0);
 	int n_samples = clamp(int(speed), 1, 16);
 
 
@@ -37,7 +37,7 @@ void main() {
 	result.a = 1;
 
 
-	//result = vec4(vec3(speed), 1);
+	//result = vec4(vec3(speed * 0.5), 1);
 
 	//result = vec4(velocity, 0, 1);
 	//result = texture(texture_input, TexCoords);

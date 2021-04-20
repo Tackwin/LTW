@@ -59,10 +59,10 @@ struct Seek_Projectile : Base_Projectile {
 struct Straight_Projectile : Base_Projectile {
 	size_t from = 0;
 
-	float speed = 1.f;
+	float speed = 2.f;
 	float damage = 0.5f;
 
-	bool to_remove = false;
+	size_t power = 3;
 
 	Straight_Projectile() noexcept {
 		object_id = asset::Object_Id::Electron;
