@@ -79,6 +79,8 @@ struct Action {
 
 		size_t texture_id = 0;
 
+		float ready_percentage = 1;
+
 		bool hovered = false;
 		bool pressed = false;
 		bool just_pressed = false;
@@ -107,7 +109,7 @@ struct Tower_Selection {
 	void input(const Input_Info& info) noexcept;
 	void render(render::Orders& orders) noexcept;
 
-	Ui_Table get_selected_table() noexcept;
+	Ui_Table get_selected_table(std::unordered_map<Ui_State, Action::Button>& buttons) noexcept;
 };
 
 struct Interface {

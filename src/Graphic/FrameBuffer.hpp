@@ -37,7 +37,6 @@ struct G_Buffer {
 
 	std::uint32_t g_buffer{ 0 };
 	std::uint32_t pos_buffer{ 0 };
-	std::uint32_t tag_buffer{ 0 };
 	std::uint32_t normal_buffer{ 0 };
 	std::uint32_t albedo_buffer{ 0 };
 	std::uint32_t velocity_buffer{ 0 };

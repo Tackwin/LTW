@@ -21,6 +21,8 @@ struct Unit_Base {
 	size_t cost   = 5;
 	size_t batch  = 5;
 
+	Vector3f color = {1, 1, 1};
+
 	bool to_die = false;
 };
 
@@ -38,6 +40,7 @@ struct Ethane : Unit_Base {
 		life_time += xstd::random();
 		speed = 0.4f;
 		object_id = asset::Object_Id::Ethane;
+		color /= 2;
 	}
 };
 struct Propane : Unit_Base {
@@ -46,6 +49,16 @@ struct Propane : Unit_Base {
 		life_time += xstd::random();
 		speed = 0.3f;
 		object_id = asset::Object_Id::Propane;
+		color /= 3;
+	}
+};
+struct Butane : Unit_Base {
+	Butane() noexcept {
+		health = 5.5f;
+		life_time += xstd::random();
+		speed = 0.15f;
+		object_id = asset::Object_Id::Butane;
+		color /= 5;
 	}
 };
 struct Water   : Unit_Base {
@@ -65,7 +78,7 @@ struct Oxygen  : Unit_Base {
 	}
 };
 
-#define LIST_UNIT(X) X(Methane) X(Ethane) X(Propane) X(Water) X(Oxygen)
+#define LIST_UNIT(X) X(Methane) X(Ethane) X(Propane) X(Butane) X(Water) X(Oxygen)
 
 struct Unit {
 	sum_type(Unit, LIST_UNIT);

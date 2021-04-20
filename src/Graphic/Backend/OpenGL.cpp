@@ -58,12 +58,29 @@ uint32_t get_noise_texture() noexcept {
 void render_world(render::Orders& orders, render::Render_Param param) noexcept;
 void render_ui(render::Orders& orders, render::Render_Param param) noexcept;
 
+void edge_highlight(
+	G_Buffer& g_buffer, Texture_Buffer& buffer, render::Render_Param& param
+) noexcept;
+
+void lighting(
+	G_Buffer& g_buffer,
+	Texture_Buffer& edge_buffer,
+	HDR_Buffer& out_buffer,
+	render::Render_Param& param
+) noexcept;
+
+void motion_blur(
+	G_Buffer& g_buffer,
+	HDR_Buffer& hdr_buffer,
+	HDR_Buffer& out_buffer,
+	render::Render_Param& param
+) noexcept;
+
 void render::render_orders(render::Orders& orders, render::Render_Param param) noexcept {
 	auto buffer_size = Environment.buffer_size;
 	
 	static Texture_Buffer texture_target(buffer_size);
-	static Texture_Buffer ssao_buffer(buffer_size, "Edge Buffer");
-	static Texture_Buffer blur_buffer(buffer_size, "Blur Buffer");
+	static Texture_Buffer edge_buffer(buffer_size, "Edge Buffer");
 	static HDR_Buffer     motion_buffer(buffer_size);
 	static G_Buffer       g_buffer(buffer_size);
 	static HDR_Buffer     hdr_buffer(buffer_size);
@@ -78,98 +95,9 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 
 	render_world(orders, param);
 
-	ssao_buffer.set_active();
-	g_buffer.set_active_texture();
-
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-#if 1
-	auto& edge_shader = asset::Store.get_shader(asset::Shader_Id::Edge_Glow);
-	edge_shader.use();
-	edge_shader.set_uniform("buffer_normal", 1);
-	edge_shader.set_uniform("buffer_position", 2);
-	edge_shader.set_uniform("buffer_tag", 3);
-	edge_shader.set_uniform("cam_pos", param.cam_pos);
-#else
-
-	auto samples = generate_ssao_samples(64);
-	auto noise_texture = get_noise_texture();
-	glActiveTexture(GL_TEXTURE6);
-	glBindTexture(GL_TEXTURE_2D, noise_texture);
-
-	auto& ssao_shader = asset::Store.get_shader(asset::Shader_Id::SSAO);
-	ssao_shader.use();
-	ssao_shader.set_uniform("gNormal", 1);
-	ssao_shader.set_uniform("gPosition", 2);
-	ssao_shader.set_uniform("texNoise", 6);
-	ssao_shader.set_uniform("kernelSize", 64);
-	ssao_shader.set_uniform("radius", param.ssao_radius);
-	ssao_shader.set_uniform("bias", param.ssao_bias);
-	ssao_shader.set_uniform("noiseScale", (Vector2f)Environment.window_size / 4);
-	for (size_t i = 0; i < 64; ++i)
-		ssao_shader.set_uniform("samples[" + std::to_string(i) + "]", samples[i]);
-	ssao_shader.set_uniform("projection", game.camera3d.get_projection());
-	ssao_shader.set_uniform("view", game.camera3d.get_view());
-#endif
-
-	ssao_buffer.render_quad();
-
-	blur_buffer.set_active();
-	ssao_buffer.set_active_texture(0);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
-	blur_shader.use();
-	blur_shader.set_uniform("radius", (int)param.edge_blur);
-	blur_shader.set_uniform("image", 0);
-
-	blur_buffer.render_quad();
-
-	hdr_buffer.set_active();
-	g_buffer.set_active_texture();
-	blur_buffer.set_active_texture(10);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Light);
-	shader.use();
-	shader.set_uniform("ambient_light", Vector4d{1, 1, 1, 1});
-	shader.set_uniform("ambient_intensity", 1.f);
-	shader.set_uniform("debug", 0);
-	shader.set_uniform("n_light_points", 0);
-	shader.set_uniform("n_light_dirs", 1);
-	shader.set_uniform("buffer_albedo", 0);
-	shader.set_uniform("buffer_normal", 1);
-	shader.set_uniform("buffer_position", 2);
-	shader.set_uniform("buffer_velocity", 3);
-	shader.set_uniform("buffer_tag", 4);
-	shader.set_uniform("buffer_ssao", 10);
-
-	shader.set_uniform("light_dirs[0].intensity", 1.f);
-	shader.set_uniform("light_dirs[0].dir", Vector3f(0, 1, -1).normalize());
-	shader.set_uniform("light_dirs[0].color", Vector3f(0.8f, 0.8f, 1.f));
-
-	g_buffer.render_quad();
-
-
-	// motion blur
-	motion_buffer.set_active();
-	hdr_buffer.set_active_texture(5);
-	g_buffer.set_active_texture();
-
-	auto& motion_shader = asset::Store.get_shader(asset::Shader_Id::Motion);
-
-	float motion_blur = param.motion_scale * param.target_fps / param.current_fps;
-	motion_blur = std::clamp(motion_blur, 0.f, 1.f);
-
-	motion_shader.use();
-	motion_shader.set_uniform("scale", motion_blur);
-	motion_shader.set_uniform("texture_input", 5);
-	motion_shader.set_uniform("texture_velocity", 3);
-
-	hdr_buffer.render_quad();
-
+	edge_highlight(g_buffer, edge_buffer, param);
+	lighting(g_buffer, edge_buffer, hdr_buffer, param);
+	motion_blur(g_buffer, hdr_buffer, motion_buffer, param);
 
 	texture_target.set_active();
 	motion_buffer.set_active_texture(0);
@@ -209,14 +137,14 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 	glEnable(GL_DEPTH_TEST);
 	thread_local std::vector<render::Order> cam_stack;
+	thread_local std::vector<render::Batch> batch_stack;
 	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
 	thread_local std::vector<std::vector<render::Circle>>    circle_batch;
 	thread_local std::vector<std::vector<render::Arrow>>     arrow_batch;
 	thread_local std::vector<std::vector<render::Model>>     model_batch;
 
-	size_t model_batch_stack = 0;
-
 	cam_stack.clear();
+	batch_stack.clear();
 	for (auto& x : rectangle_batch) x.clear();
 	for (auto& x : circle_batch) x.clear();
 	for (auto& x : arrow_batch) x.clear();
@@ -302,8 +230,8 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
 			case render::Order::Sprite_Kind:     render::immediate(x.Sprite_);    break;
 			case render::Order::Model_Kind: {
-				assert(model_batch_stack > 0);
-				model_batch[model_batch_stack - 1].push_back(x.Model_);
+				assert(!batch_stack.empty());
+				model_batch[batch_stack.size() - 1].push_back(x.Model_);
 				break;
 			}
 			case render::Order::Arrow_Kind: {
@@ -322,17 +250,22 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 				glClear(GL_DEPTH_BUFFER_BIT);
 				break;
 			}
-			case render::Order::Push_Batch_Kind: {
-				model_batch_stack++;
-				if (model_batch_stack >= model_batch.size()) model_batch.resize(model_batch_stack);
+			case render::Order::Batch_Kind: {
+				batch_stack.push_back(x.Batch_);
+				if (batch_stack.size() > model_batch.size())
+					model_batch.resize(batch_stack.size());
 				break;
 			}
 			case render::Order::Pop_Batch_Kind: {
-				assert(model_batch_stack > 0);
+				assert(!batch_stack.empty());
 				
-				render::immediate(model_batch[model_batch_stack - 1]);
-				model_batch[model_batch_stack - 1].clear();
-				model_batch_stack--;
+				render::immediate(
+					model_batch[batch_stack.size() - 1],
+					batch_stack.back(),
+					cam_stack.back().Camera3D_
+				);
+				model_batch[batch_stack.size() - 1].clear();
+				batch_stack.pop_back();
 				break;
 			}
 			default: break;
@@ -387,4 +320,115 @@ void render_ui(render::Orders& orders, render::Render_Param param) noexcept {
 			}
 		}
 	}
+}
+
+void edge_highlight(
+	G_Buffer& g_buffer, Texture_Buffer& buffer, render::Render_Param& param
+) noexcept {
+	auto buffer_size = Environment.buffer_size;
+	thread_local Texture_Buffer temp_buffer(buffer_size, "Temporary edge highlight");
+
+	temp_buffer.set_active();
+	g_buffer.set_active_texture();
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+#if 1
+	auto& edge_shader = asset::Store.get_shader(asset::Shader_Id::Edge_Glow);
+	edge_shader.use();
+	edge_shader.set_uniform("buffer_normal", 1);
+	edge_shader.set_uniform("buffer_position", 2);
+	edge_shader.set_uniform("cam_pos", param.cam_pos);
+#else
+
+	auto samples = generate_ssao_samples(64);
+	auto noise_texture = get_noise_texture();
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, noise_texture);
+
+	auto& ssao_shader = asset::Store.get_shader(asset::Shader_Id::SSAO);
+	ssao_shader.use();
+	ssao_shader.set_uniform("gNormal", 1);
+	ssao_shader.set_uniform("gPosition", 2);
+	ssao_shader.set_uniform("texNoise", 6);
+	ssao_shader.set_uniform("kernelSize", 64);
+	ssao_shader.set_uniform("radius", param.ssao_radius);
+	ssao_shader.set_uniform("bias", param.ssao_bias);
+	ssao_shader.set_uniform("noiseScale", (Vector2f)Environment.window_size / 4);
+	for (size_t i = 0; i < 64; ++i)
+		ssao_shader.set_uniform("samples[" + std::to_string(i) + "]", samples[i]);
+	ssao_shader.set_uniform("projection", game.camera3d.get_projection());
+	ssao_shader.set_uniform("view", game.camera3d.get_view());
+#endif
+
+	temp_buffer.render_quad();
+
+	buffer.set_active();
+	temp_buffer.set_active_texture(0);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
+	blur_shader.use();
+	blur_shader.set_uniform("radius", (int)param.edge_blur);
+	blur_shader.set_uniform("image", 0);
+
+	buffer.render_quad();
+}
+
+
+void lighting(
+	G_Buffer& g_buffer,
+	Texture_Buffer& edge_buffer,
+	HDR_Buffer& out_buffer,
+	render::Render_Param& param
+) noexcept {
+	out_buffer.set_active();
+	g_buffer.set_active_texture();
+	edge_buffer.set_active_texture(10);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Light);
+	shader.use();
+	shader.set_uniform("ambient_light", Vector4d{1, 1, 1, 1});
+	shader.set_uniform("ambient_intensity", 1.f);
+	shader.set_uniform("debug", 0);
+	shader.set_uniform("n_light_points", 0);
+	shader.set_uniform("n_light_dirs", 1);
+	shader.set_uniform("buffer_albedo", 0);
+	shader.set_uniform("buffer_normal", 1);
+	shader.set_uniform("buffer_position", 2);
+	shader.set_uniform("buffer_velocity", 3);
+	shader.set_uniform("buffer_tag", 4);
+	shader.set_uniform("buffer_ssao", 10);
+
+	shader.set_uniform("light_dirs[0].intensity", 1.f);
+	shader.set_uniform("light_dirs[0].dir", Vector3f(0, 1, -1).normalize());
+	shader.set_uniform("light_dirs[0].color", Vector3f(0.8f, 0.8f, 1.f));
+
+	g_buffer.render_quad();
+}
+
+void motion_blur(
+	G_Buffer& g_buffer,
+	HDR_Buffer& hdr_buffer,
+	HDR_Buffer& out_buffer,
+	render::Render_Param& param
+) noexcept {
+	out_buffer.set_active();
+	hdr_buffer.set_active_texture(5);
+	g_buffer.set_active_texture();
+
+	auto& motion_shader = asset::Store.get_shader(asset::Shader_Id::Motion);
+
+	float motion_blur = param.motion_scale * param.target_fps / param.current_fps;
+	motion_blur = std::clamp(motion_blur, 0.f, 1.f);
+
+	motion_shader.use();
+	motion_shader.set_uniform("scale", motion_blur);
+	motion_shader.set_uniform("texture_input", 5);
+	motion_shader.set_uniform("texture_velocity", 3);
+
+	hdr_buffer.render_quad();
 }

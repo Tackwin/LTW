@@ -353,6 +353,7 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/Electron.ply", Electron);
 	X("assets/model/ethane.ply", Ethane);
 	X("assets/model/propane.ply", Propane);
+	X("assets/model/butane.ply", Butane);
 #undef X
 }
 

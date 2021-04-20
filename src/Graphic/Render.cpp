@@ -21,10 +21,10 @@ void render::Camera3D::look_at(Vector3f target) noexcept {
 	dir = dir.normalize();
 }
 
-Matrix4f render::Camera3D::get_view(Vector3f up) noexcept {
+Matrix4f render::Camera3D::get_view(Vector3f up) const noexcept {
 	auto x = cross(dir, up).normalize();
 	auto y = cross(x, dir).normalize();
-	auto z = -1 * dir.normalize();
+	auto z = -1 * dir.normed();
 
 	float comp[] {
 		x.x, y.x, z.x, 0.f,
@@ -37,11 +37,11 @@ Matrix4f render::Camera3D::get_view(Vector3f up) noexcept {
 	return view;
 }
 
-Matrix4f render::Camera3D::get_VP(Vector3f up) noexcept {
+Matrix4f render::Camera3D::get_VP(Vector3f up) const noexcept {
 	return get_projection() * get_view(up);
 }
 
-Matrix4f render::Camera3D::get_projection() noexcept {
+Matrix4f render::Camera3D::get_projection() const noexcept {
 	return perspective(3.1415926 * fov / 180, ratio, far_, near_);
 	return orthographic({-1, -1, 1, 1}, 500, 0.01f);
 }
@@ -1317,51 +1317,42 @@ void render::immediate2d(std::span<Arrow> arrows) noexcept {
 
 	for (size_t i = 0; i < 6; ++i) glDisableVertexAttribArray(i);
 }
-void render::immediate(std::span<Model> models) noexcept {
-	constexpr size_t GPU_Instance_Size = 16 * 4 * 2 + 4;
+void render::immediate(
+	std::span<Model> models, const Batch& batch, const Camera3D& cam
+) noexcept {
+	constexpr size_t GPU_Instance_Size = 16 * 4 * 2 + 4 + 4 * 3;
 
-	thread_local GLuint instance_vbo = 0;
-	thread_local size_t instance_vbo_size = 0;
-	thread_local std::vector<std::uint8_t> instance_data;
+	thread_local std::vector<std::uint8_t> host_instance_data;
+	thread_local Gpu_Vector                device_instance_data;
 
 	thread_local GLuint vao = 0;
 	thread_local Gpu_Vector vertices;
 	thread_local Gpu_Vector indices;
+
 	if (!vao) glGenVertexArrays(1, &vao);
 	if (models.empty()) return;
 
 	size_t shader_id = models.front().shader_id;
 	if (!shader_id) shader_id = asset::Shader_Id::Default_3D_Batched;
 
-	auto& cam = current_camera.Camera3D_;
-	auto& texture = asset::Store.get_albedo(models.front().texture_id);
-	auto& object = asset::Store.get_object(models.front().object_id);
-	auto& shader = asset::Store.get_shader(shader_id);
+	auto& texture = asset::Store.get_albedo(batch.texture_id);
+	auto& object  = asset::Store.get_object(batch.object_id);
+	auto& shader  = asset::Store.get_shader(batch.shader_id);
 
 	vertices.debug_name = "Vertex buffer object";
 	vertices.target = GL_ARRAY_BUFFER;
 	indices.debug_name  = "Index buffer object";
 	indices.target = GL_ELEMENT_ARRAY_BUFFER;
+	device_instance_data.debug_name = "Instance data";
+	device_instance_data.target = GL_ARRAY_BUFFER;
 
+	device_instance_data.fit(models.size() * GPU_Instance_Size);
 	vertices.fit(object.vertices.size() * sizeof(Object::Vertex));
 	indices.fit(object.faces.size() * sizeof(size_t));
 
 	vertices.upload(object.vertices.size() * sizeof(Object::Vertex), object.vertices.data());
 	indices.upload(object.faces.size() * sizeof(unsigned short), object.faces.data());
 
-	if (instance_vbo_size < models.size()) {
-		size_t new_size = (instance_vbo_size * 5) / 3;
-		instance_vbo_size = std::max(new_size, models.size());
-
-		if (instance_vbo) glDeleteBuffers(1, &instance_vbo);
-		glGenBuffers(1, &instance_vbo);
-		glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-		glBufferData(GL_ARRAY_BUFFER, instance_vbo_size * GPU_Instance_Size, NULL, GL_DYNAMIC_DRAW);
-#ifdef GL_DEBUG
-		auto label = "Model instancied buffer";
-		glObjectLabel(GL_BUFFER, instance_vbo, (GLsizei)strlen(label) - 1, label);
-#endif
-	}
 
 	glBindVertexArray(vao);
 	glBindBuffer(vertices.target, vertices.buffer);
@@ -1375,22 +1366,26 @@ void render::immediate(std::span<Model> models) noexcept {
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Object::Vertex), (void*)24);
 
-	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, device_instance_data.buffer);
 	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(3, 1, GL_UNSIGNED_INT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glVertexAttribDivisor(3, 1); // tell OpenGL this is an instanced vertex attribute.
 
 	vertex_attrib_matrix(4, 4, GPU_Instance_Size);
 	vertex_attrib_matrix(8, 16 * 4 + 4, GPU_Instance_Size);
+
+	glEnableVertexAttribArray(12);
+	glVertexAttribPointer(12, 3, GL_FLOAT, GL_FALSE, GPU_Instance_Size, (void*)(16 * 4 * 2 + 4));
+	glVertexAttribDivisor(12, 1); // tell OpenGL this is an instanced vertex attribute.
 
 	texture.bind(5);
 	shader.use();
 	shader.set_texture(5);
 	shader.set_uniform("VP", cam.get_VP());
 	if (models.front().object_blur) {
-		auto t = cam.pos;
-		cam.pos = cam.last_pos;
-		shader.set_uniform("last_VP", cam.get_VP());
-		cam.pos = t;
+		auto t = cam;
+		t.pos = cam.last_pos;
+		shader.set_uniform("last_VP", t.get_VP());
 	} else {
 		shader.set_uniform("last_VP", cam.get_VP());
 	}
@@ -1403,11 +1398,10 @@ void render::immediate(std::span<Model> models) noexcept {
 
 	Matrix4f VP = cam.get_VP();
 
-	instance_data.clear();
-	instance_data.resize(batch.size() * GPU_Instance_Size);
+	host_instance_data.clear();
+	host_instance_data.resize(batch.size() * GPU_Instance_Size);
 	size_t off = 0;
 	for (auto& x : batch) {
-		Vector4f c = V4F(1);
 		uint32_t tag = x.object_id;
 		auto M =
 			Matrix4f::translation(x.pos) *
@@ -1420,20 +1414,16 @@ void render::immediate(std::span<Model> models) noexcept {
 				Matrix4f::rotate({1, 0, 0}, x.last_dir);
 		}
 
-		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
+		#define X(a)\
+			memcpy(host_instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
 		X(tag);
 		X(M);
 		X(last_M);
+		X(x.color);
 		#undef X
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-	glBufferData(
-		GL_ARRAY_BUFFER,
-		instance_data.size(),
-		instance_data.data(),
-		GL_DYNAMIC_DRAW
-	);
+	device_instance_data.upload(host_instance_data.size(), host_instance_data.data());
 
 	glBindBuffer(indices.target, indices.buffer);
 	glDrawElementsInstanced(
@@ -1441,5 +1431,5 @@ void render::immediate(std::span<Model> models) noexcept {
 	);
 
 	}
-	for (size_t i = 0; i < 8; ++i) glDisableVertexAttribArray(i);
+	for (size_t i = 0; i < 13; ++i) glDisableVertexAttribArray(i);
 }

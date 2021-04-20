@@ -70,7 +70,9 @@ void Tower_Selection::render(render::Orders& orders) noexcept {
 
 }
 
-Ui_Table Tower_Selection::get_selected_table() noexcept {
+Ui_Table Tower_Selection::get_selected_table(
+	std::unordered_map<Ui_State, Action::Button>& buttons
+) noexcept {
 	// >TOWER_TARGET_MODE:
 	std::unordered_map<Tower_Base::Target_Mode, Ui_State> target_mode_to_icon = {
 		{Tower_Base::First,  Ui_State::Target_First},
@@ -94,6 +96,8 @@ Ui_Table Tower_Selection::get_selected_table() noexcept {
 
 	for (auto& i : selection) if (pool->id(i).kind == Tower::Volter_Kind) {
 		table[8 + 1] = Ui_State::Surge_Spell;
+		buttons[Ui_State::Surge_Spell].ready_percentage =
+			1 - std::max(0.f, pool->id(i).Volter_.surge_timer) / pool->id(i).Volter_.surge_time;
 	}
 
 	return table;
@@ -128,7 +132,8 @@ bool Interface::input(const Input_Info& info) noexcept {
 		action.any_just_pressed |= info.key_infos[x].just_pressed;
 	}
 
-	if (!tower_selection.selection.empty()) table = tower_selection.get_selected_table();
+	if (!tower_selection.selection.empty())
+		table = tower_selection.get_selected_table(action.state_button);
 
 	for (size_t i = 0; i < Action::N * Action::N; ++i) {
 		auto& it = action.state_button[table[i]];
@@ -162,7 +167,7 @@ void Interface::update(double dt) noexcept {
 	tower_selection.pos.y = action.get_zone().h * 1.1f;
 
 	if (!tower_selection.selection.empty()) {
-		auto table = tower_selection.get_selected_table();
+		auto table = tower_selection.get_selected_table(action.state_button);
 
 		if (action.state_button[Ui_State::Pick_Target_Mode].just_pressed) {
 			tower_selection.picking_target_mode = !tower_selection.picking_target_mode;
@@ -216,7 +221,8 @@ void Interface::render(render::Orders& orders) noexcept {
 
 	// left down actions buttons
 	auto table = action.Button_Nav_Map[action.current_state];
-	if (!tower_selection.selection.empty()) table = tower_selection.get_selected_table();
+	if (!tower_selection.selection.empty())
+		table = tower_selection.get_selected_table(action.state_button);
 	for2(x, y, V2F(Action::N)) {
 		auto& it  = action.state_button[table[x + y * Action::N]];
 		rec.pos.x = action.button_bounds * x + action.button_padding / 2;
@@ -224,13 +230,14 @@ void Interface::render(render::Orders& orders) noexcept {
 		rec.pos  += action_zone.pos,
 		rec.size  =
 		 V2F(action.button_content);
-		rec.color = it.actual_color;
+		rec.color = it.actual_color * it.ready_percentage;
 
 		orders.push(rec, 3);
 
 		if (it.texture_id) {
 			sprite.rec = rec.rec;
 			sprite.texture = it.texture_id;
+			sprite.color = { it.ready_percentage, it.ready_percentage, it.ready_percentage, 1 };
 			orders.push(sprite, 4);
 		}
 	}

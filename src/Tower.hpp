@@ -31,6 +31,8 @@ struct Tower_Base {
 	size_t target_id = 0;
 	size_t texture_icon_id = 0;
 
+	size_t kill_count = 0;
+
 	Tower_Base() noexcept {}
 };
 
@@ -58,17 +60,16 @@ struct Sharp : public Tower_Base {
 	Sharp() noexcept {
 		tile_size = {2, 2};
 		object_id = asset::Object_Id::Sharp;
+
 		texture_icon_id = asset::Texture_Id::Sharp_Icon;
 	}
 };
 
 struct Volter : public Tower_Base {
-	float range = 5.0f;
-
 	bool to_surge = false;
 	bool always_surge = false;
 	float surge_timer = 0.f;
-	float surge_time  = 5.f;
+	float surge_time  = 30.f;
 
 	Volter() noexcept {
 		tile_size = {3, 3};

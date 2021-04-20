@@ -62,7 +62,7 @@ struct Straight_Projectile : Base_Projectile {
 	float speed = 2.f;
 	float damage = 0.5f;
 
-	size_t power = 3;
+	size_t power = 10;
 
 	Straight_Projectile() noexcept {
 		object_id = asset::Object_Id::Electron;

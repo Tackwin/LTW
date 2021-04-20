@@ -86,15 +86,16 @@ void Board::update(double dt) noexcept {
 			auto& x = towers[i].Volter_;
 			x.surge_timer -= dt;
 
-			if (x.surge_timer < 0) {
-				for (size_t j = 0; j < 100; ++j) {
+			if (x.surge_timer < 0 && x.to_surge) {
+				for (size_t j = 0; j < 200; ++j) {
 					Straight_Projectile p;
 					p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
 					p.pos = tower_pos;
 					p.r   = 0.2f;
 					p.from = towers[i].id;
 					p.life_time = 10;
-					p.damage = 0.25f;
+					p.damage = 1.f;
+					p.power = 20;
 					projectiles.push_back(p);
 				}
 				x.surge_timer = x.surge_time;
@@ -113,6 +114,7 @@ void Board::update(double dt) noexcept {
 			auto& x = y.Seek_Projectile_;
 			if (!units.exist(x.to)) { y.to_remove = true; continue; }
 			auto& to = units.id(x.to);
+			if (to.to_remove) { y.to_remove = true; continue; }
 
 			x.last_dir = x.dir;
 			x.last_pos = x.pos;
@@ -123,10 +125,8 @@ void Board::update(double dt) noexcept {
 				to->health -= x.damage;
 			}
 
-			if (units.exist(x.to)) {
-				auto target = units.id(x.to)->pos;
-				x.dir = (target - x.pos).normalize();
-			}
+			auto target = units.id(x.to)->pos;
+			x.dir = (target - x.pos).normalize();
 		} else if (y.kind == Projectile::Straight_Projectile_Kind) {
 			auto& x = y.Straight_Projectile_;
 
@@ -134,7 +134,7 @@ void Board::update(double dt) noexcept {
 			x.last_dir = x.dir;
 			x.pos += x.dir * x.speed * dt;
 
-			for (auto& u : units) {
+			for (auto& u : units) if (!u.to_remove) {
 				auto d = (x.pos - u->pos).length2();
 
 				if (d < x.r * x.r) {
@@ -167,11 +167,13 @@ void Board::render(render::Orders& order) noexcept {
 	render::Circle circle;
 	render::Arrow arrow;
 	render::Model m;
+	render::Batch b;
 
-	m.object_id = asset::Object_Id::Empty_Tile;
-	m.shader_id = asset::Shader_Id::Default_3D_Batched;
-	m.texture_id = asset::Texture_Id::Palette;
-	order.push(render::Push_Batch());
+	b.object_id = asset::Object_Id::Empty_Tile;
+	b.shader_id = asset::Shader_Id::Default_3D_Batched;
+	b.texture_id = asset::Texture_Id::Palette;
+
+	order.push(b);
 	for2(i, j, size) if (tiles[i + j * size.x].typecheck(Tile::Empty_Kind)) {
 		m.pos = V3F(tile_box({i, j}).center() + pos, 0);
 		m.scale = tile_box({i, j}).size.x;
@@ -253,10 +255,12 @@ void Board::render(render::Orders& order) noexcept {
 		m.scale = 1;
 		m.last_scale = m.scale;
 		m.last_dir = m.dir;
+		m.color = x->color;
 		models_by_object[m.object_id].push_back(m);
 
 		m.object_blur = false;
 	}
+	m.color = {1, 1, 1};
 
 
 	for (auto& x : towers) {
@@ -306,8 +310,10 @@ void Board::render(render::Orders& order) noexcept {
 		models_by_object[m.object_id].push_back(m);
 	}
 
+
 	for (auto& [object_id, x] : models_by_object) if (object_id != 0) {
-		order.push(render::Push_Batch());
+		b.object_id = object_id;
+		order.push(b);
 		for (auto& y : x) order.push(y);
 		order.push(render::Pop_Batch());
 	}

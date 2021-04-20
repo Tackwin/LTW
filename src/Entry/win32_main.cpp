@@ -262,9 +262,12 @@ int WINAPI WinMain(
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	PROFILER_END();
 
+	GLint x;
+	glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &x);
 	printf("Opengl ");
-	printf("%s", (char*)glGetString(GL_VERSION));
-	printf("\n");
+	printf("%s\n", (char*)glGetString(GL_VERSION));
+	printf("glGetIntegerv(GL_MAX_VERTEX_ATTRIBS) = %d\n", x);
+
 
 	PROFILER_BEGIN("Imgui");
 	// Setup Dear ImGui context
@@ -302,7 +305,7 @@ int WINAPI WinMain(
 	game_proc.startup(game);
 	PROFILER_END();
 
-	wglSwapIntervalEXT(1);
+	wglSwapIntervalEXT(0);
 
 	MSG msg{};
 

@@ -339,7 +339,7 @@ struct Vector : public __vec_member<D, T> {
 
 	constexpr Vector<D, T> normed() const noexcept {
 		const auto& l = length();
-		if (l == 0) return {0, 0};
+		if (l == 0) return {};
 
 		auto result = *this;
 		

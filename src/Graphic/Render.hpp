@@ -28,7 +28,11 @@ namespace render {
 	struct Pop_Camera : Order_Base {};
 
 
-	struct Push_Batch : Order_Base {};
+	struct Batch : Order_Base {
+		size_t object_id = 0;
+		size_t shader_id = 0;
+		size_t texture_id = 0;
+	};
 	struct Pop_Batch : Order_Base {};
 
 	struct Push_Ui : Order_Base {};
@@ -44,9 +48,9 @@ namespace render {
 		Vector3f dir;
 
 		void look_at(Vector3f target) noexcept;
-		Matrix4f get_projection() noexcept;
-		Matrix4f get_view(Vector3f up = {0, 0, 1}) noexcept;
-		Matrix4f get_VP(Vector3f up = {0, 0, 1}) noexcept;
+		Matrix4f get_projection() const noexcept;
+		Matrix4f get_view(Vector3f up = {0, 0, 1}) const noexcept;
+		Matrix4f get_VP(Vector3f up = {0, 0, 1}) const noexcept;
 
 		Vector2f project(Vector2f mouse) noexcept;
 	};
@@ -69,6 +73,8 @@ namespace render {
 		size_t object_id = 0;
 		size_t shader_id = 0;
 		size_t texture_id = 0;
+
+		Vector3f color = {1, 1, 1};
 
 		Vector3f pos;
 		Vector3f dir = {1, 0, 0};
@@ -139,7 +145,7 @@ namespace render {
 
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
-	X(Pop_Camera3D) X(Clear_Depth) X(Push_Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui)
+	X(Pop_Camera3D) X(Clear_Depth) X(Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -191,6 +197,7 @@ namespace render {
 	};
 
 	extern Order current_camera;
+
 	extern void immediate(Rectangle rec) noexcept;
 	extern void immediate(Circle circle) noexcept;
 	extern void immediate(Sprite sprite) noexcept;
@@ -200,7 +207,6 @@ namespace render {
 
 	extern void immediate(std::span<Rectangle> rectangles) noexcept;
 	extern void immediate(std::span<Circle> circles) noexcept;
-	extern void immediate(std::span<Model> models) noexcept;
 	extern void immediate(std::span<Arrow> arrows) noexcept;
 
 	extern void immediate2d(std::span<Rectangle> rectangles) noexcept;
@@ -211,6 +217,9 @@ namespace render {
 	extern void immediate3d(std::span<Circle> circles) noexcept;
 	extern void immediate3d(std::span<Arrow> arrows) noexcept;
 
+	extern void immediate(
+		std::span<Model> models, const Batch& batch, const Camera3D& camera
+	) noexcept;
 
 	struct Render_Param {
 		float gamma = 0.7f;

@@ -4,7 +4,6 @@ layout (location = 0) out vec4 g_albedo;
 layout (location = 1) out vec4 g_normal;
 layout (location = 2) out vec4 g_position;
 layout (location = 3) out vec4 g_velocity;
-layout (location = 4) out uvec4 g_tag;
 
 uniform sampler2D color_texture;
 
@@ -15,6 +14,7 @@ flat in uint tag;
 
 in vec4 curr_pos_proj;
 in vec4 last_pos_proj;
+flat in vec3 color;
 
 void main() {
 	vec4 texel = texelFetch(
@@ -23,16 +23,17 @@ void main() {
 		0
 	);
 	g_normal = vec4(normal, texel.a);
-	g_albedo = texel;
+	g_albedo = vec4(
+		texel.r * color.r,
+		texel.g * color.g,
+		texel.b * color.b,
+		texel.a
+	);
 	g_position = vec4(position, 1);
-	//g_tag = uvec4(1, 0, 0, 0);
 	
 	vec2 a  = (curr_pos_proj.xy / curr_pos_proj.w);
 	vec2 b  = (last_pos_proj.xy / last_pos_proj.w);
 	vec2 dt = (a - b);
-
-	float damp = 0.025;
-	//dt = 2 * damp / (1 + exp(-2 * dt / damp)) - damp;
 
 	g_velocity = vec4(dt, 0, 1);
 }
