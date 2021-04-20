@@ -23,7 +23,7 @@ uniform mat4 last_VP;
 void main() {
 	gl_Position = vec4(in_position, 1.0) * M * VP;
 	position = (vec4(in_position, 1.0) * M).xyz;
-	texture_pos = in_uv;
+	texture_pos = vec2(8, 8) * in_uv;
 	normal = in_normal;
 	tag = in_tag;
 

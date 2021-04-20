@@ -1,5 +1,4 @@
 #version 450
-
 layout (location = 0) out vec4 g_albedo;
 layout (location = 1) out vec4 g_normal;
 layout (location = 2) out vec4 g_position;
@@ -19,15 +18,16 @@ flat in vec3 color;
 void main() {
 	vec4 texel = texelFetch(
 		color_texture,
-		ivec2(vec2(8, 8) * texture_pos),
+		ivec2(texture_pos),
 		0
 	);
-	g_normal = vec4(normal, texel.a);
+
+	g_normal = vec4(normal, 1);
 	g_albedo = vec4(
 		texel.r * color.r,
 		texel.g * color.g,
 		texel.b * color.b,
-		texel.a
+		1
 	);
 	g_position = vec4(position, 1);
 	

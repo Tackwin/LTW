@@ -324,7 +324,7 @@ Game_Request Game::update(double dt) noexcept {
 
 void Game::next_wave() noexcept {
 	for (auto& x : boards) {
-		for (size_t i = 0; i < 10 * (wave + 1); ++i) {
+		for (size_t i = 0; i < 100 * (wave + 1); ++i) {
 			if ((wave % 4) == 0) {
 				x.spawn_unit(Methane{});
 			} else if ((wave % 4) == 1) {

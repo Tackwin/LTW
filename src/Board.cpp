@@ -36,7 +36,7 @@ void Board::update(double dt) noexcept {
 
 		dt_vec = dt_vec.normed();
 		x->last_pos = x->pos;
-		x->pos += dt_vec * x->speed * dt;
+		//x->pos += dt_vec * x->speed * dt;
 
 		if (x->pos.y < cease_zone_height - size.y * bounding_tile_size() / 2) x.to_remove = true;
 	}
@@ -168,6 +168,7 @@ void Board::render(render::Orders& order) noexcept {
 	render::Arrow arrow;
 	render::Model m;
 	render::Batch b;
+	render::Depth_Test depth;
 
 	b.object_id = asset::Object_Id::Empty_Tile;
 	b.shader_id = asset::Shader_Id::Default_3D_Batched;
@@ -310,13 +311,30 @@ void Board::render(render::Orders& order) noexcept {
 		models_by_object[m.object_id].push_back(m);
 	}
 
-
+	render::Color_Mask color_mask;
+	color_mask.mask = {false, false, false, false};
+	order.push(color_mask);
 	for (auto& [object_id, x] : models_by_object) if (object_id != 0) {
 		b.object_id = object_id;
+		b.shader_id = asset::Shader_Id::Depth_Prepass;
 		order.push(b);
 		for (auto& y : x) order.push(y);
 		order.push(render::Pop_Batch());
 	}
+	color_mask.mask = {true, true, true, true};
+	order.push(color_mask);
+
+	depth.func = depth.Equal;
+	order.push(depth);
+	for (auto& [object_id, x] : models_by_object) if (object_id != 0) {
+		b.object_id = object_id;
+		b.shader_id = asset::Shader_Id::Default_3D_Batched;
+		order.push(b);
+		for (auto& y : x) order.push(y);
+		order.push(render::Pop_Batch());
+	}
+	depth.func = depth.Less;
+	order.push(depth);
 }
 
 Tile& Board::tile(Vector2u pos) noexcept {
@@ -469,7 +487,7 @@ void Board::invalidate_paths() noexcept {
 }
 
 void Board::spawn_unit(Unit u) noexcept {
-	size_t first = (size.y - start_zone_height) * size.x;
+	size_t first = 0;
 	size_t final = size.x * size.y;
 
 	size_t t = (size_t)(first + xstd::random() * (final - first));

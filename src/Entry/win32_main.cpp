@@ -370,6 +370,7 @@ void windows_loop() noexcept {
 		ImGui::SliderFloat("SSAo bias ", &render_param.ssao_bias, 0, 1);
 		ImGui::SliderFloat("Motion scale", &render_param.motion_scale, 0, 1);
 		ImGui::SliderSize("Target FPS", &render_param.target_fps, 60, 240);
+		ImGui::Checkbox("Render", &render_param.render);
 		ImGui::End();
 	}
 
@@ -378,7 +379,7 @@ void windows_loop() noexcept {
 	auto response = game_proc.update(game, dt);
 	game_proc.render(game, orders);
 
-	render::render_orders(orders, render_param);
+	if (render_param.render) render::render_orders(orders, render_param);
 	orders.clear();
 
 	ImGui::Render();
