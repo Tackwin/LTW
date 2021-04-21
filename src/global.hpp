@@ -1,5 +1,5 @@
 #include "Math/Vector.hpp"
-#include <mutex>
+#include <shared_mutex>
 
 struct Environment_t {
 	Vector2u window_size;

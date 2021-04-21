@@ -465,3 +465,82 @@ void tone_mapping(
 
 	hdr_buffer.render_quad();
 }
+
+
+
+const char* debug_source_str(GLenum source) {
+	static const char* sources[] = {
+	  "API",   "Window System", "Shader Compiler", "Third Party", "Application",
+	  "Other", "Unknown"
+	};
+	auto str_idx = std::min(
+		(size_t)(source - GL_DEBUG_SOURCE_API),
+		(size_t)(sizeof(sources) / sizeof(const char*) - 1)
+	);
+	return sources[str_idx];
+}
+
+const char* debug_type_str(GLenum type) {
+	static const char* types[] = {
+	  "Error",       "Deprecated Behavior", "Undefined Behavior", "Portability",
+	  "Performance", "Other",               "Unknown"
+	};
+
+	auto str_idx = std::min(
+		(size_t)(type - GL_DEBUG_TYPE_ERROR),
+		(size_t)(sizeof(types) / sizeof(const char*) - 1)
+	);
+	return types[str_idx];
+}
+
+const char* debug_severity_str(GLenum severity) {
+	static const char* severities[] = {
+	  "High", "Medium", "Low", "Unknown"
+	};
+
+	auto str_idx = std::min(
+		(size_t)(severity - GL_DEBUG_SEVERITY_HIGH),
+		(size_t)(sizeof(severities) / sizeof(const char*) - 1)
+	);
+	return severities[str_idx];
+}
+
+void APIENTRY opengl_debug(
+	GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei,
+	const GLchar* message,
+	const void*
+) noexcept {
+	constexpr GLenum To_Ignore[] = {
+		131185,
+		131204,
+		131140
+	};
+
+	constexpr GLenum To_Break_On[] = {
+		1280, 1281, 1282, 1286, 131076
+	};
+
+	if (std::find(BEG_END(To_Ignore), id) != std::end(To_Ignore)) return;
+
+	printf("OpenGL:\n");
+	printf("=============\n");
+	printf(" Object ID: ");
+	printf("%s\n", std::to_string(id).c_str());
+	printf(" Severity:  ");
+	printf("%s\n", debug_severity_str(severity));
+	printf(" Type:      ");
+	printf("%s\n", debug_type_str(type));
+	printf("Source:    ");
+	printf("%s\n", debug_source_str(source));
+	printf(" Message:   ");
+	printf("%s\n", message);
+	printf("\n");
+
+	if (std::find(BEG_END(To_Break_On), id) != std::end(To_Break_On)) {
+		DebugBreak();
+	}
+}

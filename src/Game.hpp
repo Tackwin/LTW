@@ -12,6 +12,7 @@
 
 #include "Interface.hpp"
 #include "Board.hpp"
+#include "Wave.hpp"
 
 struct Player {
 	size_t gold = 0;
@@ -43,6 +44,10 @@ struct Game {
 		size_t edge_blur = 1;
 	} gui;
 
+	// I KNOW but in their infinite wisdom they decided that std::atomic<bool> wasn't copy
+	// constructible so what do you do ?
+	volatile bool running = true;
+
 	std::array<Board,  1>  boards;
 	std::array<Player, 1> players;
 
@@ -65,6 +70,8 @@ struct Game {
 
 	float time_to_income = 0.f;
 	float income_interval = 15.f;
+
+	double running_ms = 0;
 
 	Game() noexcept {
 		camera3d.pos = {0, -12, 30};

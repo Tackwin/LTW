@@ -2,9 +2,12 @@
 #include <Windows.h>
 #include <optional>
 #include <string>
+#include <thread>
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
+
+#include "Audio/Audio.hpp"
 
 #include "Profiler/Tracer.hpp"
 #include "xstd.hpp"
@@ -27,7 +30,7 @@ IMGUI_IMPL_API LRESULT  ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 );
 
-void APIENTRY opengl_debug(
+extern void APIENTRY opengl_debug(
 	GLenum source,
 	GLenum type,
 	GLuint id,
@@ -40,8 +43,8 @@ std::optional<std::string> get_last_error_message() noexcept;
 std::optional<HGLRC> create_gl_context(HWND handle_window) noexcept;
 void destroy_gl_context(HGLRC gl_context) noexcept;
 
-void sound_callback(ma_device* device, void* output, const void* input, ma_uint32 frame_count);
 void windows_loop() noexcept;
+void game_loop(DWORD main_thread_id) noexcept;
 
 void toggle_fullscren(HWND hwnd) {
 	static WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
@@ -116,53 +119,7 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 }
 
 Game game;
-render::Orders orders;
-
-namespace sound {
-	struct Orders {
-		bool healthy = false;
-		ma_device device;
-
-		std::vector<size_t> playing_sound;
-
-		void init() noexcept {
-			ma_device_config device_config = ma_device_config_init(ma_device_type_playback);
-			device_config.playback.format = ma_format_s16;
-			device_config.playback.channels = 1;
-			device_config.sampleRate = 44100;
-			device_config.dataCallback = sound_callback;
-			device_config.pUserData = this;
-
-			if (ma_device_init(nullptr, &device_config, &device) != MA_SUCCESS) {
-				printf("Failed to load sound :'(\n");
-				return;
-			}
-
-			if (ma_device_start(&device) != MA_SUCCESS) {
-				printf("Failed to load sound :'(\n");
-				ma_device_uninit(&device);
-				return;
-			}
-			healthy = true;
-		}
-
-		void uninit() {
-			ma_device_uninit(&device);
-		}
-
-		void callback(void* output, const void* input, ma_uint32 frame_count) {
-			return;
-			
-			//if (playing_sound.empty()) return;
-			if (!asset::Store.ready) return;
-
-			auto& decoder = asset::Store.get_sound(asset::Sound_Id::Ui_Action);
-			ma_decoder_read_pcm_frames(&decoder, output, frame_count);
-		}
-	};
-};
 sound::Orders sound_orders;
-
 
 struct Game_Proc {
 	decltype(&game_startup)  startup  = game_startup;
@@ -295,7 +252,6 @@ int WINAPI WinMain(
 	}
 
 	platform::handle_dc_window = dc_window;
-	orders.reserve(1000);
 
 	PROFILER_BEGIN("Sound");
 	sound_orders.init();
@@ -305,7 +261,7 @@ int WINAPI WinMain(
 	game_proc.startup(game);
 	PROFILER_END();
 
-	wglSwapIntervalEXT(0);
+	wglSwapIntervalEXT(1);
 
 	MSG msg{};
 
@@ -314,6 +270,8 @@ int WINAPI WinMain(
 	PROFILER_END();
 	PROFILER_SESSION_END("output/trace/");
 
+	std::thread game_thread(game_loop, GetCurrentThreadId());
+
 	while (msg.message != WM_QUIT) {
 		if (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
 			TranslateMessage(&msg);
@@ -321,11 +279,14 @@ int WINAPI WinMain(
 		}
 		windows_loop();
 	}
-
+	
 	PROFILER_SESSION_BEGIN("Shutup");
+	game.running = false;
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+
+	game_thread.join();
 
 	game_proc.shutdown(game);
 	// >SEE(Tackwin) >ClipCursor
@@ -333,28 +294,52 @@ int WINAPI WinMain(
 	return 0;
 }
 
+volatile bool render_request_stop = false;
+
+void game_loop(DWORD main_thread_id) noexcept {
+	AttachThreadInput(main_thread_id, GetCurrentThreadId(), TRUE);
+	while (game.running) {
+		if (render_request_stop) continue;
+		Main_Mutex.lock();
+		defer { Main_Mutex.unlock(); };
+
+		thread_local auto last_time_frame = xstd::seconds();
+		auto dt = xstd::seconds() - last_time_frame;
+		last_time_frame = xstd::seconds();
+
+		for (auto& x : posted_char) current_char = x;
+		posted_char.clear();
+
+		auto response = game_proc.update(game, dt);
+
+		if (response.confine_cursor) {
+			RECT r;
+			GetWindowRect((HWND)platform::handle_window, &r);
+			ClipCursor(&r);
+		} else {
+			// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are destroying it
+			// we need to restore the old clipCursor by doing GetClipCursor...
+			ClipCursor(nullptr);
+		}
+	}
+}
+
 void windows_loop() noexcept {
-	static render::Render_Param render_param;
+
 	thread_local auto last_time_frame = xstd::seconds();
+	thread_local render::Render_Param render_param;
+	thread_local render::Orders orders;
+
 	auto dt = xstd::seconds() - last_time_frame;
 	last_time_frame = xstd::seconds();
+	orders.reserve(10'000);
 
-	if (dt > 1 / 55.0) {
-		printf("Lag Spike :( %10.5lf ms\n", 1000 * dt);
-	}
-
-	// >TODO(Tackwin): handle multiple char by frame.
-	for (auto& x : posted_char) current_char = x;
-	posted_char.clear();
-	
 	Rectanglef viewport_rect{
 		0.f, 0.f, (float)Environment.window_size.x, (float)Environment.window_size.y
 	};
 	viewport_rect = viewport_rect.fitDownRatio({16, 9});
 	Environment.viewport_size = viewport_rect.size;
 
-	Main_Mutex.lock();
-	defer{ Main_Mutex.unlock(); };
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -371,13 +356,20 @@ void windows_loop() noexcept {
 		ImGui::SliderFloat("Motion scale", &render_param.motion_scale, 0, 1);
 		ImGui::SliderSize("Target FPS", &render_param.target_fps, 60, 240);
 		ImGui::Checkbox("Render", &render_param.render);
+		ImGui::Text("Fps: % 4d, ms: % 5.2lf", (int)(1 / dt), dt * 1000);
 		ImGui::End();
 	}
 
-	render_param.cam_pos = game.camera3d.pos;
-	render_param.current_fps = (size_t)(1.0 / dt);
-	auto response = game_proc.update(game, dt);
-	game_proc.render(game, orders);
+	{
+		render_request_stop = true;
+		Main_Mutex.lock();
+		defer { Main_Mutex.unlock(); };
+		render_param.cam_pos = game.camera3d.pos;
+		render_param.current_fps = (size_t)(1.0 / dt);
+
+		game_proc.render(game, orders);
+		render_request_stop = false;
+	}
 
 	if (render_param.render) render::render_orders(orders, render_param);
 	orders.clear();
@@ -385,16 +377,6 @@ void windows_loop() noexcept {
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	SwapBuffers((HDC)platform::handle_dc_window);
-
-	if (response.confine_cursor) {
-		RECT r;
-		GetWindowRect((HWND)platform::handle_window, &r);
-		ClipCursor(&r);
-	} else {
-		// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are destroying it
-		// we need to restore the old clipCursor by doing GetClipCursor...
-		ClipCursor(nullptr);
-	}
 }
 
 
@@ -516,82 +498,6 @@ void destroy_gl_context(HGLRC gl_context) noexcept {
 	// >TODO error handling
 	if (!wglDeleteContext(gl_context)) {
 		printf("%s", get_last_error_message()->c_str());
-	}
-}
-const char* debug_source_str(GLenum source) {
-	static const char* sources[] = {
-	  "API",   "Window System", "Shader Compiler", "Third Party", "Application",
-	  "Other", "Unknown"
-	};
-	auto str_idx = std::min(
-		(size_t)(source - GL_DEBUG_SOURCE_API),
-		(size_t)(sizeof(sources) / sizeof(const char*) - 1)
-	);
-	return sources[str_idx];
-}
-
-const char* debug_type_str(GLenum type) {
-	static const char* types[] = {
-	  "Error",       "Deprecated Behavior", "Undefined Behavior", "Portability",
-	  "Performance", "Other",               "Unknown"
-	};
-
-	auto str_idx = std::min(
-		(size_t)(type - GL_DEBUG_TYPE_ERROR),
-		(size_t)(sizeof(types) / sizeof(const char*) - 1)
-	);
-	return types[str_idx];
-}
-
-const char* debug_severity_str(GLenum severity) {
-	static const char* severities[] = {
-	  "High", "Medium", "Low", "Unknown"
-	};
-
-	auto str_idx = std::min(
-		(size_t)(severity - GL_DEBUG_SEVERITY_HIGH),
-		(size_t)(sizeof(severities) / sizeof(const char*) - 1)
-	);
-	return severities[str_idx];
-}
-
-void APIENTRY opengl_debug(
-	GLenum source,
-	GLenum type,
-	GLuint id,
-	GLenum severity,
-	GLsizei,
-	const GLchar* message,
-	const void*
-) noexcept {
-	constexpr GLenum To_Ignore[] = {
-		131185,
-		131204,
-		131140
-	};
-
-	constexpr GLenum To_Break_On[] = {
-		1280, 1281, 1282, 1286, 131076
-	};
-
-	if (std::find(BEG_END(To_Ignore), id) != std::end(To_Ignore)) return;
-
-	printf("OpenGL:\n");
-	printf("=============\n");
-	printf(" Object ID: ");
-	printf("%s\n", std::to_string(id).c_str());
-	printf(" Severity:  ");
-	printf("%s\n", debug_severity_str(severity));
-	printf(" Type:      ");
-	printf("%s\n", debug_type_str(type));
-	printf("Source:    ");
-	printf("%s\n", debug_source_str(source));
-	printf(" Message:   ");
-	printf("%s\n", message);
-	printf("\n");
-
-	if (std::find(BEG_END(To_Break_On), id) != std::end(To_Break_On)) {
-		DebugBreak();
 	}
 }
 

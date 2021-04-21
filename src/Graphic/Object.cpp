@@ -49,14 +49,21 @@ std::optional<Object> Object::load_from_file(
 		cursor += 4;
 		obj.faces.push_back((std::uint16_t)*reinterpret_cast<std::uint32_t*>(file.data() + cursor));
 		cursor += 4;
-
-		
 	}
 
 	Vector3f center = {};
 	for (auto& x : obj.vertices) center += x.pos;
 	center /= obj.vertices.size();
 	for (auto& x : obj.vertices) x.pos -= center;
+
+	for (auto& x : obj.vertices) {
+		obj.min_bound.x = std::min(obj.min_bound.x, x.pos.x);
+		obj.min_bound.y = std::min(obj.min_bound.y, x.pos.y);
+		obj.min_bound.z = std::min(obj.min_bound.z, x.pos.z);
+		obj.max_bound.x = std::max(obj.max_bound.x, x.pos.x);
+		obj.max_bound.y = std::max(obj.max_bound.y, x.pos.y);
+		obj.max_bound.z = std::max(obj.max_bound.z, x.pos.z);
+	}
 
 	return obj;
 }

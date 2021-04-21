@@ -43,7 +43,7 @@ struct Archer : public Tower_Base {
 	float attack_cd    = 0.0f;
 
 	Archer() noexcept {
-		tile_size = {1, 1};
+		tile_size = {3, 3};
 		object_id = asset::Object_Id::Range1;
 		target_mode = Target_Mode::First;
 		texture_icon_id = asset::Texture_Id::Range1_Icon;
@@ -58,7 +58,7 @@ struct Sharp : public Tower_Base {
 	float last_rot = 0.f;
 
 	Sharp() noexcept {
-		tile_size = {2, 2};
+		tile_size = {4, 4};
 		object_id = asset::Object_Id::Sharp;
 
 		texture_icon_id = asset::Texture_Id::Sharp_Icon;
@@ -72,7 +72,7 @@ struct Volter : public Tower_Base {
 	float surge_time  = 30.f;
 
 	Volter() noexcept {
-		tile_size = {3, 3};
+		tile_size = {6, 6};
 		object_id = asset::Object_Id::Volter;
 		texture_icon_id = asset::Texture_Id::Volter_Icon;
 	}

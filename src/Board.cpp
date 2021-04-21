@@ -19,6 +19,7 @@ void Board::update(double dt) noexcept {
 	else if (path_construction.dirty) compute_paths();
 
 	gold_gained = 0;
+	current_wave.spawn(dt, *this);
 
 	for (auto& x : units) x->life_time += dt;
 
@@ -36,9 +37,9 @@ void Board::update(double dt) noexcept {
 
 		dt_vec = dt_vec.normed();
 		x->last_pos = x->pos;
-		//x->pos += dt_vec * x->speed * dt;
+		x->pos += dt_vec * x->speed * dt;
 
-		if (x->pos.y < cease_zone_height - size.y * bounding_tile_size() / 2) x.to_remove = true;
+		if (x->pos.y + size.y * bounding_tile_size() / 2 < cease_zone_height) x.to_remove = true;
 	}
 	for (auto& x : units) if (!x.to_remove) {
 		if (x->health <= 0) {
@@ -82,14 +83,16 @@ void Board::update(double dt) noexcept {
 			for (auto& y : units) if ((tower_pos - y->pos).length2() < x.range * x.range) {
 				y->health -= x.damage * dt;
 			}
+
 		} else if (towers[i].kind == Tower::Volter_Kind) {
 			auto& x = towers[i].Volter_;
 			x.surge_timer -= dt;
 
 			if (x.surge_timer < 0 && x.to_surge) {
-				for (size_t j = 0; j < 200; ++j) {
+				size_t n_projectiles = 200;
+				for (size_t j = 0; j < n_projectiles; ++j) {
 					Straight_Projectile p;
-					p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
+					p.dir = Vector2f::createUnitVector(2 * 3.1415926 * j / (n_projectiles - 1));
 					p.pos = tower_pos;
 					p.r   = 0.2f;
 					p.from = towers[i].id;
@@ -269,7 +272,10 @@ void Board::render(render::Orders& order) noexcept {
 		m.shader_id = asset::Shader_Id::Default_3D_Batched;
 		m.texture_id = asset::Texture_Id::Palette;
 		m.scale = x->tile_size.x * tile_size;
-		m.pos = Vector3f(tile_box(x->tile_pos, x->tile_size).center() + pos, 0.3f);
+		m.pos = Vector3f(
+			tile_box(x->tile_pos, x->tile_size).center() + pos,
+			bounding_tile_size() * 0.3f * x->tile_size.x
+		);
 		m.bitmask = 0;
 
 		m.dir = {1, 0, 0};
@@ -288,7 +294,7 @@ void Board::render(render::Orders& order) noexcept {
 
 		m.dir = {1, 0, 0};
 		m.object_id = asset::Object_Id::Base;
-		m.scale = x->tile_size.x * tile_size;
+		m.scale = x->tile_size.x * bounding_tile_size();
 		m.pos.z = 0;
 		models_by_object[m.object_id].push_back(m);
 	}
@@ -487,7 +493,7 @@ void Board::invalidate_paths() noexcept {
 }
 
 void Board::spawn_unit(Unit u) noexcept {
-	size_t first = 0;
+	size_t first = (size.y - start_zone_height) * size.x;
 	size_t final = size.x * size.y;
 
 	size_t t = (size_t)(first + xstd::random() * (final - first));

@@ -9,6 +9,8 @@
 #include "Tower.hpp"
 #include "Unit.hpp"
 
+#include "Wave.hpp"
+
 struct Common_Tile {
 	Vector2u tile_pos = {0, 0};
 	Vector4f color = {.1f, .1f, .1f, 1};
@@ -84,8 +86,8 @@ struct Board {
 	} gui;
 
 	Vector2f pos = {0, 0};
-	Vector2u size = { 16, 50 };
-	float tile_size = 0.49f;
+	Vector2u size = { 40, 120 };
+	float tile_size = 0.19f;
 	float tile_padding = 0.01f;
 
 	double seconds_elapsed = 0.0;
@@ -111,6 +113,8 @@ struct Board {
 	} path_construction;
 
 	size_t gold_gained = 0;
+
+	Wave current_wave;
 
 	void input(const Input_Info& in, Vector2f mouse_world_pos) noexcept;
 	void update(double dt) noexcept;

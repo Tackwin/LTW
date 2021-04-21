@@ -90,6 +90,8 @@ namespace render {
 
 		Vector3f color = {1, 1, 1};
 
+		Vector3f origin = {.5f, .5f, .5f};
+
 		Vector3f pos;
 		Vector3f dir = {1, 0, 0};
 		float    scale = 1.f;

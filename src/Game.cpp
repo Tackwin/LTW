@@ -251,6 +251,8 @@ void Game::input(Input_Info in) noexcept {
 }
 
 Game_Request Game::update(double dt) noexcept {
+	running_ms = dt;
+
 	input_record.push_back(get_new_frame_input(input_record, dt));
 	auto in = input_record.back();
 	input(in);
@@ -262,32 +264,6 @@ Game_Request Game::update(double dt) noexcept {
 
 	Game_Request response;
 	// response.confine_cursor = true;
-
-	if (gui.game_debug_open) {
-		int temp = 0;
-
-		ImGui::Begin("Game Debug", &gui.game_debug_open);
-		if (ImGui::CollapsingHeader("SSAO")) {
-			ImGui::SliderSize("radius", &gui.edge_blur, 0, 10);
-		}
-		ImGui::Checkbox("render path", &board.gui.render_path);
-		ImGui::Checkbox("depth buffer", &gui.debug_depth_buffer);
-		ImGui::SliderFloat("Cam speed", &camera_speed, 0, 10);
-		temp = controller.board_id;
-		if (ImGui::InputInt("Player Board", &temp)) {
-			temp = temp + boards.size();
-			temp %= boards.size();
-			controller.board_id  = temp;
-			controller.player_id = temp;
-		}
-		ImGui::SliderFloat("Fov", &camera3d.fov, 0, 180);
-		ImGui::Text("Fps % 4d, ms: % 5.2lf", (int)(1 / dt), 1000 * dt);
-		size_t units = 0;
-		for (auto& x : boards) units += x.units.size();
-		ImGui::Text("Units: %zu", units);
-		ImGui::End();
-	}
-
 	time_to_income -= dt;
 	if (time_to_income < 0) {
 		time_to_income += income_interval;
@@ -323,19 +299,7 @@ Game_Request Game::update(double dt) noexcept {
 }
 
 void Game::next_wave() noexcept {
-	for (auto& x : boards) {
-		for (size_t i = 0; i < 100 * (wave + 1); ++i) {
-			if ((wave % 4) == 0) {
-				x.spawn_unit(Methane{});
-			} else if ((wave % 4) == 1) {
-				x.spawn_unit(Ethane{});
-			} else if ((wave % 4) == 2) {
-				x.spawn_unit(Propane{});
-			} else {
-				x.spawn_unit(Butane{});
-			}
-		}
-	}
+	for (auto& x : boards) x.current_wave = gen_wave(wave);
 	wave++;
 }
 
@@ -344,6 +308,35 @@ Game_Request game_update(Game& game, double dt) noexcept {
 }
 
 void game_render(Game& game, render::Orders& order) noexcept {
+	if (game.gui.game_debug_open) {
+		int temp = 0;
+
+		ImGui::Begin("Game Debug", &game.gui.game_debug_open);
+		if (ImGui::CollapsingHeader("SSAO")) {
+			ImGui::SliderSize("radius", &game.gui.edge_blur, 0, 10);
+		}
+		ImGui::Checkbox("depth buffer", &game.gui.debug_depth_buffer);
+		ImGui::SliderFloat("Cam speed", &game.camera_speed, 0, 10);
+		temp = game.controller.board_id;
+		if (ImGui::InputInt("Player Board", &temp)) {
+			temp = temp + game.boards.size();
+			temp %= game.boards.size();
+			game.controller.board_id  = temp;
+			game.controller.player_id = temp;
+		}
+		ImGui::SliderFloat("Fov", &game.camera3d.fov, 0, 180);
+		ImGui::Text(
+			"Ups % 10d, us: % 10.2lf",
+			(int)(1 / game.running_ms),
+			1'000'000 * game.running_ms
+		);
+		size_t units = 0;
+		for (auto& x : game.boards) units += x.units.size();
+		ImGui::Text("Units: %zu", units);
+		ImGui::End();
+	}
+
+
 	order.push(game.camera3d);
 
 	for (size_t i = 0; i < game.boards.size(); ++i) {
