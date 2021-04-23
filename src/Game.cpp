@@ -23,12 +23,6 @@ void* platform::handle_dc_window = nullptr;
 void* platform::main_opengl_context = nullptr;
 void* platform::asset_opengl_context = nullptr;
 
-Interface::Ressource_Info Game::construct_interface_ressource_info() noexcept {
-	Interface::Ressource_Info r;
-	r.golds = players[controller.player_id].gold;
-	return r;
-}
-
 void game_startup(Game& game) noexcept {
 	xstd::seed(0);
 	PROFILER_BEGIN_SEQ("monitor");
@@ -104,11 +98,11 @@ void Game::input(Input_Info in) noexcept {
 			if (!controller.placing.typecheck(Tower::None_Kind)) {
 
 				if (
-					player.gold >= controller.placing->gold_cost &&
+					player.ressources.gold >= controller.placing->gold_cost &&
 					board.can_place_at(controller.placing->tile_rec)
 				) {
 					board.insert_tower(controller.placing);
-					player.gold -= controller.placing->gold_cost;
+					player.ressources.gold -= controller.placing->gold_cost;
 				}
 
 				if (!in.key_infos[Keyboard::LSHIFT].pressed) controller.placing = nullptr;
@@ -156,8 +150,8 @@ void Game::input(Input_Info in) noexcept {
 		size_t next = (controller.board_id + 1) % boards.size();
 		auto to_spawn = Methane{};
 
-		if (player.gold >= to_spawn.cost) {
-			player.gold -= to_spawn.cost;
+		if (player.ressources.gold >= to_spawn.cost) {
+			player.ressources.gold -= to_spawn.cost;
 			players[controller.player_id].income += to_spawn.income;
 
 			for (size_t i = 0; i < to_spawn.batch; ++i) boards[next].spawn_unit(to_spawn);
@@ -205,7 +199,7 @@ void Game::input(Input_Info in) noexcept {
 
 		for (auto& x : controller.tower_selected) {
 			auto& tower = board.towers.id(x);
-			player.gold += tower->gold_cost / 2;
+			player.ressources.gold += tower->gold_cost / 2;
 			board.remove_tower(tower);
 		}
 
@@ -268,7 +262,7 @@ Game_Request Game::update(double dt) noexcept {
 	if (time_to_income < 0) {
 		time_to_income += income_interval;
 
-		for (auto& x : players) x.gold += x.income;
+		for (auto& x : players) x.ressources.gold += x.income;
 	}
 
 	wave_timer -= dt;
@@ -281,7 +275,7 @@ Game_Request Game::update(double dt) noexcept {
 
 	user_interface.tower_selection.pool = &board.towers;
 	user_interface.tower_selection.selection = controller.tower_selected;
-	user_interface.ressources = construct_interface_ressource_info();
+	user_interface.current_player = &player;
 	user_interface.current_wave = wave;
 	user_interface.seconds_to_wave = wave_timer;
 	user_interface.update(dt);
@@ -289,8 +283,8 @@ Game_Request Game::update(double dt) noexcept {
 	board.input(in, camera3d.project(in.mouse_pos));
 	for (size_t i = 0; i < boards.size(); ++i) {
 		boards[i].update(dt);
-		players[i].gold += boards[i].gold_gained;
-		boards[i].gold_gained = 0;
+		players[i].ressources = add(players[i].ressources, boards[i].ressources_gained);
+		boards[i].ressources_gained = {};
 	}
 
 	camera3d.pos += camera_speed * V3F(zqsd_vector, 0) * dt * camera3d.pos.z;

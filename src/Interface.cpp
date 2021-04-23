@@ -249,38 +249,67 @@ void Interface::render(render::Orders& orders) noexcept {
 		orders.push(rec, 2);
 	}
 
-	// top bar info
-	rec.pos.x = 0;
-	rec.pos.y = ui_camera.frame_size.y - info_bar_height;
-	rec.size.x = ui_camera.frame_size.x;
-	rec.size.y = info_bar_height;
-	rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
-	orders.push(rec, 2);
+	render_top_bar(orders);
+}
 
+void Interface::render_top_bar(render::Orders& orders) noexcept {
+	render::Rectangle rec;
+	render::Sprite sprite;
+	render::Text text;
 	thread_local std::string temp_string;
 	temp_string.clear();
-	temp_string = std::to_string(ressources.golds);
 
-	// top bar gold icon
-	sprite.color = V4F(1);
-	sprite.origin = V2F(0.5f);
-	sprite.pos = { ui_camera.frame_size.x / 2, ui_camera.frame_size.y - info_bar_height / 2 };
-	sprite.size = V2F(info_bar_height) / 1.5f;
-	sprite.texture = asset::Texture_Id::Gold_Icon;
-	sprite.texture_rect.pos  = {0, 0};
-	sprite.texture_rect.size = {1, 1};
-	orders.push(sprite, 3);
+	if (current_player) {
+		// top bar info
+		rec.pos.x = 0;
+		rec.pos.y = ui_camera.frame_size.y - info_bar_height;
+		rec.size.x = ui_camera.frame_size.x;
+		rec.size.y = info_bar_height;
+		rec.color = { 0.1f, 0.1f, 0.1f, 1.0f };
+		orders.push(rec, 2);
 
-	// top bar gold string
-	text.pos.x = ui_camera.frame_size.x / 2 + info_bar_height / 2 + 0.01f;
-	text.pos.y = ui_camera.frame_size.y - info_bar_height / 2;
-	text.origin = { 0.f, .5f};
-	text.color = {1, 1, 1, 1};
-	text.height = info_bar_height * 0.5f;
-	text.font_id = asset::Font_Id::Consolas;
-	text.text = orders.string(temp_string.c_str());
-	text.text_length = temp_string.size();
-	orders.push(text, 3);
+		Vector2f pos_gold =
+			{ ui_camera.frame_size.x / 2, ui_camera.frame_size.y - info_bar_height / 2 };
+		Vector2f pos_carbon = pos_gold;
+		pos_carbon.x += 0.05f;
+		Vector2f pos_hydro = pos_carbon;
+		pos_hydro.x += 0.05f;
+
+		auto push_ressource = [&](size_t texture_id, Vector2f pos, size_t n) {
+			temp_string.clear();
+			temp_string = std::to_string(n);
+			if (temp_string.size() > 4) {
+				temp_string = std::to_string((501 + n) / 1000);
+				temp_string += 'k';
+			}
+
+			// top bar gold icon
+			sprite.color = V4F(1);
+			sprite.origin = V2F(0.5f);
+			sprite.pos = pos;
+			sprite.size = V2F(info_bar_height) / 1.5f;
+			sprite.texture = texture_id;
+			sprite.texture_rect.pos  = {0, 0};
+			sprite.texture_rect.size = {1, 1};
+			orders.push(sprite, 3);
+
+			// top bar gold string
+			text.pos = pos;
+			text.pos.x += 0.01f;
+			text.origin = { 0.f, .5f};
+			text.color = {1, 1, 1, 1};
+			text.height = info_bar_height * 0.5f;
+			text.font_id = asset::Font_Id::Consolas;
+			text.text = orders.string(temp_string.c_str());
+			text.text_length = temp_string.size();
+			orders.push(text, 4);
+		};
+
+		using namespace asset;
+		push_ressource(Texture_Id::Gold_Icon,     pos_gold,   current_player->ressources.gold);
+		push_ressource(Texture_Id::Carbon_Icon,   pos_carbon, current_player->ressources.carbons);
+		push_ressource(Texture_Id::Hydrogen_Icon, pos_hydro,  current_player->ressources.hydrogens);
+	}
 
 	temp_string = "Wave: #" + std::to_string(current_wave + 1);
 	temp_string += " Next in: ";

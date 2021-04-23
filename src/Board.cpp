@@ -18,7 +18,7 @@ void Board::update(double dt) noexcept {
 	if (path_construction.soft_dirty) soft_compute_paths();
 	else if (path_construction.dirty) compute_paths();
 
-	gold_gained = 0;
+	ressources_gained = {};
 	current_wave.spawn(dt, *this);
 
 	for (auto& x : units) x->life_time += dt;
@@ -36,7 +36,6 @@ void Board::update(double dt) noexcept {
 		if (dt_vec.length2() < (last_pos - x->pos).length2()) x->current_tile = x->target_tile;
 
 		dt_vec = dt_vec.normed();
-		x->last_pos = x->pos;
 		x->pos += dt_vec * x->speed * dt;
 
 		if (x->pos.y + size.y * bounding_tile_size() / 2 < cease_zone_height) x.to_remove = true;
@@ -46,7 +45,9 @@ void Board::update(double dt) noexcept {
 			if (!x.to_remove) x->to_die = true;
 			x.to_remove = true;
 		}
-		if (x.to_remove) gold_gained += 1;
+		if (x.to_remove) {
+			ressources_gained = add(ressources_gained, x->get_drop());
+		}
 	}
 
 	for (size_t i = 0; i < towers.size(); ++i) {
@@ -77,7 +78,6 @@ void Board::update(double dt) noexcept {
 			}
 		} else if (towers[i].typecheck(Tower::Sharp_Kind)) {
 			auto& x = towers[i].Sharp_;
-			x.last_rot = x.rot;
 			x.rot += dt * 5;
 
 			for (auto& y : units) if ((tower_pos - y->pos).length2() < x.range * x.range) {
@@ -119,9 +119,6 @@ void Board::update(double dt) noexcept {
 			auto& to = units.id(x.to);
 			if (to.to_remove) { y.to_remove = true; continue; }
 
-			x.last_dir = x.dir;
-			x.last_pos = x.pos;
-
 			x.pos += (to->pos - x.pos).normed() * x.speed * dt;
 			if ((to->pos - x.pos).length2() < 0.1f) {
 				y.to_remove = true;
@@ -133,8 +130,6 @@ void Board::update(double dt) noexcept {
 		} else if (y.kind == Projectile::Straight_Projectile_Kind) {
 			auto& x = y.Straight_Projectile_;
 
-			x.last_pos = x.pos;
-			x.last_dir = x.dir;
 			x.pos += x.dir * x.speed * dt;
 
 			for (auto& u : units) if (!u.to_remove) {
@@ -225,28 +220,6 @@ void Board::render(render::Orders& order) noexcept {
 	thread_local std::unordered_map<size_t, std::vector<render::Model>> models_by_object;
 	for (auto& [_, x] : models_by_object) x.clear();
 
-	auto push_unit = [&] (Unit& u, bool ignore_depth_test) {
-		thread_local render::Model model;
-
-		model.shader_id  = asset::Shader_Id::Default_3D_Batched;
-		model.texture_id = asset::Texture_Id::Palette;
-		model.object_id  = u->object_id;
-
-		model.pos = Vector3f(u->pos + pos, std::sinf(u->life_time) * 0.1f + 0.3f);
-		model.dir = {1, 0, 0};
-		model.scale = 1;
-
-		model.last_pos = Vector3f(u->last_pos + pos, std::sinf(u->life_time) * 0.1f + 0.3f);
-		model.last_dir = {1, 0, 0};
-		model.last_scale = 1;
-
-		model.object_blur = true;
-		model.ignore_depth_test = ignore_depth_test;
-
-		order.push(model);
-	};
-
-
 	for (auto& x : units) {
 		m.object_blur = true;
 		m.object_id = x->object_id;
@@ -263,6 +236,8 @@ void Board::render(render::Orders& order) noexcept {
 		models_by_object[m.object_id].push_back(m);
 
 		m.object_blur = false;
+
+		x->last_pos = x->pos;
 	}
 	m.color = {1, 1, 1};
 
@@ -287,6 +262,8 @@ void Board::render(render::Orders& order) noexcept {
 			m.last_dir = Vector3f(Vector2f::createUnitVector(x.Sharp_.last_rot), 0);
 			m.last_pos = m.pos;
 			m.last_scale = m.scale;
+
+			x.Sharp_.last_rot = x.Sharp_.rot;
 		}
 
 		models_by_object[m.object_id].push_back(m);
@@ -315,6 +292,9 @@ void Board::render(render::Orders& order) noexcept {
 		m.object_id = x->object_id;
 
 		models_by_object[m.object_id].push_back(m);
+
+		x->last_pos = x->pos;
+		x->last_dir = x->dir;
 	}
 
 	render::Color_Mask color_mask;

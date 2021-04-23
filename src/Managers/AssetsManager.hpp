@@ -42,6 +42,8 @@ namespace asset {
 		inline static size_t Range1_Icon   = 21;
 		inline static size_t Sharp_Icon    = 22;
 		inline static size_t Volter_Icon   = 23;
+		inline static size_t Carbon_Icon   = 24;
+		inline static size_t Hydrogen_Icon = 25;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;

@@ -14,10 +14,7 @@
 #include "Board.hpp"
 #include "Wave.hpp"
 
-struct Player {
-	size_t gold = 0;
-	size_t income = 25;
-};
+#include "Player.hpp"
 
 struct Controller {
 	size_t board_id  = 0;
@@ -82,8 +79,6 @@ struct Game {
 	Game_Request update(double dt) noexcept;
 
 	void next_wave() noexcept;
-
-	Interface::Ressource_Info construct_interface_ressource_info() noexcept;
 };
 
 

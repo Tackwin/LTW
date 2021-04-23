@@ -51,6 +51,8 @@ template<bool flag = false> void static_no_match() noexcept {
 #define sum_type_X_cast(x) if constexpr (std::is_same_v<T, x>) { return x##_; }
 #define sum_type_X_one_of(x) std::is_same_v<T, x> ||
 
+#pragma clang diagnostic ignored "-Wdynamic-class-memaccess"
+
 #define sum_type(n, list)\
 		union { list(sum_type_X_Union) };\
 		enum Kind { None_Kind = 0 list(sum_type_X_Kind) } kind;\

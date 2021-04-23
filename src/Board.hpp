@@ -112,7 +112,7 @@ struct Board {
 		bool soft_dirty = false;
 	} path_construction;
 
-	size_t gold_gained = 0;
+	Ressources ressources_gained;
 
 	Wave current_wave;
 

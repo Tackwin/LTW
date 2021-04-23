@@ -10,6 +10,8 @@
 #include "Managers/InputsManager.hpp"
 #include "Tower.hpp"
 
+#include "Player.hpp"
+
 enum class Ui_State {
 	Null,
 	Main,
@@ -113,16 +115,12 @@ struct Tower_Selection {
 };
 
 struct Interface {
-	struct Ressource_Info {
-		size_t golds = 0;
-	};
-
 	render::Camera ui_camera;
 
 	Action action;
 	float info_bar_height = 0.025f;
 
-	Ressource_Info ressources;
+	Player* current_player = nullptr;
 
 	float dragging = false;
 	Rectanglef drag_selection;
@@ -135,6 +133,7 @@ struct Interface {
 	bool input(const Input_Info& info) noexcept;
 	void update(double dt) noexcept;
 	void render(render::Orders& order) noexcept;
+	void render_top_bar(render::Orders& order) noexcept;
 
 	void init_buttons() noexcept;
 

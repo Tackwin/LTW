@@ -4,6 +4,9 @@
 #include "Math/Vector.hpp"
 #include "Managers/AssetsManager.hpp"
 
+// >TODO(Tackwin): Besoin de ce include pour Ressource seulement
+#include "Player.hpp"
+
 struct Unit_Base {
 	size_t object_id = 0;
 
@@ -24,6 +27,8 @@ struct Unit_Base {
 	Vector3f color = {1, 1, 1};
 
 	bool to_die = false;
+
+	virtual Ressources get_drop() noexcept { return {}; }
 };
 
 struct Methane : Unit_Base {
@@ -32,6 +37,8 @@ struct Methane : Unit_Base {
 		speed = 0.5f;
 		object_id = asset::Object_Id::Methane;
 	}
+
+	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 1, .hydrogens = 4}; }
 };
 struct Ethane : Unit_Base {
 	Ethane() noexcept {
@@ -40,6 +47,7 @@ struct Ethane : Unit_Base {
 		object_id = asset::Object_Id::Ethane;
 		color /= 2;
 	}
+	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 2, .hydrogens = 6}; }
 };
 struct Propane : Unit_Base {
 	Propane() noexcept {
@@ -48,6 +56,7 @@ struct Propane : Unit_Base {
 		object_id = asset::Object_Id::Propane;
 		color /= 3;
 	}
+	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 3, .hydrogens = 8}; }
 };
 struct Butane : Unit_Base {
 	Butane() noexcept {
@@ -56,6 +65,7 @@ struct Butane : Unit_Base {
 		object_id = asset::Object_Id::Butane;
 		color /= 5;
 	}
+	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 4, .hydrogens = 10}; }
 };
 struct Water   : Unit_Base {
 	Water()   noexcept {
