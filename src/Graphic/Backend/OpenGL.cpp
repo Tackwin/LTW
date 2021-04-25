@@ -69,11 +69,17 @@ void lighting(
 	render::Render_Param& param
 ) noexcept;
 
+void render_transparent(render::Orders& orders, render::Render_Param& param) noexcept;
+
 void motion_blur(
 	G_Buffer& g_buffer,
 	HDR_Buffer& hdr_buffer,
 	HDR_Buffer& out_buffer,
 	render::Render_Param& param
+) noexcept;
+
+void gaussian_blur(
+	HDR_Buffer& hdr_buffer, HDR_Buffer& out_buffer, render::Render_Param& param
 ) noexcept;
 
 void tone_mapping(
@@ -87,9 +93,11 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	static Texture_Buffer edge_buffer(buffer_size, "Edge Buffer");
 	static HDR_Buffer     motion_buffer(buffer_size);
 	static G_Buffer       g_buffer(buffer_size);
-	static HDR_Buffer     hdr_buffer(buffer_size);
+	static HDR_Buffer     hdr_buffer(buffer_size, 2);
+	static HDR_Buffer     glow_buffer(buffer_size);
 
 	if (g_buffer.n_samples != param.n_samples) g_buffer = G_Buffer(buffer_size, param.n_samples);
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Simple);
 
 	glViewport(0, 0, (GLsizei)buffer_size.x, (GLsizei)buffer_size.y);
 
@@ -101,18 +109,19 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 
 	edge_highlight(g_buffer, edge_buffer, param);
 	lighting(g_buffer, edge_buffer, hdr_buffer, param);
+
+	hdr_buffer.set_active();
+	render_transparent(orders, param);
+
 	motion_blur(g_buffer, hdr_buffer, motion_buffer, param);
 	tone_mapping(motion_buffer, texture_target, param);
-
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 	texture_target.set_active_texture(0);
-	auto& shader = asset::Store.get_shader(asset::Shader_Id::Simple);
 	shader.use();
 	shader.set_texture(0);
-
 
 	Rectanglef viewport_rect{
 		0.f, 0.f, (float)Environment.window_size.x, (float)Environment.window_size.y
@@ -127,7 +136,6 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	);
 
 	texture_target.render_quad();
-	hdr_buffer.set_disable_texture();
 	render_ui(orders, param);
 }
 
@@ -291,6 +299,45 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 	}
 	glDisable(GL_DEPTH_TEST);
 }
+void render_transparent(render::Orders& orders, render::Render_Param& param) noexcept {
+	glDisable(GL_DEPTH_TEST);
+	thread_local std::vector<render::Order> cam_stack;
+
+	cam_stack.clear();
+
+	for (size_t i = 0; i < orders.size(); ++i) {
+		auto& x = orders[i];
+
+		switch (x.kind) {
+			case render::Order::Color_Mask_Kind: {
+				glColorMask(
+					x.Color_Mask_.mask.r,
+					x.Color_Mask_.mask.g,
+					x.Color_Mask_.mask.b,
+					x.Color_Mask_.mask.a
+				);
+				break;
+			}
+			case render::Order::Camera3D_Kind: {
+				cam_stack.push_back(x.Camera3D_);
+				render::current_camera = cam_stack.back();
+
+				break;
+			}
+			case render::Order::Pop_Camera3D_Kind: {
+				cam_stack.pop_back();
+				if (!cam_stack.empty()) render::current_camera = cam_stack.back();
+				break;
+			}
+			case render::Order::Ring_Kind: {
+				render::immediate(x.Ring_, cam_stack.back().Camera3D_);
+				break;
+			}
+			default: break;
+		}
+	}
+	glDisable(GL_DEPTH_TEST);
+}
 
 void render_ui(render::Orders& orders, render::Render_Param param) noexcept {
 	glDisable(GL_DEPTH_TEST);
@@ -394,6 +441,33 @@ void edge_highlight(
 	buffer.render_quad();
 }
 
+
+void gaussian_blur(
+	HDR_Buffer& buffer, HDR_Buffer& out_buffer, render::Render_Param& param
+) noexcept {
+	auto buffer_size = Environment.buffer_size;
+	thread_local HDR_Buffer temp_buffer(buffer_size);
+
+	temp_buffer.set_active();
+	buffer.set_active_texture();
+
+	auto& simple_shader = asset::Store.get_shader(asset::Shader_Id::Simple);
+	simple_shader.use();
+	simple_shader.set_uniform("color_texture", 1);
+
+	temp_buffer.render_quad();
+
+	out_buffer.set_active();
+	temp_buffer.set_active_texture(0);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
+	blur_shader.use();
+	blur_shader.set_uniform("radius", (int)param.edge_blur);
+	blur_shader.set_uniform("image", 0);
+
+	out_buffer.render_quad();
+}
 
 void lighting(
 	G_Buffer& g_buffer,

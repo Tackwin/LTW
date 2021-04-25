@@ -1433,3 +1433,45 @@ void render::immediate(
 	}
 	for (size_t i = 0; i < 13; ++i) glDisableVertexAttribArray(i);
 }
+
+void render::immediate(Ring ring, const Camera3D& cam) noexcept {
+	static GLuint quad_vao{ 0 };
+	static GLuint quad_vbo{ 0 };
+
+	if (!quad_vao) {
+		static float quad_vertices[] = {
+			// positions    
+			-1.0f, +1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+			+1.0f, +1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+			+1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &quad_vao);
+		glBindVertexArray(quad_vao);
+		glGenBuffers(1, &quad_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "rectangle_info_vbo";
+		glObjectLabel(GL_BUFFER, quad_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)12);
+	}
+	auto M =
+		Matrix4f::translation(ring.pos) * Matrix4f::scale({ring.radius, ring.radius, ring.radius});
+
+	auto& shader = asset::Store.get_shader(asset::Shader_Id::Ring);
+	shader.use();
+	shader.set_uniform("M", M);
+	shader.set_uniform("VP", cam.get_VP());
+	shader.set_uniform("color", ring.color);
+	shader.set_uniform("glow_intensity", ring.glowing_intensity);
+
+	glBindVertexArray(quad_vao);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}

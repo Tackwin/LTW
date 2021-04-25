@@ -100,8 +100,6 @@ struct Board {
 	xstd::Pool<Tower> towers;
 	xstd::Pool<Projectile> projectiles;
 
-	size_t tower_selected = 0;
-
 	std::vector<size_t> next_tile;
 	std::vector<size_t> dist_tile;
 	struct Path_Construction {

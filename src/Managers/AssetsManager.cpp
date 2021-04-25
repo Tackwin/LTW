@@ -353,6 +353,7 @@ void Store_t::load_known_shaders() noexcept {
 	X("assets/shaders/simple.vertex", "assets/shaders/hdr.fragment",       "", HDR);
 	X("assets/shaders/simple.vertex", "assets/shaders/simple.fragment",    "", Simple);
 	X("assets/shaders/depth_prepass.vertex", "",    "", Depth_Prepass);
+	X("assets/shaders/ring.vertex", "assets/shaders/ring.fragment",    "", Ring);
 #undef X
 }
 void Store_t::load_known_objects() noexcept {
@@ -382,6 +383,7 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/ethane.ply", Ethane);
 	X("assets/model/propane.ply", Propane);
 	X("assets/model/butane.ply", Butane);
+	X("assets/model/plane.ply", Plane);
 #undef X
 }
 

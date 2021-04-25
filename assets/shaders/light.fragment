@@ -19,7 +19,8 @@ struct Light_Dir {
 uniform int n_light_dirs;
 uniform Light_Dir light_dirs[N_Light_Dir];
 
-out vec4 frag_color;
+layout (location = 0) out vec4 frag_color;
+layout (location = 1) out vec4 glow_buffer;
 
 in vec2 text_coord;
 
@@ -141,6 +142,7 @@ void main() {
 		frag_color = vec4(texture_fetch(buffer_position, text_coord).w);
 	}
 
+	glow_buffer = vec4(0);
 	//frag_color = vec4(texture_fetch(buffer_position, text_coord).zzz, 1);
 	frag_color.xyz += vec3(0.1 * pow(texture(buffer_ssao, text_coord).x, 5));
 	//oofrag_color.rgb = texture_fetch(buffer_tag, text_coord).rgb;

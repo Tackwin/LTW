@@ -9,6 +9,108 @@
 #include <GL/glew.h>
 #endif
 
+Frame_Buffer::Frame_Buffer(Vector2u size, size_t n_samples, std::string label) noexcept {
+	this->size = size;
+	this->n_samples = n_samples;
+
+	GLuint x = buffer; glGenFramebuffers(1, &x); buffer = x;
+	glBindFramebuffer(GL_FRAMEBUFFER, buffer);
+#ifdef GL_DEBUG
+	glObjectLabel(GL_FRAMEBUFFER, buffer, label.size(), label.data());
+#endif
+
+	x = depth_attachment; glGenRenderbuffers(1, &x); depth_attachment = x;
+	glBindRenderbuffer(GL_RENDERBUFFER, depth_attachment);
+	glRenderbufferStorageMultisample(
+		GL_RENDERBUFFER, n_samples, GL_DEPTH_COMPONENT32F, (GLsizei)size.x, (GLsizei)size.y
+	);
+	glFramebufferRenderbuffer(
+		GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_attachment
+	);
+	// finally check if framebuffer is complete
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		assert("Framebuffer not complete!");
+	}
+#ifdef GL_DEBUG
+	std::string l = label + " Depth";
+	glObjectLabel(GL_RENDERBUFFER, depth_attachment, l.size(), l.data());
+#endif
+
+	float quad_vertices[] = {
+		// positions        // texture Coords
+		-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+		 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+		 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+	};
+	// setup plane VAO
+	x = quad_vao; glGenVertexArrays(1, &x); quad_vao = x;
+	x = quad_vbo; glGenBuffers(1, &x); quad_vbo = x;
+	glBindVertexArray(quad_vao);
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+}
+
+void Frame_Buffer::clear() noexcept {
+	unsigned int attachments[16];
+	for (size_t i = 0; i < color_attachment.size(); ++i) attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+
+	glDrawBuffers(color_attachment.size(), attachments);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void Frame_Buffer::new_color_attach(size_t format, std::string label) noexcept {
+	GLuint id;
+	glGenTextures(1, &id);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, id);
+	glTexImage2DMultisample(
+		GL_TEXTURE_2D_MULTISAMPLE,
+		n_samples,
+		format,
+		size.x,
+		size.y,
+		GL_TRUE
+	);
+#ifdef GL_DEBUG
+	glObjectLabel(GL_TEXTURE, id, label.size(), label.data());
+#endif
+
+	glBindFramebuffer(GL_FRAMEBUFFER, buffer);
+	glFramebufferTexture2D(
+		GL_FRAMEBUFFER,
+		GL_COLOR_ATTACHMENT0 + color_attachment.size(),
+		GL_TEXTURE_2D_MULTISAMPLE,
+		id,
+		0
+	);
+
+	color_attachment.push_back(id);
+}
+
+void Frame_Buffer::set_active() noexcept {
+	unsigned int attachments[16];
+	for (size_t i = 0; i < color_attachment.size(); ++i) attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+
+	glDrawBuffers(color_attachment.size(), attachments);
+	for (size_t i = 0; i < color_attachment.size(); ++i) {
+		glActiveTexture(GL_TEXTURE0 + i);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_attachment[i]);
+	}
+}
+
+void Frame_Buffer::set_active_texture(size_t texture, size_t id) noexcept {
+	glActiveTexture(GL_TEXTURE0 + texture);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_attachment[id]);
+}
+void Frame_Buffer::render_quad() noexcept {
+	glBindVertexArray(quad_vao);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
 G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	this->size = size;
 	this->n_samples = n_samples;
@@ -88,6 +190,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 		(GLsizei)size.x,
 		(GLsizei)size.y,
 		GL_TRUE
+
 	);
 	glFramebufferTexture2D(
 		GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D_MULTISAMPLE, velocity_buffer, 0
@@ -159,18 +262,11 @@ G_Buffer::~G_Buffer() noexcept {
 
 void G_Buffer::clear(Vector4d color) noexcept {
 	Vector4f f = (Vector4f)color;
-#ifdef ES
 	unsigned int attachments[] = {
 		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
 	};
 	glDrawBuffers(sizeof(attachments) / sizeof(unsigned int), attachments);
 	glClear(GL_COLOR_BUFFER_BIT);
-#else
-	glClearTexImage(albedo_buffer, 0, GL_RGBA, GL_UNSIGNED_BYTE, &f.x);
-	glClearTexImage(normal_buffer, 0, GL_RGBA, GL_FLOAT, nullptr);
-	glClearTexImage(pos_buffer, 0, GL_RGBA, GL_FLOAT, nullptr);
-	glClearTexImage(velocity_buffer, 0, GL_RGBA, GL_FLOAT, nullptr);
-#endif
 }
 
 void G_Buffer::set_active() noexcept {
@@ -256,7 +352,7 @@ void G_Buffer::copy_depth_to(uint32_t id, Rectanglef v) noexcept {
 }
 
 
-HDR_Buffer::HDR_Buffer(Vector2u size) noexcept : size(size) {
+HDR_Buffer::HDR_Buffer(Vector2u size, size_t n_color) noexcept : size(size), n_color(n_color) {
 	glGenFramebuffers(1, &hdr_buffer);
 
 	glGenTextures(1, &color_buffer);
@@ -278,18 +374,43 @@ HDR_Buffer::HDR_Buffer(Vector2u size) noexcept : size(size) {
 	auto label = "hdr_color_buffer";
 	glObjectLabel(GL_TEXTURE, color_buffer, (GLsizei)strlen(label) - 1, label);
 #endif
-
 	// attach buffers
 	glBindFramebuffer(GL_FRAMEBUFFER, hdr_buffer);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_buffer, 0);
+
+	if (n_color > 1) {
+		glGenTextures(1, &color2_buffer);
+		glBindTexture(GL_TEXTURE_2D, color2_buffer);
+		glTexImage2D(
+			GL_TEXTURE_2D,
+			0,
+			GL_RGBA16F,
+			(GLsizei)size.x,
+			(GLsizei)size.y,
+			0,
+			GL_RGBA,
+			GL_FLOAT,
+			NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	#ifdef GL_DEBUG
+		label = "hdr_color2_buffer";
+		glObjectLabel(GL_TEXTURE, color2_buffer, (GLsizei)strlen(label) - 1, label);
+	#endif
+	}
+
+	// attach buffers
+	glBindFramebuffer(GL_FRAMEBUFFER, hdr_buffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, color2_buffer, 0);
 #ifdef GL_DEBUG
 	label = "hdr_frame_buffer";
 	glObjectLabel(GL_FRAMEBUFFER, hdr_buffer, (GLsizei)strlen(label) - 1, label);
 #endif
-	unsigned int attachments[1] = {
-		GL_COLOR_ATTACHMENT0
+	unsigned int attachments[2] = {
+		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1
 	};
-	glDrawBuffers(1, attachments);
+	glDrawBuffers(n_color, attachments);
 
 	glGenRenderbuffers(1, &rbo_buffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo_buffer);
@@ -336,22 +457,26 @@ Vector2u HDR_Buffer::get_size() const noexcept {
 void HDR_Buffer::set_active() noexcept {
 	glBindFramebuffer(GL_FRAMEBUFFER, hdr_buffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo_buffer);
-	unsigned int attachments[1] = {
-		GL_COLOR_ATTACHMENT0
+	unsigned int attachments[2] = {
+		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1
 	};
-	glDrawBuffers(1, attachments);
+	glDrawBuffers(sizeof(attachments) / sizeof(unsigned int), attachments);
 }
 void HDR_Buffer::set_active_texture() noexcept {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, color_buffer);
+	if (n_color > 1) {
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, color2_buffer);
+	}
 }
 void HDR_Buffer::set_active_texture(size_t n) noexcept {
 	glActiveTexture(GL_TEXTURE0 + n);
 	glBindTexture(GL_TEXTURE_2D, color_buffer);
-}
-void HDR_Buffer::set_disable_texture() noexcept {
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	if (n_color > 1) {
+		glActiveTexture(GL_TEXTURE0 + n + 1);
+		glBindTexture(GL_TEXTURE_2D, color2_buffer);
+	}
 }
 
 void HDR_Buffer::render_quad() noexcept {

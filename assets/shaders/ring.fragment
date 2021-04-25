@@ -1,0 +1,18 @@
+#version 450 core
+
+layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec4 out_glow;
+
+in vec2 local_pos;
+
+uniform vec3 color;
+uniform float glow_intensity;
+
+void main() {
+	float thick = 0.005;
+	float dt = length(local_pos) - 0.95;
+	if (abs(dt) > thick) discard;
+
+	out_color = vec4(color, 1);
+	out_glow = vec4(out_color * glow_intensity * (thick - abs(dt)) / thick);
+}

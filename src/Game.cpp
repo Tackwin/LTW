@@ -64,6 +64,8 @@ void game_shutdown(Game&) noexcept {
 
 void Game::input(Input_Info in) noexcept {
 	if (!in.focused) return;
+	if (in.mouse_pos.x < 0 || in.mouse_pos.x > 1 || in.mouse_pos.y < 0 || in.mouse_pos.y > 1)
+		return;
 	controller.ended_drag_selection = false;
 
 	auto& board  = boards[controller.board_id];
@@ -168,10 +170,14 @@ void Game::input(Input_Info in) noexcept {
 		auto mouse = camera3d.project(in.mouse_pos);
 		mouse -= board.pos;
 		mouse += Vector2f{tile_size * (board.size.x - 1), tile_size * (board.size.y - 1)} / 2;
+
+		auto place_size = controller.placing->tile_size;
+		mouse -= Vector2f{tile_size * (place_size.x - 1), tile_size * (place_size.y - 1)} / 2;
+
 		mouse /= tile_size;
 		mouse  = std::max(mouse, V2F(0));
 		auto mouse_u = (Vector2u)mouse;
-		mouse_u = std::min(mouse_u, board.size - Vector2u{1, 1});
+		mouse_u = std::min(mouse_u, board.size - place_size);
 		controller.placing->tile_pos = mouse_u;
 	}
 
@@ -335,6 +341,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 
 	for (size_t i = 0; i < game.boards.size(); ++i) {
 		auto& board = game.boards[i];
+
 		board.render(order);
 
 		if (game.controller.board_id == i && !game.controller.placing.typecheck(Tower::None_Kind)) {
@@ -348,6 +355,16 @@ void game_render(Game& game, render::Orders& order) noexcept {
 			);
 			rec.pos  += board.pos;
 			order.push(rec, 0.02f);
+		}
+		if (game.controller.board_id == i) {
+			for (auto& id : game.controller.tower_selected) {
+				render::Ring ring;
+				ring.color = {0, 1, 0};
+				ring.glowing_intensity = 10;
+				ring.pos = Vector3f(board.tower_box(board.towers.id(id)).center(), 0.1f);
+				ring.radius = 2;
+				order.push(ring);
+			}
 		}
 
 	}

@@ -4,6 +4,34 @@
 
 #include "Managers/AssetsManager.hpp"
 
+struct Frame_Buffer {
+
+	Frame_Buffer(Vector2u size, size_t n_samples, std::string label = "Frame Buffer") noexcept;
+	~Frame_Buffer() noexcept;
+
+	Frame_Buffer(Frame_Buffer&) = delete;
+	Frame_Buffer& operator=(Frame_Buffer&) = delete;
+
+	void clear() noexcept;
+
+	void new_color_attach(size_t format, std::string label = "Color Attachment") noexcept;
+
+	void set_active() noexcept;
+	void set_active_texture(size_t texture, size_t id) noexcept;
+	void render_quad() noexcept;
+
+	size_t buffer;
+
+	std::vector<size_t> color_attachment;
+	size_t depth_attachment;
+
+	size_t n_samples;
+	Vector2u size;
+
+	size_t quad_vao;
+	size_t quad_vbo;
+};
+
 // >Note: Tackwin
 // Every time i do a class wrapper around an OpenGl concept i try to have const mean doesn't
 // change the OpenGL state. Meaning technically most of the method could be const as they don't
@@ -51,7 +79,7 @@ struct HDR_Buffer {
 	HDR_Buffer(HDR_Buffer&&) = default;
 	HDR_Buffer& operator=(HDR_Buffer&&) = default;
 
-	HDR_Buffer(Vector2u size) noexcept;
+	HDR_Buffer(Vector2u size, size_t n_color = 1) noexcept;
 	~HDR_Buffer() noexcept;
 
 	Vector2u get_size() const noexcept;
@@ -59,7 +87,6 @@ struct HDR_Buffer {
 	void set_active() noexcept;
 	void set_active_texture() noexcept;
 	void set_active_texture(size_t n) noexcept;
-	void set_disable_texture() noexcept;
 
 	void render_quad() noexcept;
 
@@ -67,9 +94,12 @@ struct HDR_Buffer {
 private:
 	Vector2u size;
 
+	size_t n_color = 1;
+
 	std::uint32_t hdr_buffer{ 0 };
 	std::uint32_t rbo_buffer{ 0 };
 	std::uint32_t color_buffer{ 0 };
+	std::uint32_t color2_buffer{ 0 };
 	std::uint32_t quad_VAO{ 0 };
 	std::uint32_t quad_VBO{ 0 };
 };

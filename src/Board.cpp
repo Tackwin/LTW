@@ -243,14 +243,13 @@ void Board::render(render::Orders& order) noexcept {
 
 
 	for (auto& x : towers) {
+		auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
+
 		m.object_id = x->object_id;
 		m.shader_id = asset::Shader_Id::Default_3D_Batched;
 		m.texture_id = asset::Texture_Id::Palette;
 		m.scale = x->tile_size.x * tile_size;
-		m.pos = Vector3f(
-			tile_box(x->tile_pos, x->tile_size).center() + pos,
-			bounding_tile_size() * 0.3f * x->tile_size.x
-		);
+		m.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
 		m.bitmask = 0;
 
 		m.dir = {1, 0, 0};
@@ -264,6 +263,14 @@ void Board::render(render::Orders& order) noexcept {
 			m.last_scale = m.scale;
 
 			x.Sharp_.last_rot = x.Sharp_.rot;
+		}
+		if (x.kind == Tower::Archer_Kind) {
+			if (units.exist(x.Archer_.target_id)) {
+				auto dt = units.id(x.Archer_.target_id)->pos - plane_pos;
+				m.dir = Vector3f(dt.normed(), 0);
+			} else {
+				m.dir = {1, 0, 0};
+			}
 		}
 
 		models_by_object[m.object_id].push_back(m);

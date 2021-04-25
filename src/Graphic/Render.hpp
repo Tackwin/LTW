@@ -83,6 +83,18 @@ namespace render {
 
 		Rectangle() {};
 	};
+
+	struct Ring : Order_Base {
+		Vector3f pos = {};
+		Vector3f normal = {0, 0, 1};
+		
+		Vector3f color;
+		float glowing_intensity = 0.f;
+
+		float radius = 1.f;
+		float thickness = 0.f;
+	};
+
 	struct Model : Order_Base {
 		size_t object_id = 0;
 		size_t shader_id = 0;
@@ -162,7 +174,7 @@ namespace render {
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
 	X(Pop_Camera3D) X(Clear_Depth) X(Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui) X(Depth_Test)\
-	X(Color_Mask)
+	X(Color_Mask) X(Ring)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -234,6 +246,7 @@ namespace render {
 	extern void immediate3d(std::span<Circle> circles) noexcept;
 	extern void immediate3d(std::span<Arrow> arrows) noexcept;
 
+	extern void immediate(Ring ring, const Camera3D& camera) noexcept;
 	extern void immediate(
 		std::span<Model> models, const Batch& batch, const Camera3D& camera
 	) noexcept;

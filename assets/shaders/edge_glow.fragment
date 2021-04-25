@@ -54,7 +54,7 @@ void main() {
     }
 
     float dt_drag_pos = length(diff(buffer_position, TexCoords, edge_width));
-    if (dt_drag_pos > 1) discard;
+    if (dt_drag_pos > 0.1) discard;
 
     FragColor = vec4(edge_mult * diff(buffer_normal, TexCoords, edge_width), 1.0);
 }
