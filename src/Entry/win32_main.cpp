@@ -270,7 +270,7 @@ int WINAPI WinMain(
 	PROFILER_END();
 	PROFILER_SESSION_END("output/trace/");
 
-	std::thread game_thread(game_loop, GetCurrentThreadId());
+	//std::thread game_thread(game_loop, GetCurrentThreadId());
 
 	while (msg.message != WM_QUIT) {
 		if (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
@@ -286,7 +286,7 @@ int WINAPI WinMain(
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 
-	game_thread.join();
+	//game_thread.join();
 
 	game_proc.shutdown(game);
 	// >SEE(Tackwin) >ClipCursor
@@ -364,6 +364,22 @@ void windows_loop() noexcept {
 		render_request_stop = true;
 		Main_Mutex.lock();
 		defer { Main_Mutex.unlock(); };
+
+		for (auto& x : posted_char) current_char = x;
+		posted_char.clear();
+
+		auto response = game_proc.update(game, dt);
+
+		if (response.confine_cursor) {
+			RECT r;
+			GetWindowRect((HWND)platform::handle_window, &r);
+			ClipCursor(&r);
+		} else {
+			// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are destroying it
+			// we need to restore the old clipCursor by doing GetClipCursor...
+			ClipCursor(nullptr);
+		}
+
 		render_param.cam_pos = game.camera3d.pos;
 		render_param.current_fps = (size_t)(1.0 / dt);
 

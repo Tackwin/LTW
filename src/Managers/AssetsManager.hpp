@@ -61,6 +61,8 @@ namespace asset {
 		inline static size_t Simple = 13;
 		inline static size_t Depth_Prepass = 14;
 		inline static size_t Ring = 15;
+		inline static size_t Bloom = 16;
+		inline static size_t Additive = 16;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};

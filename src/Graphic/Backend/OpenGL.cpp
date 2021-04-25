@@ -79,22 +79,26 @@ void motion_blur(
 ) noexcept;
 
 void gaussian_blur(
-	HDR_Buffer& hdr_buffer, HDR_Buffer& out_buffer, render::Render_Param& param
+	size_t texture, HDR_Buffer& out_buffer, render::Render_Param& param
 ) noexcept;
 
 void tone_mapping(
-	HDR_Buffer& hdr_buffer, Texture_Buffer& out_buffer, render::Render_Param& param
+	HDR_Buffer& hdr_buffer,
+	HDR_Buffer& bloom_buffer,
+	Texture_Buffer& out_buffer,
+	render::Render_Param& param
 ) noexcept;
 
 void render::render_orders(render::Orders& orders, render::Render_Param param) noexcept {
 	auto buffer_size = Environment.buffer_size;
 	
-	static Texture_Buffer texture_target(buffer_size);
+	static Texture_Buffer texture_target(buffer_size, "Texture Target");
 	static Texture_Buffer edge_buffer(buffer_size, "Edge Buffer");
-	static HDR_Buffer     motion_buffer(buffer_size);
+	static HDR_Buffer     motion_buffer(buffer_size, 1, "Motion Buffer");
 	static G_Buffer       g_buffer(buffer_size);
-	static HDR_Buffer     hdr_buffer(buffer_size, 2);
-	static HDR_Buffer     glow_buffer(buffer_size);
+	static HDR_Buffer     hdr_buffer(buffer_size, 1, "HDR Buffer");
+	static HDR_Buffer     transparent_buffer(buffer_size, 2, "Transparent Buffer");
+	static HDR_Buffer     bloom_buffer(buffer_size, 1, "Bloom Buffer");
 
 	if (g_buffer.n_samples != param.n_samples) g_buffer = G_Buffer(buffer_size, param.n_samples);
 	auto& shader = asset::Store.get_shader(asset::Shader_Id::Simple);
@@ -110,11 +114,23 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	edge_highlight(g_buffer, edge_buffer, param);
 	lighting(g_buffer, edge_buffer, hdr_buffer, param);
 
-	hdr_buffer.set_active();
+	transparent_buffer.set_active();
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	render_transparent(orders, param);
+	gaussian_blur(transparent_buffer.color2_buffer, bloom_buffer, param);
 
 	motion_blur(g_buffer, hdr_buffer, motion_buffer, param);
-	tone_mapping(motion_buffer, texture_target, param);
+
+	glEnable(GL_BLEND);
+	motion_buffer.set_active();
+	shader.use();
+
+	transparent_buffer.set_active_texture();
+	transparent_buffer.render_quad();
+
+	tone_mapping(motion_buffer, bloom_buffer, texture_target, param);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
@@ -443,28 +459,73 @@ void edge_highlight(
 
 
 void gaussian_blur(
-	HDR_Buffer& buffer, HDR_Buffer& out_buffer, render::Render_Param& param
+	size_t texture, HDR_Buffer& out_buffer, render::Render_Param& param
 ) noexcept {
 	auto buffer_size = Environment.buffer_size;
-	thread_local HDR_Buffer temp_buffer(buffer_size);
 
-	temp_buffer.set_active();
-	buffer.set_active_texture();
+	thread_local bool init = false;
+	thread_local unsigned int pingpongFBO[2] = {};
+	thread_local unsigned int pingpongBuffer[2] = {};
+	if (!init) {
+		glGenFramebuffers(2, pingpongFBO);
+		glGenTextures(2, pingpongBuffer);
+		for (unsigned int i = 0; i < 2; i++) {
+			glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+			glBindTexture(GL_TEXTURE_2D, pingpongBuffer[i]);
+			glTexImage2D(
+				GL_TEXTURE_2D,
+				0,
+				GL_RGBA16F,
+				buffer_size.x,
+				buffer_size.y,
+				0,
+				GL_RGBA,
+				GL_FLOAT,
+				NULL
+			);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongBuffer[i], 0
+			);
+		}
 
-	auto& simple_shader = asset::Store.get_shader(asset::Shader_Id::Simple);
-	simple_shader.use();
-	simple_shader.set_uniform("color_texture", 1);
+		init = true;
+	}
 
-	temp_buffer.render_quad();
+	for (size_t i = 0; i < 2; ++i) {
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+		glClearColor(0, 0, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
+
+	auto& shaderBlur = asset::Store.get_shader(asset::Shader_Id::Bloom);
+	bool horizontal = true, first_iteration = true;
+	int amount = 10;
+	shaderBlur.use();
+	for (unsigned int i = 0; i < amount; i++) {
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]); 
+		shaderBlur.set_uniform("horizontal", horizontal);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(
+			GL_TEXTURE_2D, first_iteration ? texture : pingpongBuffer[!horizontal]
+		);
+		out_buffer.render_quad();
+
+		horizontal = !horizontal;
+		first_iteration = false;
+	}
 
 	out_buffer.set_active();
-	temp_buffer.set_active_texture(0);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, pingpongBuffer[1]);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
-	auto& blur_shader = asset::Store.get_shader(asset::Shader_Id::Blur);
-	blur_shader.use();
-	blur_shader.set_uniform("radius", (int)param.edge_blur);
-	blur_shader.set_uniform("image", 0);
+	auto& simple_shader = asset::Store.get_shader(asset::Shader_Id::Simple);
+	simple_shader.use();
+	simple_shader.set_texture(0);
 
 	out_buffer.render_quad();
 }
@@ -526,16 +587,21 @@ void motion_blur(
 }
 
 void tone_mapping(
-	HDR_Buffer& hdr_buffer, Texture_Buffer& texture_target, render::Render_Param& param
+	HDR_Buffer& hdr_buffer,
+	HDR_Buffer& bloom_buffer,
+	Texture_Buffer& texture_target,
+	render::Render_Param& param
 ) noexcept {
 	texture_target.set_active();
 	hdr_buffer.set_active_texture(0);
+	bloom_buffer.set_active_texture(1);
 
 	auto& shader_hdr = asset::Store.get_shader(asset::Shader_Id::HDR);
 	shader_hdr.use();
 	shader_hdr.set_uniform("gamma", param.gamma);
 	shader_hdr.set_uniform("exposure", param.exposure);
 	shader_hdr.set_uniform("hdr_texture", 0);
+	shader_hdr.set_uniform("add_texture", 1);
 
 	hdr_buffer.render_quad();
 }

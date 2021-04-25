@@ -358,12 +358,15 @@ void game_render(Game& game, render::Orders& order) noexcept {
 		}
 		if (game.controller.board_id == i) {
 			for (auto& id : game.controller.tower_selected) {
-				render::Ring ring;
-				ring.color = {0, 1, 0};
-				ring.glowing_intensity = 10;
-				ring.pos = Vector3f(board.tower_box(board.towers.id(id)).center(), 0.1f);
-				ring.radius = 2;
-				order.push(ring);
+				auto& x = board.towers.id(id);
+				if (x.kind == Tower::Archer_Kind) {
+					render::Ring ring;
+					ring.color = {0, 1, 0};
+					ring.glowing_intensity = 2;
+					ring.pos = Vector3f(board.tower_box(x).center(), 0.1f);
+					ring.radius = x.Archer_.range;
+					order.push(ring);
+				}
 			}
 		}
 

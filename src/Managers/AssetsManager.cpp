@@ -354,6 +354,8 @@ void Store_t::load_known_shaders() noexcept {
 	X("assets/shaders/simple.vertex", "assets/shaders/simple.fragment",    "", Simple);
 	X("assets/shaders/depth_prepass.vertex", "",    "", Depth_Prepass);
 	X("assets/shaders/ring.vertex", "assets/shaders/ring.fragment",    "", Ring);
+	X("assets/shaders/simple.vertex", "assets/shaders/bloom.fragment",    "", Bloom);
+	X("assets/shaders/simple.vertex", "assets/shaders/additive.fragment",    "", Additive);
 #undef X
 }
 void Store_t::load_known_objects() noexcept {

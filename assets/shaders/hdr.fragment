@@ -5,12 +5,14 @@ layout (location = 0) out vec4 frag_color;
 in vec2 TexCoords;
 
 uniform sampler2D hdr_texture;
+uniform sampler2D add_texture;
 
 uniform float exposure;
 uniform float gamma;
 
 void main() {
     vec3 hdr_color = texture(hdr_texture, TexCoords).rgb;
+    hdr_color += texture(add_texture, TexCoords).rgb;
     //hdr_color = nearest_hsv(hdr_color);
     // reinhard
     vec3 result = hdr_color / (hdr_color + vec3(1.0));

@@ -352,7 +352,9 @@ void G_Buffer::copy_depth_to(uint32_t id, Rectanglef v) noexcept {
 }
 
 
-HDR_Buffer::HDR_Buffer(Vector2u size, size_t n_color) noexcept : size(size), n_color(n_color) {
+HDR_Buffer::HDR_Buffer(
+	Vector2u size, size_t n_color, std::string label
+) noexcept : size(size), n_color(n_color) {
 	glGenFramebuffers(1, &hdr_buffer);
 
 	glGenTextures(1, &color_buffer);
@@ -371,8 +373,8 @@ HDR_Buffer::HDR_Buffer(Vector2u size, size_t n_color) noexcept : size(size), n_c
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #ifdef GL_DEBUG
-	auto label = "hdr_color_buffer";
-	glObjectLabel(GL_TEXTURE, color_buffer, (GLsizei)strlen(label) - 1, label);
+	auto l = label + " Color 0";
+	glObjectLabel(GL_TEXTURE, color_buffer, l.size(), l.data());
 #endif
 	// attach buffers
 	glBindFramebuffer(GL_FRAMEBUFFER, hdr_buffer);
@@ -395,8 +397,8 @@ HDR_Buffer::HDR_Buffer(Vector2u size, size_t n_color) noexcept : size(size), n_c
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	#ifdef GL_DEBUG
-		label = "hdr_color2_buffer";
-		glObjectLabel(GL_TEXTURE, color2_buffer, (GLsizei)strlen(label) - 1, label);
+		l = label + " Color 1";
+		glObjectLabel(GL_TEXTURE, color2_buffer, l.size(), l.data());
 	#endif
 	}
 
@@ -404,8 +406,7 @@ HDR_Buffer::HDR_Buffer(Vector2u size, size_t n_color) noexcept : size(size), n_c
 	glBindFramebuffer(GL_FRAMEBUFFER, hdr_buffer);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, color2_buffer, 0);
 #ifdef GL_DEBUG
-	label = "hdr_frame_buffer";
-	glObjectLabel(GL_FRAMEBUFFER, hdr_buffer, (GLsizei)strlen(label) - 1, label);
+	glObjectLabel(GL_FRAMEBUFFER, hdr_buffer, label.size(), label.data());
 #endif
 	unsigned int attachments[2] = {
 		GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1

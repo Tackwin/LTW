@@ -79,7 +79,7 @@ struct HDR_Buffer {
 	HDR_Buffer(HDR_Buffer&&) = default;
 	HDR_Buffer& operator=(HDR_Buffer&&) = default;
 
-	HDR_Buffer(Vector2u size, size_t n_color = 1) noexcept;
+	HDR_Buffer(Vector2u size, size_t n_color = 1, std::string label = "HDR buffer") noexcept;
 	~HDR_Buffer() noexcept;
 
 	Vector2u get_size() const noexcept;
@@ -91,7 +91,7 @@ struct HDR_Buffer {
 	void render_quad() noexcept;
 
 	std::uint32_t get_depth_id() const noexcept;
-private:
+
 	Vector2u size;
 
 	size_t n_color = 1;
