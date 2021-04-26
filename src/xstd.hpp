@@ -55,7 +55,7 @@ template<bool flag = false> void static_no_match() noexcept {
 
 #define sum_type(n, list)\
 		union { list(sum_type_X_Union) };\
-		enum Kind { None_Kind = 0 list(sum_type_X_Kind) } kind;\
+		enum Kind { None_Kind = 0 list(sum_type_X_Kind), Count } kind;\
 		n() noexcept { kind = None_Kind; }\
 		explicit n(Kind k) noexcept {\
 			kind = k;\
@@ -236,12 +236,25 @@ namespace xstd {
 		auto end() noexcept {
 			return std::end(pool);
 		}
+		auto begin() const noexcept {
+			return std::cbegin(pool);
+		}
+		auto end() const noexcept {
+			return std::cend(pool);
+		}
 
 		T& operator[](size_t idx) noexcept {
 			return pool[idx];
 		}
 
+		const T& operator[](size_t idx) const noexcept {
+			return pool[idx];
+		}
+
 		T& id(size_t id) noexcept {
+			return pool[pool_ids.at(id)];
+		}
+		const T& id(size_t id) const noexcept {
 			return pool[pool_ids.at(id)];
 		}
 

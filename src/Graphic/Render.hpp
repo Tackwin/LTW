@@ -41,6 +41,18 @@ namespace render {
 	};
 	struct Pop_Camera : Order_Base {};
 
+	struct Particle : Order_Base {
+		Vector3f pos;
+		Vector3f dir = {1, 0, 0};
+		Vector3f scale = {1, 1, 1};
+
+		float intensity = 1;
+
+		float radial_velocity = 0;
+
+		std::optional<Vector3f> velocity;
+		std::optional<Vector3f> bloom;
+	};
 
 	struct Batch : Order_Base {
 		size_t object_id = 0;
@@ -174,7 +186,7 @@ namespace render {
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
 	X(Pop_Camera3D) X(Clear_Depth) X(Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui) X(Depth_Test)\
-	X(Color_Mask) X(Ring)
+	X(Color_Mask) X(Ring) X(Particle)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -247,6 +259,7 @@ namespace render {
 	extern void immediate3d(std::span<Arrow> arrows) noexcept;
 
 	extern void immediate(Ring ring, const Camera3D& camera) noexcept;
+	extern void immediate(Particle particle, const Camera3D& camera, bool velocity) noexcept;
 	extern void immediate(
 		std::span<Model> models, const Batch& batch, const Camera3D& camera
 	) noexcept;

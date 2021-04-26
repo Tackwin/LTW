@@ -1,0 +1,20 @@
+#version 300 es
+precision mediump float;
+
+layout (location = 0) out vec4 g_color;
+layout (location = 1) out vec4 g_bloom;
+
+uniform float intensity;
+uniform vec3 color;
+
+in vec2 local_pos;
+
+void main() {
+	float dt = length(local_pos);
+
+	float fact = 2.0 * intensity * (1.0 / (1.0 + dt * dt) - 0.5);
+	if (fact < 0.0) discard;
+
+	g_color = vec4(color, 1) * fact;
+	g_bloom = vec4(color, 1) * fact;
+}

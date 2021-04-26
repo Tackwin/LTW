@@ -271,6 +271,9 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 			}
 			case render::Order::Text_Kind:       render::immediate(x.Text_);      break;
 			case render::Order::Sprite_Kind:     render::immediate(x.Sprite_);    break;
+			case render::Order::Particle_Kind:
+				render::immediate(x.Particle_, cam_stack.back().Camera3D_, true);
+				break;
 			case render::Order::Model_Kind: {
 				assert(!batch_stack.empty());
 				model_batch[batch_stack.size() - 1].push_back(x.Model_);
@@ -349,6 +352,9 @@ void render_transparent(render::Orders& orders, render::Render_Param& param) noe
 				render::immediate(x.Ring_, cam_stack.back().Camera3D_);
 				break;
 			}
+			case render::Order::Particle_Kind:
+				render::immediate(x.Particle_, cam_stack.back().Camera3D_, false);
+				break;
 			default: break;
 		}
 	}

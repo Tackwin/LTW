@@ -42,6 +42,8 @@ struct Archer : public Tower_Base {
 	float attack_speed = 1.0f;
 	float attack_cd    = 0.0f;
 
+	float charging_anim = 0.f;
+
 	Archer() noexcept {
 		tile_size = {3, 3};
 		object_id = asset::Object_Id::Range1;

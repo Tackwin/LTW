@@ -18,6 +18,8 @@ void Board::update(double dt) noexcept {
 	if (path_construction.soft_dirty) soft_compute_paths();
 	else if (path_construction.dirty) compute_paths();
 
+	unit_spatial_partition();
+
 	ressources_gained = {};
 	current_wave.spawn(dt, *this);
 
@@ -55,6 +57,10 @@ void Board::update(double dt) noexcept {
 
 		if (towers[i].typecheck(Tower::Archer_Kind)) {
 			auto& x = towers[i].Archer_;
+			if (units.exist(x.target_id))
+				x.charging_anim = 1.f - std::max(x.attack_cd, 0.f) / x.attack_speed;
+			else
+				x.charging_anim = 0.f;
 			x.attack_cd -= dt;
 			if (x.attack_cd > 0) continue;
 
@@ -241,6 +247,16 @@ void Board::render(render::Orders& order) noexcept {
 	}
 	m.color = {1, 1, 1};
 
+	for (auto& x : towers) if (x.kind == Tower::Archer_Kind) if (x.Archer_.charging_anim > 0.f) {
+		auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
+		render::Particle p;
+		p.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
+		p.scale = {0.1f, 0.1f, 0.1f};
+		p.bloom = {1, 1, 0};
+		p.intensity = x.Archer_.charging_anim;
+		p.radial_velocity = true;
+		order.push(p);
+	}
 
 	for (auto& x : towers) {
 		auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
@@ -586,3 +602,17 @@ void Board::pick_new_target(Archer& tower) noexcept {
 	}
 }
 
+void Board::unit_spatial_partition() noexcept {
+	// >TODO(Tackwin): this crash.
+	return;
+	unit_id_by_tile.resize(size.x * size.y);
+	for (auto& x : unit_id_by_tile) x.clear();
+
+	for (auto& x : units) {
+		Vector2f p = x->pos + Vector2f{size.x - 1.f, size.y - 1.f} * tile_size / 2;
+		p /= tile_size;
+		Vector2u p_u = (Vector2u)p;
+
+		unit_id_by_tile[p_u.x + p_u.y * size.x].push_back(x.id);
+	}
+}

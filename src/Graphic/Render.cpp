@@ -1475,3 +1475,70 @@ void render::immediate(Ring ring, const Camera3D& cam) noexcept {
 	glBindVertexArray(quad_vao);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
+
+void render::immediate(Particle particle, const Camera3D& cam, bool velocity) noexcept {
+	if (velocity) if (!particle.velocity) return;
+	if (!velocity) if (!particle.bloom)   return;
+
+	static GLuint quad_vao{ 0 };
+	static GLuint quad_vbo{ 0 };
+
+	if (!quad_vao) {
+		static float quad_vertices[] = {
+			// positions    
+			-1.0f, +1.0f, 0.0f, -1.0f, +1.0f,
+			-1.0f, -1.0f, 0.0f, -1.0f, -1.0f,
+			+1.0f, +1.0f, 0.0f, +1.0f, +1.0f,
+			+1.0f, -1.0f, 0.0f, +1.0f, -1.0f
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &quad_vao);
+		glBindVertexArray(quad_vao);
+		glGenBuffers(1, &quad_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "Particle rectangle VBO";
+		glObjectLabel(GL_BUFFER, quad_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)12);
+	}
+	auto M =
+		Matrix4f::translation(particle.pos) *
+		Matrix4f::scale(particle.scale) *
+		Matrix4f::rotate({1, 0, 0}, particle.dir);
+
+	if (velocity) {
+		auto& shader = asset::Store.get_shader(asset::Shader_Id::Particle_Deferred);
+		shader.use();
+		shader.set_uniform("M", M);
+		shader.set_uniform("VP", cam.get_VP());
+		shader.set_uniform("intensity", particle.intensity);
+		shader.set_uniform("u_velocity", *particle.velocity);
+		shader.set_uniform("radial_velocity", particle.radial_velocity);
+		glDepthMask(GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		glColorMaski(3, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	} else {
+		auto& shader = asset::Store.get_shader(asset::Shader_Id::Particle_Bloom);
+		shader.use();
+		shader.set_uniform("M", M);
+		shader.set_uniform("VP", cam.get_VP());
+		shader.set_uniform("intensity", particle.intensity);
+		shader.set_uniform("color", *particle.bloom);
+	}
+
+	glBindVertexArray(quad_vao);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	if (velocity) {
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
+	}
+}

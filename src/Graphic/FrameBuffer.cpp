@@ -197,7 +197,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	);
 #ifdef GL_DEBUG
 	label = "Geometry Velocity Buffer";
-	glObjectLabel(GL_TEXTURE, pos_buffer, (GLsizei)strlen(label) - 1, label);
+	glObjectLabel(GL_TEXTURE, velocity_buffer, (GLsizei)strlen(label) - 1, label);
 #endif
 
 	// - tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 

@@ -113,6 +113,14 @@ void Game::input(Input_Info in) noexcept {
 			}
 		}
 
+		if (in.mouse_infos[Mouse::Middle].pressed) {
+			auto a = camera3d.project(in.mouse_pos - in.mouse_delta);
+			auto b = camera3d.project(in.mouse_pos);
+
+			camera3d.pos.x -= (b.x - a.x);
+			camera3d.pos.y -= (b.y - a.y);
+		}
+
 		if (in.mouse_infos[Mouse::Left].pressed && controller.start_drag_selection) {
 			controller.end_drag_selection = in.mouse_pos;
 		}
@@ -308,6 +316,7 @@ Game_Request game_update(Game& game, double dt) noexcept {
 }
 
 void game_render(Game& game, render::Orders& order) noexcept {
+	
 	if (game.gui.game_debug_open) {
 		int temp = 0;
 
@@ -331,6 +340,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 			1'000'000 * game.running_ms
 		);
 		size_t units = 0;
+
 		for (auto& x : game.boards) units += x.units.size();
 		ImGui::Text("Units: %zu", units);
 		ImGui::End();
@@ -338,7 +348,6 @@ void game_render(Game& game, render::Orders& order) noexcept {
 
 
 	order.push(game.camera3d);
-
 	for (size_t i = 0; i < game.boards.size(); ++i) {
 		auto& board = game.boards[i];
 
@@ -371,6 +380,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 		}
 
 	}
+
 	order.push(render::Pop_Camera3D{});
 
 	game.user_interface.dragging = false;

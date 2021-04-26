@@ -356,6 +356,18 @@ void Store_t::load_known_shaders() noexcept {
 	X("assets/shaders/ring.vertex", "assets/shaders/ring.fragment",    "", Ring);
 	X("assets/shaders/simple.vertex", "assets/shaders/bloom.fragment",    "", Bloom);
 	X("assets/shaders/simple.vertex", "assets/shaders/additive.fragment",    "", Additive);
+	X(
+		"assets/shaders/particle.vertex",
+		"assets/shaders/particle_deferred.fragment",
+		"",
+		Particle_Deferred
+	);
+	X(
+		"assets/shaders/particle.vertex",
+		"assets/shaders/particle_bloom.fragment",
+		"",
+		Particle_Bloom
+	);
 #undef X
 }
 void Store_t::load_known_objects() noexcept {

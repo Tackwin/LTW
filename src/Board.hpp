@@ -17,6 +17,8 @@ struct Common_Tile {
 	bool passthrough = true;
 };
 struct Empty : Common_Tile {
+	bool end = false;
+
 	Empty() noexcept { color = {.1f, .1f, .1f, 1}; }
 };
 struct Block : Common_Tile {
@@ -100,6 +102,8 @@ struct Board {
 	xstd::Pool<Tower> towers;
 	xstd::Pool<Projectile> projectiles;
 
+	std::vector<std::vector<size_t>> unit_id_by_tile;
+
 	std::vector<size_t> next_tile;
 	std::vector<size_t> dist_tile;
 	struct Path_Construction {
@@ -123,6 +127,8 @@ struct Board {
 	Rectanglef tile_box(Vector2u pos, Vector2u size = {1, 1}) noexcept;
 	Rectanglef tile_box(size_t idx) noexcept { return tile_box({ idx % size.x, idx / size.x }); }
 	Rectanglef tower_box(const Tower& tower) noexcept;
+
+	void unit_spatial_partition() noexcept;
 
 	void soft_compute_paths() noexcept;
 	void compute_paths() noexcept;
