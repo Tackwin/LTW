@@ -24,7 +24,7 @@ namespace details {
 #define BEG_END(x) BEG(x), END(x)
 #define V2F(x) Vector2f{(x), (x)}
 #define V3(v2) Vector3f{(v2).x, (v2).y, (v2).z}
-#define V3F(v2, z) Vector3f{(v2).x, (v2).y, (float)(z)}
+#define V3F(x) Vector3f{x, x, x}
 #define V4F(x) Vector4f{(x), (x), (x), (x)}
 
 #define AT2(i, j, w) (i) + (j) * (w)
@@ -138,6 +138,18 @@ template<bool flag = false> void static_no_match() noexcept {
 #include <chrono>
 
 namespace xstd {
+
+	template<typename T>
+	void remove_all(std::vector<T>& vec) noexcept {
+		vec.erase(
+			std::remove_if(BEG_END(vec), [](auto& x) { return x.to_remove; }),
+			std::end(vec)
+		);
+	}
+	template<typename T, typename F>
+	void remove_all(std::vector<T>& vec, F pred) noexcept {
+		vec.erase(std::remove_if(BEG_END(vec), pred), std::end(vec));
+	}
 
 	[[nodiscard]] inline std::uint64_t nanoseconds() noexcept {
 		return std::chrono::duration_cast<std::chrono::nanoseconds>(

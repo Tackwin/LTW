@@ -102,6 +102,13 @@ struct Board {
 	xstd::Pool<Tower> towers;
 	xstd::Pool<Projectile> projectiles;
 
+	struct Die_Effect {
+		Vector3f pos;
+		static constexpr float Lifetime = 0.1f;
+		float age = Lifetime;
+	};
+	std::vector<Die_Effect> die_effects;
+
 	std::vector<std::vector<size_t>> unit_id_by_tile;
 
 	std::vector<size_t> next_tile;
@@ -143,8 +150,11 @@ struct Board {
 	void spawn_unit(Unit u) noexcept;
 	void spawn_unit_at(Unit u, Vector2u tile) noexcept;
 
-	void pick_new_target(Archer& tower) noexcept;
+	void pick_new_target(Mirror& tower) noexcept;
+	void pick_new_target(Mirror2& tower) noexcept;
 
 	float bounding_tile_size() noexcept { return tile_size + tile_padding; };
 	bool can_place_at(Rectangleu zone) noexcept;
+
+	void die_event_at(Vector3f pos) noexcept;
 };

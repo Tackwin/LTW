@@ -40,7 +40,7 @@ void Tower_Selection::render(render::Orders& orders) noexcept {
 	thread_local std::vector<std::pair<size_t, Tower::Kind>> kind_by_n;
 	n_by_kind.clear();
 	kind_by_n.clear();
-	for (auto& x : selection) n_by_kind[pool->id(x).kind]++;
+	for (auto& x : selection) if (pool->exist(x)) n_by_kind[pool->id(x).kind]++;
 	for (auto& [a, b] : n_by_kind) kind_by_n.push_back({b, a});
 	std::sort(BEG_END(kind_by_n), [] (const auto& a, const auto& b) { return a.first > b.first; });
 
@@ -83,7 +83,7 @@ Ui_Table Tower_Selection::get_selected_table(
 	
 	Ui_Table table = TABLE(
 		Ui_State::Sell,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Cancel, Ui_State::Null, Ui_State::Null, Ui_State::Null,
+		Ui_State::Cancel, Ui_State::Upgrade, Ui_State::Null, Ui_State::Null,
 		Ui_State::Null,   Ui_State::Null, Ui_State::Null, Ui_State::Null,
 		Ui_State::Pick_Target_Mode,   Ui_State::Null, Ui_State::Null, Ui_State::Null
 	);
@@ -94,7 +94,7 @@ Ui_Table Tower_Selection::get_selected_table(
 		}
 	}
 
-	for (auto& i : selection) if (pool->id(i).kind == Tower::Volter_Kind) {
+	for (auto& i : selection) if (pool->exist(i) && pool->id(i).kind == Tower::Volter_Kind) {
 		table[8 + 1] = Ui_State::Surge_Spell;
 		buttons[Ui_State::Surge_Spell].ready_percentage =
 			1 - std::max(0.f, pool->id(i).Volter_.surge_timer) / pool->id(i).Volter_.surge_time;
@@ -271,9 +271,9 @@ void Interface::render_top_bar(render::Orders& orders) noexcept {
 		Vector2f pos_gold =
 			{ ui_camera.frame_size.x / 2, ui_camera.frame_size.y - info_bar_height / 2 };
 		Vector2f pos_carbon = pos_gold;
-		pos_carbon.x += 0.05f;
+		pos_carbon.x += 0.075f;
 		Vector2f pos_hydro = pos_carbon;
-		pos_hydro.x += 0.05f;
+		pos_hydro.x += 0.075f;
 
 		auto push_ressource = [&](size_t texture_id, Vector2f pos, size_t n) {
 			temp_string.clear();
@@ -296,9 +296,9 @@ void Interface::render_top_bar(render::Orders& orders) noexcept {
 			// top bar gold string
 			text.pos = pos;
 			text.pos.x += 0.01f;
-			text.origin = { 0.f, .5f};
+			text.origin = { 0.f, .75f};
 			text.color = {1, 1, 1, 1};
-			text.height = info_bar_height * 0.5f;
+			text.height = info_bar_height * 0.4f;
 			text.font_id = asset::Font_Id::Consolas;
 			text.text = orders.string(temp_string.c_str());
 			text.text_length = temp_string.size();
@@ -334,7 +334,7 @@ void Interface::init_buttons() noexcept {
 	b[Ui_State::Left].texture_id              = asset::Texture_Id::Left_Icon;
 	b[Ui_State::Down].texture_id              = asset::Texture_Id::Down_Icon;
 	b[Ui_State::Right].texture_id             = asset::Texture_Id::Right_Icon;
-	b[Ui_State::Archer_Build].texture_id      = asset::Texture_Id::Archer_Build_Icon;
+	b[Ui_State::Mirror_Build].texture_id      = asset::Texture_Id::Mirror_Build_Icon;
 	b[Ui_State::Splash_Build].texture_id      = asset::Texture_Id::Splash_Build_Icon;
 	b[Ui_State::Cancel].texture_id            = asset::Texture_Id::Cancel_Icon;
 	b[Ui_State::Send].texture_id              = asset::Texture_Id::Send_Icon;
@@ -348,4 +348,5 @@ void Interface::init_buttons() noexcept {
 	b[Ui_State::Target_Farthest].texture_id   = asset::Texture_Id::Farthest_Icon;
 	b[Ui_State::Volter_Build].texture_id      = asset::Texture_Id::Volter_Icon;
 	b[Ui_State::Surge_Spell].texture_id       = asset::Texture_Id::Dummy;
+	b[Ui_State::Upgrade].texture_id           = asset::Texture_Id::Upgrade_Icon;
 }

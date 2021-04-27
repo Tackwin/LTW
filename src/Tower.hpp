@@ -36,7 +36,7 @@ struct Tower_Base {
 	Tower_Base() noexcept {}
 };
 
-struct Archer : public Tower_Base {
+struct Mirror : public Tower_Base {
 	float range        = 3.5f;
 	float damage       = 1.0f;
 	float attack_speed = 1.0f;
@@ -44,11 +44,28 @@ struct Archer : public Tower_Base {
 
 	float charging_anim = 0.f;
 
-	Archer() noexcept {
+	Mirror() noexcept {
 		tile_size = {3, 3};
-		object_id = asset::Object_Id::Range1;
+		object_id = asset::Object_Id::Mirror;
 		target_mode = Target_Mode::First;
-		texture_icon_id = asset::Texture_Id::Range1_Icon;
+		texture_icon_id = asset::Texture_Id::Mirror_Icon;
+	}
+};
+
+struct Mirror2 : public Tower_Base {
+	float range        = 5.f;
+	float damage       = 1.0f;
+	float attack_speed = 0.25f;
+	float attack_cd    = 0.0f;
+
+	float charging_anim = 0.f;
+
+	Mirror2() noexcept {
+		gold_cost = 25;
+		tile_size = {3, 3};
+		object_id = asset::Object_Id::Mirror2;
+		target_mode = Target_Mode::First;
+		texture_icon_id = asset::Texture_Id::Mirror_Icon;
 	}
 };
 
@@ -80,7 +97,7 @@ struct Volter : public Tower_Base {
 	}
 };
 
-#define TOWER_LIST(X) X(Archer) X(Sharp) X(Volter)
+#define TOWER_LIST(X) X(Mirror) X(Mirror2) X(Sharp) X(Volter)
 
 struct Tower {
 	sum_type(Tower, TOWER_LIST);
@@ -88,5 +105,7 @@ struct Tower {
 
 	size_t id = 0;
 	bool to_remove = false;
+
+	Kind get_upgrade() noexcept;
 };
 

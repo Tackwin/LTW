@@ -51,7 +51,7 @@ void game_startup(Game& game) noexcept {
 		game.boards[i].pos += game.board_pos_offset / 2;
 	}
 
-	game.camera3d.pos = V3F(game.boards[game.controller.board_id].pos, 5);
+	game.camera3d.pos = Vector3f(game.boards[game.controller.board_id].pos, 5);
 	PROFILER_END_SEQ();
 	asset::Store.ready = true;
 }
@@ -189,8 +189,8 @@ void Game::input(Input_Info in) noexcept {
 		controller.placing->tile_pos = mouse_u;
 	}
 
-	if (user_interface.action.state_button[Ui_State::Archer_Build].just_pressed) {
-		controller.placing = Archer{};
+	if (user_interface.action.state_button[Ui_State::Mirror_Build].just_pressed) {
+		controller.placing = Mirror{};
 		user_interface.action.back_to_main();
 	}
 	if (user_interface.action.state_button[Ui_State::Splash_Build].just_pressed) {
@@ -220,10 +220,22 @@ void Game::input(Input_Info in) noexcept {
 		user_interface.action.back_to_main();
 		controller.tower_selected.clear();
 	}
-	
 	if (user_interface.action.state_button[Ui_State::Next_Wave].just_pressed) {
 		next_wave();
 		wave_timer = wave_time;
+	}
+	if (user_interface.action.state_button[Ui_State::Upgrade].just_pressed) {
+		for (auto& id : controller.tower_selected) if (board.towers.exist(id)) {
+			auto& x = board.towers.id(id);
+
+			auto up = Tower(x.get_upgrade());
+			if (up.kind != Tower::None_Kind && player.ressources.gold >= up->gold_cost) {
+				up->tile_pos = x->tile_pos;
+				up->target_id = x->target_id;
+				board.remove_tower(x);
+				board.insert_tower(up);
+			}
+		}
 	}
 
 	if (!controller.tower_selected.empty()) {
@@ -301,7 +313,7 @@ Game_Request Game::update(double dt) noexcept {
 		boards[i].ressources_gained = {};
 	}
 
-	camera3d.pos += camera_speed * V3F(zqsd_vector, 0) * dt * camera3d.pos.z;
+	camera3d.pos += camera_speed * Vector3f(zqsd_vector, 0) * dt * camera3d.pos.z;
 
 	return response;
 }
@@ -366,14 +378,21 @@ void game_render(Game& game, render::Orders& order) noexcept {
 			order.push(rec, 0.02f);
 		}
 		if (game.controller.board_id == i) {
-			for (auto& id : game.controller.tower_selected) {
+			for (auto& id : game.controller.tower_selected) if (board.towers.exist(id)) {
 				auto& x = board.towers.id(id);
-				if (x.kind == Tower::Archer_Kind) {
+				if (x.kind == Tower::Mirror_Kind) {
 					render::Ring ring;
 					ring.color = {0, 1, 0};
 					ring.glowing_intensity = 2;
 					ring.pos = Vector3f(board.tower_box(x).center(), 0.1f);
-					ring.radius = x.Archer_.range;
+					ring.radius = x.Mirror_.range;
+					order.push(ring);
+				} else if (x.kind == Tower::Mirror2_Kind) {
+					render::Ring ring;
+					ring.color = {0, 1, 0};
+					ring.glowing_intensity = 2;
+					ring.pos = Vector3f(board.tower_box(x).center(), 0.1f);
+					ring.radius = x.Mirror2_.range;
 					order.push(ring);
 				}
 			}

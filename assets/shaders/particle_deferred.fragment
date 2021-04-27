@@ -7,7 +7,6 @@ layout (location = 2) out vec4 g_position;
 layout (location = 3) out vec4 g_velocity;
 
 uniform float intensity;
-uniform vec3 color;
 uniform float radial_velocity;
 
 in vec2 velocity;

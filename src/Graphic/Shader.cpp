@@ -301,5 +301,12 @@ void Shader::set_uniform(const std::string& name, Vector4u x) noexcept {
 
 	glUniform4iv(cache_loc[name], 4, &y.x);
 }
+void Shader::set_uniform(const std::string& name, Vector4f x) noexcept {
+	if (cache_loc.count(name) == 0) {
+		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
+	}
+
+	glUniform4fv(cache_loc[name], 1, &x.x);
+}
 
 #undef loc

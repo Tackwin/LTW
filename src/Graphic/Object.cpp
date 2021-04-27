@@ -51,18 +51,18 @@ std::optional<Object> Object::load_from_file(
 		cursor += 4;
 	}
 
-	Vector3f center = {};
-	for (auto& x : obj.vertices) center += x.pos;
-	center /= obj.vertices.size();
-	for (auto& x : obj.vertices) x.pos -= center;
+	Vector3f m = V3F(FLT_MAX);
+	for (auto& x : obj.vertices) {
+		m.x = std::min(m.x, x.pos.x);
+		m.y = std::min(m.y, x.pos.y);
+		m.z = std::min(m.z, x.pos.z);
+	}
+	for (auto& x : obj.vertices) x.pos -= m;
 
 	for (auto& x : obj.vertices) {
-		obj.min_bound.x = std::min(obj.min_bound.x, x.pos.x);
-		obj.min_bound.y = std::min(obj.min_bound.y, x.pos.y);
-		obj.min_bound.z = std::min(obj.min_bound.z, x.pos.z);
-		obj.max_bound.x = std::max(obj.max_bound.x, x.pos.x);
-		obj.max_bound.y = std::max(obj.max_bound.y, x.pos.y);
-		obj.max_bound.z = std::max(obj.max_bound.z, x.pos.z);
+		obj.size.x = std::max(obj.size.x, x.pos.x);
+		obj.size.y = std::max(obj.size.y, x.pos.y);
+		obj.size.z = std::max(obj.size.z, x.pos.z);
 	}
 
 	return obj;

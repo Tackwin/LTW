@@ -32,8 +32,7 @@ struct Object {
 
 	std::string name;
 
-	Vector3f min_bound;
-	Vector3f max_bound;
+	Vector3f size;
 
 
 	struct Vertex {

@@ -46,6 +46,30 @@ void destroy_gl_context(HGLRC gl_context) noexcept;
 void windows_loop() noexcept;
 void game_loop(DWORD main_thread_id) noexcept;
 
+/* Windows sleep in 100ns units */
+BOOLEAN nanosleep(LONGLONG ns){
+	timeBeginPeriod(1);
+    /* Declarations */
+    thread_local HANDLE timer = nullptr;   /* Timer handle */
+    LARGE_INTEGER li;   /* Time defintion */
+    /* Create timer */
+	if (timer == nullptr) {
+		if(!(timer = CreateWaitableTimer(NULL, TRUE, NULL)))
+			return FALSE;
+	}
+	
+    /* Set timer properties */
+    li.QuadPart = -ns;
+    if(!SetWaitableTimer(timer, &li, 0, NULL, NULL, FALSE)){
+        CloseHandle(timer);
+        return FALSE;
+    }
+    /* Start & wait for timer */
+    WaitForSingleObject(timer, INFINITE);
+    /* Slept without problems */
+    return TRUE;
+}
+
 void toggle_fullscren(HWND hwnd) {
 	static WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
 
@@ -85,7 +109,7 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 	ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
 
 	switch (msg) {
-	case WM_PAINT: windows_loop(); break;
+	//case WM_PAINT: windows_loop(); break;
 	case WM_KEYDOWN: {
 		if (wParam == VK_F11) toggle_fullscren(hWnd);
 		break;
@@ -295,32 +319,43 @@ int WINAPI WinMain(
 }
 
 volatile bool render_request_stop = false;
+volatile bool game_loop_started = false;
 
 void game_loop(DWORD main_thread_id) noexcept {
+	size_t last_time_frame = xstd::nanoseconds();
+	size_t update_every_ns = 5'000'000;
+	size_t time_since_update_ns = 0;
+
 	AttachThreadInput(main_thread_id, GetCurrentThreadId(), TRUE);
 	while (game.running) {
-		if (render_request_stop) continue;
-		Main_Mutex.lock();
-		defer { Main_Mutex.unlock(); };
+		auto dt = xstd::nanoseconds() - last_time_frame;
+		last_time_frame = xstd::nanoseconds();
 
-		thread_local auto last_time_frame = xstd::seconds();
-		auto dt = xstd::seconds() - last_time_frame;
-		last_time_frame = xstd::seconds();
+		time_since_update_ns += dt;
 
-		for (auto& x : posted_char) current_char = x;
-		posted_char.clear();
+		for (; time_since_update_ns > update_every_ns; time_since_update_ns -= update_every_ns) {
+			if (render_request_stop) continue;
+			Main_Mutex.lock();
+			defer { Main_Mutex.unlock(); };
 
-		auto response = game_proc.update(game, dt);
+			game_loop_started = true;
+			for (auto& x : posted_char) current_char = x;
+			posted_char.clear();
 
-		if (response.confine_cursor) {
-			RECT r;
-			GetWindowRect((HWND)platform::handle_window, &r);
-			ClipCursor(&r);
-		} else {
-			// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are destroying it
-			// we need to restore the old clipCursor by doing GetClipCursor...
-			ClipCursor(nullptr);
-		}
+			auto response = game_proc.update(game, update_every_ns / 1'000'000'000.0);
+
+			if (response.confine_cursor) {
+				RECT r;
+				GetWindowRect((HWND)platform::handle_window, &r);
+				ClipCursor(&r);
+			} else {
+				// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are
+				// destroying it we need to restore the old clipCursor by doing GetClipCursor...
+				ClipCursor(nullptr);
+			}
+		} 
+
+		nanosleep(1'000'0);
 	}
 }
 
@@ -360,26 +395,11 @@ void windows_loop() noexcept {
 		ImGui::End();
 	}
 
-	{
+	if (game_loop_started) {
 		render_request_stop = true;
 		Main_Mutex.lock();
 		defer { Main_Mutex.unlock(); };
 
-/*
-		for (auto& x : posted_char) current_char = x;
-		posted_char.clear();
-		auto response = game_proc.update(game, dt);
-
-		if (response.confine_cursor) {
-			RECT r;
-			GetWindowRect((HWND)platform::handle_window, &r);
-			ClipCursor(&r);
-		} else {
-			// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are destroying it
-			// we need to restore the old clipCursor by doing GetClipCursor...
-			ClipCursor(nullptr);
-		}
-*/
 		render_param.cam_pos = game.camera3d.pos;
 		render_param.current_fps = (size_t)(1.0 / dt);
 

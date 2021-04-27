@@ -513,6 +513,14 @@ struct Vector : public __vec_member<D, T> {
 		return *this;
 	}
     
+	Vector<D, T> hadamard(const Vector<D, T>& other) const {
+		Vector<D, T> res;
+		for (size_t i = 0; i < D; ++i) {
+			res[i] = this->components[i] * other[i];
+		}
+		return res;
+	}
+
 	template<typename U>
 		bool operator==(const Vector<D, U>& other) const {
 		for (size_t i = 0u; i < D; ++i) {

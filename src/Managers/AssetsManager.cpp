@@ -269,7 +269,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/left_icon.png",  Left_Icon);
 	X("assets/textures/down_icon.png",  Down_Icon);
 	X("assets/textures/right_icon.png", Right_Icon);
-	X("assets/textures/archer_build_icon.png", Archer_Build_Icon);
+	X("assets/textures/mirror_build_icon.png", Mirror_Build_Icon);
 	X("assets/textures/splash_build_icon.png", Splash_Build_Icon);
 	X("assets/textures/cancel_icon.png", Cancel_Icon);
 	X("assets/textures/send_icon.png", Send_Icon);
@@ -281,11 +281,12 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/target_icon.png", Target_Icon);
 	X("assets/textures/closest_icon.png", Closest_Icon);
 	X("assets/textures/farthest_icon.png", Farthest_Icon);
-	X("assets/textures/range1_icon.png", Range1_Icon);
+	X("assets/textures/range1_icon.png", Mirror_Icon);
 	X("assets/textures/sharp_icon.png", Sharp_Icon);
 	X("assets/textures/volter_icon.png", Volter_Icon);
 	X("assets/textures/carbon_icon.png", Carbon_Icon);
 	X("assets/textures/hydrogen_icon.png", Hydrogen_Icon);
+	X("assets/textures/upgrade_icon.png", Upgrade_Icon);
 
 #undef X
 }
@@ -385,7 +386,8 @@ void Store_t::load_known_objects() noexcept {
 	}
 	X("assets/model/methane.ply", Methane);
 	X("assets/model/empty_tile.ply", Empty_Tile);
-	X("assets/model/range1.ply", Range1);
+	X("assets/model/mirror.ply", Mirror);
+	X("assets/model/mirror2.ply", Mirror2);
 	X("assets/model/proj.ply", Projectile);
 	X("assets/model/sharp.ply", Sharp);
 	X("assets/model/water.ply", Water);
@@ -415,7 +417,7 @@ void Store_t::load_known_sounds() noexcept {
 		printf("failed :( !\n");\
 	}
 	X("assets/sounds/ui_action.wav",   Ui_Action);
-	X("assets/sounds/range1_shot.wav", Range1_Shoot);
+	X("assets/sounds/range1_shot.wav", Mirror_Shoot);
 #undef X
 }
 

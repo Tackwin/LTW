@@ -87,5 +87,6 @@ void common_build_options(Build& b, Flags& flags) noexcept {
 		b.add_library("Comdlg32");
 		b.add_library("Ole32");
 		b.add_library("Uuid");
+		b.add_library("Winmm");
 	}
 }

@@ -51,7 +51,7 @@ namespace render {
 		float radial_velocity = 0;
 
 		std::optional<Vector3f> velocity;
-		std::optional<Vector3f> bloom;
+		std::optional<Vector4f> bloom;
 	};
 
 	struct Batch : Order_Base {

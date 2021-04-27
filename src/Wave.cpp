@@ -52,7 +52,7 @@ Wave gen_wave(size_t n) noexcept {
 	Wave wave;
 	Wave::Bunch bunch;
 
-	size_t to_spawn = 10 * n * (1 + n / 4);
+	size_t to_spawn = 10 * (1 + n) * (1 + n / 4);
 	if ((n % 4) == 0) bunch.add_unit(Methane(), to_spawn);
 	if ((n % 4) == 1) bunch.add_unit(Ethane(), to_spawn);
 	if ((n % 4) == 2) bunch.add_unit(Propane(), to_spawn);

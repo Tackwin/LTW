@@ -175,7 +175,9 @@ void render::immediate3d(std::span<Rectangle> rectangle) noexcept {
 	instance_data.resize(rectangle.size() * GPU_Rectangle_Size);
 	size_t off = 0;
 	for (auto& x : rectangle) {
-		auto M = Matrix4f::translation(V3F(x.pos, x.z)) * Matrix4f::scale(V3F(x.size, 1));
+		auto M =
+			Matrix4f::translation(Vector3f(x.pos, x.z)) *
+			Matrix4f::scale(Vector3f(x.size, 1));
 
 		#define X(a) memcpy(instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
 		X(x.color); // color
@@ -290,7 +292,7 @@ void render::immediate3d(std::span<Circle> circles) noexcept {
 	size_t off = 0;
 	Matrix4f VP = cam.get_VP();
 	for (auto& x : circles) {
-		Vector3f p = V3F(x.pos, x.z);
+		Vector3f p = Vector3f(x.pos, x.z);
 		Vector3f s = {x.r, x.r, 1.f};
 		Vector4f c = x.color;
 
@@ -397,8 +399,8 @@ void render::immediate3d(std::span<Arrow> arrows) noexcept {
 	for (auto& x : arrows) {
 		Vector4f c = x.color;
 		Matrix4f MVP = VP * (
-			Matrix4f::translation(V3F(x.b, x.z)) *
-			Matrix4f::scale(V3F(V2F((x.a - x.b).length() / 10.f), 1.f))
+			Matrix4f::translation(Vector3f(x.b, x.z)) *
+			Matrix4f::scale(Vector3f(V2F((x.a - x.b).length() / 10.f), 1.f))
 			* Matrix4f::rotationz((float)(x.b - x.a).angleX())
 		);
 
@@ -437,8 +439,8 @@ void render::immediate3d(std::span<Arrow> arrows) noexcept {
 	for (auto& x : arrows) {
 		Vector4f c = x.color;
 		Matrix4f MVP = (
-			Matrix4f::translation(V3F(x.a, x.z)) *
-			Matrix4f::scale(V3F(V2F((x.a - x.b).length() / 10.f), 1.f))
+			Matrix4f::translation(Vector3f(x.a, x.z)) *
+			Matrix4f::scale(Vector3f(V2F((x.a - x.b).length() / 10.f), 1.f))
 			* Matrix4f::rotationz((float)(x.b - x.a).angleX())
 		) * VP;
 
@@ -1398,6 +1400,10 @@ void render::immediate(
 
 	Matrix4f VP = cam.get_VP();
 
+	auto offset = [&](Vector3f origin) {
+		return object.size.hadamard(origin) * -1.f;
+	};
+
 	host_instance_data.clear();
 	host_instance_data.resize(batch.size() * GPU_Instance_Size);
 	size_t off = 0;
@@ -1406,12 +1412,14 @@ void render::immediate(
 		auto M =
 			Matrix4f::translation(x.pos) *
 			Matrix4f::scale({x.scale, x.scale, x.scale}) *
-			Matrix4f::rotate({1, 0, 0}, x.dir);
+			Matrix4f::rotate({1, 0, 0}, x.dir) *
+			Matrix4f::translation(offset(x.origin));
 		Matrix4f last_M = M;
 		if (x.object_blur){
 			last_M = Matrix4f::translation(x.last_pos) *
 				Matrix4f::scale({x.last_scale, x.last_scale, x.last_scale}) *
-				Matrix4f::rotate({1, 0, 0}, x.last_dir);
+				Matrix4f::rotate({1, 0, 0}, x.last_dir) *
+				Matrix4f::translation(offset(x.origin));
 		}
 
 		#define X(a)\

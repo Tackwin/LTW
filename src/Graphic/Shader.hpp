@@ -71,6 +71,7 @@ public:
 	void set_uniform(const std::string& name, Matrix4f x, bool transpose = false) noexcept;
 	void set_uniform(const std::string& name, Vector2f x) noexcept;
 	void set_uniform(const std::string& name, Vector3f x) noexcept;
+	void set_uniform(const std::string& name, Vector4f x) noexcept;
 	void set_uniform(const std::string& name, Vector4u x) noexcept;
 	void set_uniform(const std::string& name, Vector4d x) noexcept;
 	void set_uniform(const std::string& name, float x) noexcept;

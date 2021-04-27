@@ -52,16 +52,47 @@ void Board::update(double dt) noexcept {
 		}
 	}
 
+	for (auto& x : die_effects) {
+		x.age -= dt;
+	}
+
 	for (size_t i = 0; i < towers.size(); ++i) {
 		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
 
-		if (towers[i].typecheck(Tower::Archer_Kind)) {
-			auto& x = towers[i].Archer_;
+		if (towers[i].kind == Tower::Mirror_Kind) {
+			auto& x = towers[i].Mirror_;
+			x.attack_cd -= dt;
 			if (units.exist(x.target_id))
-				x.charging_anim = 1.f - std::max(x.attack_cd, 0.f) / x.attack_speed;
+				x.charging_anim = 1.f - (std::max(x.attack_cd, 0.f) / x.attack_speed);
 			else
 				x.charging_anim = 0.f;
+			if (x.attack_cd > 0) continue;
+
+			auto r2 = x.range * x.range;
+
+			if (!units.exist(x.target_id) || tower_pos.dist_to2(units.id(x.target_id)->pos) > r2) {
+				pick_new_target(x);
+			}
+
+			if (units.exist(x.target_id)) {
+				auto& y = units.id(x.target_id);
+				if ((tower_pos - y->pos).length2() < r2) {
+					Seek_Projectile new_projectile;
+					new_projectile.from = tiles[i].id;
+					new_projectile.to = y.id;
+
+					new_projectile.pos = tower_pos;
+					projectiles.push_back(new_projectile);
+					x.attack_cd = x.attack_speed;
+				}
+			}
+		} else if (towers[i].kind == Tower::Mirror2_Kind) {
+			auto& x = towers[i].Mirror2_;
 			x.attack_cd -= dt;
+			if (units.exist(x.target_id))
+				x.charging_anim = 1.f - (std::max(x.attack_cd, 0.f) / x.attack_speed);
+			else
+				x.charging_anim = 0.f;
 			if (x.attack_cd > 0) continue;
 
 			auto r2 = x.range * x.range;
@@ -155,10 +186,14 @@ void Board::update(double dt) noexcept {
 		auto& x = units[i];
 		if (x->to_die) {
 			on_death(*this, x);
+			die_event_at(Vector3f(x->pos, 0.5f));
 			x->to_die = false;
 		}
 	}
 
+	xstd::remove_all(
+		die_effects, [](auto& x) { return x.age < 0; }
+	);
 	for (size_t i = projectiles.size() - 1; i + 1 > 0; --i) if (projectiles[i].to_remove)
 		projectiles.remove_at(i);
 	for (size_t i = units.size() - 1; i + 1 > 0; --i) if (units[i].to_remove)
@@ -168,6 +203,7 @@ void Board::update(double dt) noexcept {
 }
 
 void Board::render(render::Orders& order) noexcept {
+	render::Particle particle;
 	render::Circle circle;
 	render::Arrow arrow;
 	render::Model m;
@@ -179,8 +215,9 @@ void Board::render(render::Orders& order) noexcept {
 	b.texture_id = asset::Texture_Id::Palette;
 
 	order.push(b);
+	m.origin = {0.5f, 0.5f, 0.5f};
 	for2(i, j, size) if (tiles[i + j * size.x].typecheck(Tile::Empty_Kind)) {
-		m.pos = V3F(tile_box({i, j}).center() + pos, 0);
+		m.pos = Vector3f(tile_box({i, j}).center() + pos, 0);
 		m.scale = tile_box({i, j}).size.x;
 		order.push(m);
 	}
@@ -247,17 +284,27 @@ void Board::render(render::Orders& order) noexcept {
 	}
 	m.color = {1, 1, 1};
 
-	for (auto& x : towers) if (x.kind == Tower::Archer_Kind) if (x.Archer_.charging_anim > 0.f) {
+	for (auto& x : towers) if (x.kind == Tower::Mirror_Kind) if (x.Mirror_.charging_anim > 0.f) {
 		auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
-		render::Particle p;
-		p.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
-		p.scale = {0.1f, 0.1f, 0.1f};
-		p.bloom = {1, 1, 0};
-		p.intensity = x.Archer_.charging_anim;
-		p.radial_velocity = true;
-		order.push(p);
+		particle.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
+		particle.scale = {0.4f, 0.4f, 0.4f};
+		particle.bloom = {1, 1, 0, 0.2f};
+		particle.intensity = x.Mirror_.charging_anim;
+		particle.radial_velocity = true;
+		order.push(particle);
+	}
+	for (auto& x : die_effects) {
+		auto ease = [](auto x) { return x * x * x - x * x * x * x * x * x; };
+		particle.pos = x.pos + Vector3f(pos, 0);
+		particle.intensity = 4 * ease(x.age / x.Lifetime);
+		particle.scale = V3F(particle.intensity / 4);
+		particle.bloom = {1, 1, 1, 1};
+		particle.dir = {1, 0, 0};
+		particle.radial_velocity = true;
+		order.push(particle);
 	}
 
+	m.origin = {0.5f, 0.5f, 0.0f};
 	for (auto& x : towers) {
 		auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
 
@@ -265,7 +312,7 @@ void Board::render(render::Orders& order) noexcept {
 		m.shader_id = asset::Shader_Id::Default_3D_Batched;
 		m.texture_id = asset::Texture_Id::Palette;
 		m.scale = x->tile_size.x * tile_size;
-		m.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
+		m.pos = Vector3f(plane_pos, bounding_tile_size() * 0.1f * x->tile_size.x);
 		m.bitmask = 0;
 
 		m.dir = {1, 0, 0};
@@ -280,9 +327,9 @@ void Board::render(render::Orders& order) noexcept {
 
 			x.Sharp_.last_rot = x.Sharp_.rot;
 		}
-		if (x.kind == Tower::Archer_Kind) {
-			if (units.exist(x.Archer_.target_id)) {
-				auto dt = units.id(x.Archer_.target_id)->pos - plane_pos;
+		if (x.kind == Tower::Mirror_Kind || x.kind == Tower::Mirror2_Kind) {
+			if (units.exist(x->target_id)) {
+				auto dt = units.id(x->target_id)->pos - plane_pos;
 				m.dir = Vector3f(dt.normed(), 0);
 			} else {
 				m.dir = {1, 0, 0};
@@ -303,11 +350,12 @@ void Board::render(render::Orders& order) noexcept {
 	m.bitmask |= render::Model::Edge_Glow;
 
 	m.object_blur = true;
+	m.origin = {0.5f, 0.5f, 0.5f};
 	for (auto& x : projectiles) {
 		m.scale = x->r;
 		m.last_scale = x->r;
-		m.pos = V3F(x->pos + pos, 0.5f);
-		m.last_pos = V3F(x->last_pos + pos, 0.5f);
+		m.pos = Vector3f(x->pos + pos, 0.5f);
+		m.last_pos = Vector3f(x->last_pos + pos, 0.5f);
 
 		m.dir = Vector3f(x->dir, 0);
 		m.last_dir = Vector3f(x->last_dir, 0);
@@ -537,7 +585,71 @@ Rectanglef Board::tower_box(const Tower& tower) noexcept {
 	return rec;
 }
 
-void Board::pick_new_target(Archer& tower) noexcept {
+void Board::pick_new_target(Mirror& tower) noexcept {
+	auto tower_pos = tile_box(tower.tile_rec).center();
+
+	auto r = tower.range * tower.range;
+
+	tower.target_id = 0;
+	switch (tower.target_mode) {
+		case Tower_Base::Target_Mode::First: {
+			Unit* candidate = nullptr;
+			for (auto& x : units) {
+				if (x->pos.dist_to2(tower_pos) > r) continue;
+				if (!candidate) candidate = &x;
+
+				auto d_candidate = dist_tile[(*candidate)->current_tile];
+				auto d_current   = dist_tile[x->current_tile];
+				if (d_current < r && d_current < d_candidate) candidate = &x;
+			}
+
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
+				tower.target_id = candidate->id;
+			break;
+		}
+		case Tower_Base::Target_Mode::Closest: {
+			Unit* candidate = nullptr;
+			for (auto& x : units) {
+				if (!candidate) candidate = &x;
+
+				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
+				auto d_current   = x->pos.dist_to2(tower_pos);
+				if (d_current < r && d_current < d_candidate) candidate = &x;
+			}
+
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
+				tower.target_id = candidate->id;
+			break;
+		}
+		case Tower_Base::Target_Mode::Farthest: {
+			Unit* candidate = nullptr;
+			for (auto& x : units) {
+				if (!candidate) candidate = &x;
+
+				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
+				auto d_current   = x->pos.dist_to2(tower_pos);
+				if (d_current < r && d_current > d_candidate) candidate = &x;
+			}
+
+			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
+				tower.target_id = candidate->id;
+			break;
+		}
+		case Tower_Base::Target_Mode::Random: {
+			Unit* candidate = nullptr;
+			for (size_t i = 1; auto& x : units) {
+				if (x->pos.dist_to2(tower_pos) <= r && xstd::random() < 1.f / (i++)) {
+					candidate = &x;
+				}
+			}
+
+			if (candidate) tower.target_id = candidate->id;
+			break;
+		}
+		default: break;
+	}
+}
+void Board::pick_new_target(Mirror2& tower) noexcept {
 	auto tower_pos = tile_box(tower.tile_rec).center();
 
 	auto r = tower.range * tower.range;
@@ -615,4 +727,10 @@ void Board::unit_spatial_partition() noexcept {
 
 		unit_id_by_tile[p_u.x + p_u.y * size.x].push_back(x.id);
 	}
+}
+
+void Board::die_event_at(Vector3f pos) noexcept {
+	Die_Effect d;
+	d.pos = pos;
+	die_effects.push_back(d);
 }
