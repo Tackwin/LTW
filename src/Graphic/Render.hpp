@@ -48,6 +48,8 @@ namespace render {
 
 		float intensity = 1;
 
+		bool face_camera = true;
+
 		float radial_velocity = 0;
 
 		std::optional<Vector3f> velocity;

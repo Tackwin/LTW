@@ -51,8 +51,6 @@ struct Seek_Projectile : Base_Projectile {
 	size_t from = 0;
 	size_t to = 0;
 
-	Vector4f color;
-
 	float speed = 5.f;
 	float damage = 0.5f;
 
@@ -88,8 +86,8 @@ struct Board {
 	} gui;
 
 	Vector2f pos = {0, 0};
-	Vector2u size = { 40, 120 };
-	float tile_size = 0.19f;
+	Vector2u size = { 20, 60 };
+	float tile_size = 0.39f;
 	float tile_padding = 0.01f;
 
 	double seconds_elapsed = 0.0;
@@ -102,12 +100,13 @@ struct Board {
 	xstd::Pool<Tower> towers;
 	xstd::Pool<Projectile> projectiles;
 
-	struct Die_Effect {
+	struct Effect {
 		Vector3f pos;
+		Vector4f color = {1, 1, 1, 1};
 		static constexpr float Lifetime = 0.1f;
 		float age = Lifetime;
 	};
-	std::vector<Die_Effect> die_effects;
+	std::vector<Effect> effects;
 
 	std::vector<std::vector<size_t>> unit_id_by_tile;
 
@@ -150,11 +149,13 @@ struct Board {
 	void spawn_unit(Unit u) noexcept;
 	void spawn_unit_at(Unit u, Vector2u tile) noexcept;
 
-	void pick_new_target(Mirror& tower) noexcept;
-	void pick_new_target(Mirror2& tower) noexcept;
 
 	float bounding_tile_size() noexcept { return tile_size + tile_padding; };
 	bool can_place_at(Rectangleu zone) noexcept;
 
+	void hit_event_at(Vector3f pos, const Projectile& proj) noexcept;
 	void die_event_at(Vector3f pos) noexcept;
+
+	void pick_new_target(Tower& tower) noexcept;
+	bool is_valid_target(const Tower& t, const Unit& u) noexcept;
 };

@@ -231,7 +231,6 @@ void Game::input(Input_Info in) noexcept {
 			auto up = Tower(x.get_upgrade());
 			if (up.kind != Tower::None_Kind && player.ressources.gold >= up->gold_cost) {
 				up->tile_pos = x->tile_pos;
-				up->target_id = x->target_id;
 				board.remove_tower(x);
 				board.insert_tower(up);
 			}
@@ -240,16 +239,19 @@ void Game::input(Input_Info in) noexcept {
 
 	if (!controller.tower_selected.empty()) {
 		// >TOWER_TARGET_MODE:
-		std::unordered_map<Ui_State, Tower_Base::Target_Mode> button_to_target_mode = {
-			{Ui_State::Target_First, Tower_Base::First},
-			{Ui_State::Target_Farthest, Tower_Base::Farthest},
-			{Ui_State::Target_Closest, Tower_Base::Closest},
-			{Ui_State::Target_Random, Tower_Base::Random}
+		std::unordered_map<Ui_State, Tower_Target::Target_Mode> button_to_target_mode = {
+			{Ui_State::Target_First, Tower_Target::First},
+			{Ui_State::Target_Farthest, Tower_Target::Farthest},
+			{Ui_State::Target_Closest, Tower_Target::Closest},
+			{Ui_State::Target_Random, Tower_Target::Random}
 		};
 
 		for (auto& [b, t] : button_to_target_mode) {
 			if (user_interface.action.state_button[b].just_pressed) {
-				for (auto& x : controller.tower_selected) board.towers.id(x)->target_mode = t;
+				for (auto& x : controller.tower_selected) {
+					auto& tower = board.towers.id(x);
+					if (auto y = dynamic_cast<Tower_Target*>(tower.base()); y) y->target_mode = t;
+				}
 				break;
 			}
 		}

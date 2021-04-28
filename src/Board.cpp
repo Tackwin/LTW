@@ -4,6 +4,8 @@
 
 #include "imgui/imgui.h"
 
+#include <type_traits>
+
 void Board::input(const Input_Info& in, Vector2f mouse_world_pos) noexcept {
 	if (in.mouse_infos[Mouse::Right].just_released) {
 		auto tile = get_tile_at(mouse_world_pos);
@@ -52,68 +54,40 @@ void Board::update(double dt) noexcept {
 		}
 	}
 
-	for (auto& x : die_effects) {
+	for (auto& x : effects) {
 		x.age -= dt;
 	}
 
 	for (size_t i = 0; i < towers.size(); ++i) {
 		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
+		auto base = towers[i].base();
 
-		if (towers[i].kind == Tower::Mirror_Kind) {
-			auto& x = towers[i].Mirror_;
-			x.attack_cd -= dt;
-			if (units.exist(x.target_id))
-				x.charging_anim = 1.f - (std::max(x.attack_cd, 0.f) / x.attack_speed);
-			else
-				x.charging_anim = 0.f;
-			if (x.attack_cd > 0) continue;
-
-			auto r2 = x.range * x.range;
-
-			if (!units.exist(x.target_id) || tower_pos.dist_to2(units.id(x.target_id)->pos) > r2) {
-				pick_new_target(x);
+		ON_ONE_OFF(towers[i], Tower::Mirror_Kind, Tower::Mirror2_Kind) (auto& x) {
+			if constexpr (std::is_same_v<std::decay_t<decltype(x)>, Mirror> || std::is_same_v<std::decay_t<decltype(x)>, Mirror2>) {
+				if (!units.exist(x.target_id) || !is_valid_target(towers[i], units.id(x.target_id))) {
+					pick_new_target(towers[i]);
+				}
 			}
+		};
 
-			if (units.exist(x.target_id)) {
-				auto& y = units.id(x.target_id);
-				if ((tower_pos - y->pos).length2() < r2) {
+		if (auto x = dynamic_cast<Tower_Seek_Projectile_Shoot*>(base); x) {
+			x->attack_cd -= dt;
+			if (x->attack_cd <= 0) {
+				auto target_id = dynamic_cast<Tower_Target&>(*base).target_id;
+				if (units.exist(target_id)) {
 					Seek_Projectile new_projectile;
 					new_projectile.from = tiles[i].id;
-					new_projectile.to = y.id;
+					new_projectile.to = target_id;
 
 					new_projectile.pos = tower_pos;
 					projectiles.push_back(new_projectile);
-					x.attack_cd = x.attack_speed;
+
+					x->attack_cd = 1.f / x->attack_speed;
 				}
 			}
-		} else if (towers[i].kind == Tower::Mirror2_Kind) {
-			auto& x = towers[i].Mirror2_;
-			x.attack_cd -= dt;
-			if (units.exist(x.target_id))
-				x.charging_anim = 1.f - (std::max(x.attack_cd, 0.f) / x.attack_speed);
-			else
-				x.charging_anim = 0.f;
-			if (x.attack_cd > 0) continue;
+		}
 
-			auto r2 = x.range * x.range;
-
-			if (!units.exist(x.target_id) || tower_pos.dist_to2(units.id(x.target_id)->pos) > r2) {
-				pick_new_target(x);
-			}
-
-			if (units.exist(x.target_id)) {
-				auto& y = units.id(x.target_id);
-				if ((tower_pos - y->pos).length2() < r2) {
-					Seek_Projectile new_projectile;
-					new_projectile.from = tiles[i].id;
-					new_projectile.to = y.id;
-
-					new_projectile.pos = tower_pos;
-					projectiles.push_back(new_projectile);
-					x.attack_cd = x.attack_speed;
-				}
-			}
-		} else if (towers[i].typecheck(Tower::Sharp_Kind)) {
+		if (towers[i].typecheck(Tower::Sharp_Kind)) {
 			auto& x = towers[i].Sharp_;
 			x.rot += dt * 5;
 
@@ -160,6 +134,7 @@ void Board::update(double dt) noexcept {
 			if ((to->pos - x.pos).length2() < 0.1f) {
 				y.to_remove = true;
 				to->health -= x.damage;
+				hit_event_at(Vector3f(x.pos, 0.5f), y);
 			}
 
 			auto target = units.id(x.to)->pos;
@@ -173,6 +148,7 @@ void Board::update(double dt) noexcept {
 				auto d = (x.pos - u->pos).length2();
 
 				if (d < x.r * x.r) {
+					hit_event_at(Vector3f(x.pos, 0.5f), y);
 					u->health -= x.damage;
 					x.power--;
 					if (x.power == 0) y.to_remove = true;
@@ -192,7 +168,7 @@ void Board::update(double dt) noexcept {
 	}
 
 	xstd::remove_all(
-		die_effects, [](auto& x) { return x.age < 0; }
+		effects, [](auto& x) { return x.age < 0; }
 	);
 	for (size_t i = projectiles.size() - 1; i + 1 > 0; --i) if (projectiles[i].to_remove)
 		projectiles.remove_at(i);
@@ -284,22 +260,22 @@ void Board::render(render::Orders& order) noexcept {
 	}
 	m.color = {1, 1, 1};
 
-	for (auto& x : towers) if (x.kind == Tower::Mirror_Kind) if (x.Mirror_.charging_anim > 0.f) {
-		auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
-		particle.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
-		particle.scale = {0.4f, 0.4f, 0.4f};
-		particle.bloom = {1, 1, 0, 0.2f};
-		particle.intensity = x.Mirror_.charging_anim;
-		particle.radial_velocity = true;
-		order.push(particle);
-	}
-	for (auto& x : die_effects) {
-		auto ease = [](auto x) { return x * x * x - x * x * x * x * x * x; };
+	for (auto& x : towers) if (auto y = dynamic_cast<Tower_Seek_Projectile_Shoot*>(x.base()); y)
+		if (y->attack_cd > 0.f) {
+			auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
+			particle.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
+			particle.scale = {0.4f, 0.4f, 0.4f};
+			particle.bloom = {1, 1, 0, 0.2f};
+			particle.intensity = 1.f / y->attack_speed - y->attack_cd;
+			particle.radial_velocity = true;
+			order.push(particle);
+		}
+	for (auto& x : effects) {
+		auto ease = [](auto x) { return 4 * (x * x * x - x * x * x * x * x * x); };
 		particle.pos = x.pos + Vector3f(pos, 0);
-		particle.intensity = 4 * ease(x.age / x.Lifetime);
-		particle.scale = V3F(particle.intensity / 4);
-		particle.bloom = {1, 1, 1, 1};
-		particle.dir = {1, 0, 0};
+		particle.intensity = ease(x.age / x.Lifetime);
+		particle.scale = V3F(particle.intensity / 2);
+		particle.bloom = x.color;
 		particle.radial_velocity = true;
 		order.push(particle);
 	}
@@ -327,9 +303,10 @@ void Board::render(render::Orders& order) noexcept {
 
 			x.Sharp_.last_rot = x.Sharp_.rot;
 		}
-		if (x.kind == Tower::Mirror_Kind || x.kind == Tower::Mirror2_Kind) {
-			if (units.exist(x->target_id)) {
-				auto dt = units.id(x->target_id)->pos - plane_pos;
+
+		if (auto y = dynamic_cast<Tower_Target*>(x.base()); y) {
+			if (units.exist(y->target_id)) {
+				auto dt = units.id(y->target_id)->pos - plane_pos;
 				m.dir = Vector3f(dt.normed(), 0);
 			} else {
 				m.dir = {1, 0, 0};
@@ -585,133 +562,69 @@ Rectanglef Board::tower_box(const Tower& tower) noexcept {
 	return rec;
 }
 
-void Board::pick_new_target(Mirror& tower) noexcept {
-	auto tower_pos = tile_box(tower.tile_rec).center();
+void Board::pick_new_target(Tower& tower) noexcept {
+	auto tower_pos = tile_box(tower->tile_rec).center();
 
-	auto r = tower.range * tower.range;
+	auto target = dynamic_cast<Tower_Target*>(tower.base());
+	assert(target);
 
-	tower.target_id = 0;
-	switch (tower.target_mode) {
-		case Tower_Base::Target_Mode::First: {
+	auto& target_id = target->target_id;
+	target_id = 0;
+	switch (target->target_mode) {
+		case Tower_Target::Target_Mode::First: {
 			Unit* candidate = nullptr;
 			for (auto& x : units) {
-				if (x->pos.dist_to2(tower_pos) > r) continue;
+				if (!is_valid_target(tower, x)) continue;
 				if (!candidate) candidate = &x;
 
 				auto d_candidate = dist_tile[(*candidate)->current_tile];
 				auto d_current   = dist_tile[x->current_tile];
-				if (d_current < r && d_current < d_candidate) candidate = &x;
+				if (d_current < d_candidate) candidate = &x;
 			}
 
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
-				tower.target_id = candidate->id;
+			if (candidate && is_valid_target(tower, *candidate)) target_id = candidate->id;
 			break;
 		}
-		case Tower_Base::Target_Mode::Closest: {
+		case Tower_Target::Target_Mode::Closest: {
 			Unit* candidate = nullptr;
 			for (auto& x : units) {
+				if (!is_valid_target(tower, x)) continue;
 				if (!candidate) candidate = &x;
 
 				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
 				auto d_current   = x->pos.dist_to2(tower_pos);
-				if (d_current < r && d_current < d_candidate) candidate = &x;
+				if (d_current < d_candidate) candidate = &x;
 			}
 
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
-				tower.target_id = candidate->id;
+			if (candidate && is_valid_target(tower, *candidate)) target_id = candidate->id;
 			break;
 		}
-		case Tower_Base::Target_Mode::Farthest: {
+		case Tower_Target::Target_Mode::Farthest: {
 			Unit* candidate = nullptr;
 			for (auto& x : units) {
+				if (!is_valid_target(tower, x)) continue;
 				if (!candidate) candidate = &x;
 
 				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
 				auto d_current   = x->pos.dist_to2(tower_pos);
-				if (d_current < r && d_current > d_candidate) candidate = &x;
+				if (d_current > d_candidate) candidate = &x;
 			}
 
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
-				tower.target_id = candidate->id;
+			if (candidate && is_valid_target(tower, *candidate)) target_id = candidate->id;
 			break;
 		}
-		case Tower_Base::Target_Mode::Random: {
+		case Tower_Target::Target_Mode::Random: {
 			Unit* candidate = nullptr;
 			for (size_t i = 1; auto& x : units) {
-				if (x->pos.dist_to2(tower_pos) <= r && xstd::random() < 1.f / (i++)) {
-					candidate = &x;
-				}
+				if (is_valid_target(tower, x) && xstd::random() < 1.f / (i++)) candidate = &x;
 			}
 
-			if (candidate) tower.target_id = candidate->id;
+			if (candidate && is_valid_target(tower, *candidate)) target_id = candidate->id;
 			break;
 		}
 		default: break;
 	}
-}
-void Board::pick_new_target(Mirror2& tower) noexcept {
-	auto tower_pos = tile_box(tower.tile_rec).center();
 
-	auto r = tower.range * tower.range;
-
-	tower.target_id = 0;
-	switch (tower.target_mode) {
-		case Tower_Base::Target_Mode::First: {
-			Unit* candidate = nullptr;
-			for (auto& x : units) {
-				if (x->pos.dist_to2(tower_pos) > r) continue;
-				if (!candidate) candidate = &x;
-
-				auto d_candidate = dist_tile[(*candidate)->current_tile];
-				auto d_current   = dist_tile[x->current_tile];
-				if (d_current < r && d_current < d_candidate) candidate = &x;
-			}
-
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
-				tower.target_id = candidate->id;
-			break;
-		}
-		case Tower_Base::Target_Mode::Closest: {
-			Unit* candidate = nullptr;
-			for (auto& x : units) {
-				if (!candidate) candidate = &x;
-
-				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
-				auto d_current   = x->pos.dist_to2(tower_pos);
-				if (d_current < r && d_current < d_candidate) candidate = &x;
-			}
-
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
-				tower.target_id = candidate->id;
-			break;
-		}
-		case Tower_Base::Target_Mode::Farthest: {
-			Unit* candidate = nullptr;
-			for (auto& x : units) {
-				if (!candidate) candidate = &x;
-
-				auto d_candidate = (*candidate)->pos.dist_to2(tower_pos);
-				auto d_current   = x->pos.dist_to2(tower_pos);
-				if (d_current < r && d_current > d_candidate) candidate = &x;
-			}
-
-			if (candidate && (*candidate)->pos.dist_to2(tower_pos) <= r)
-				tower.target_id = candidate->id;
-			break;
-		}
-		case Tower_Base::Target_Mode::Random: {
-			Unit* candidate = nullptr;
-			for (size_t i = 1; auto& x : units) {
-				if (x->pos.dist_to2(tower_pos) <= r && xstd::random() < 1.f / (i++)) {
-					candidate = &x;
-				}
-			}
-
-			if (candidate) tower.target_id = candidate->id;
-			break;
-		}
-		default: break;
-	}
 }
 
 void Board::unit_spatial_partition() noexcept {
@@ -729,8 +642,30 @@ void Board::unit_spatial_partition() noexcept {
 	}
 }
 
-void Board::die_event_at(Vector3f pos) noexcept {
-	Die_Effect d;
+void Board::hit_event_at(Vector3f pos, const Projectile& proj) noexcept {
+	Effect d;
 	d.pos = pos;
-	die_effects.push_back(d);
+	d.color = V4F(1);
+	if (proj.kind == Projectile::Seek_Projectile_Kind) d.color = {1, 1, 0, 1};
+	effects.push_back(d);
+}
+
+void Board::die_event_at(Vector3f pos) noexcept {
+	Effect d;
+	d.pos = pos;
+	effects.push_back(d);
+}
+
+bool Board::is_valid_target(const Tower& t, const Unit& u) noexcept {
+	auto dt = (tower_box(t).center() - u->pos).length2();
+	float r = 0;
+	switch (t.kind) {
+		case Tower::Kind::Mirror_Kind:
+			r = t.Mirror_.range;
+		case Tower::Kind::Mirror2_Kind:
+			r = t.Mirror2_.range;
+			return dt < r * r;
+		default:
+			return false;
+	}
 }

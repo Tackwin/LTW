@@ -74,11 +74,11 @@ Ui_Table Tower_Selection::get_selected_table(
 	std::unordered_map<Ui_State, Action::Button>& buttons
 ) noexcept {
 	// >TOWER_TARGET_MODE:
-	std::unordered_map<Tower_Base::Target_Mode, Ui_State> target_mode_to_icon = {
-		{Tower_Base::First,  Ui_State::Target_First},
-		{Tower_Base::Random, Ui_State::Target_Random},
-		{Tower_Base::Closest, Ui_State::Target_Closest},
-		{Tower_Base::Farthest, Ui_State::Target_Farthest}
+	std::unordered_map<Tower_Target::Target_Mode, Ui_State> target_mode_to_icon = {
+		{Tower_Target::First,  Ui_State::Target_First},
+		{Tower_Target::Random, Ui_State::Target_Random},
+		{Tower_Target::Closest, Ui_State::Target_Closest},
+		{Tower_Target::Farthest, Ui_State::Target_Farthest}
 	};
 	
 	Ui_Table table = TABLE(
@@ -89,8 +89,8 @@ Ui_Table Tower_Selection::get_selected_table(
 	);
 
 	if (picking_target_mode) {
-		for (size_t i = 0; i < Tower_Base::Target_Mode::Count; ++i) {
-			table[4 + i] = target_mode_to_icon[(Tower_Base::Target_Mode)i];
+		for (size_t i = 0; i < Tower_Target::Target_Mode::Count; ++i) {
+			table[4 + i] = target_mode_to_icon[(Tower_Target::Target_Mode)i];
 		}
 	}
 

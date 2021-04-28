@@ -50,6 +50,7 @@ template<bool flag = false> void static_no_match() noexcept {
 #define sum_type_X_name(x) case x##_Kind: return #x;
 #define sum_type_X_cast(x) if constexpr (std::is_same_v<T, x>) { return x##_; }
 #define sum_type_X_one_of(x) std::is_same_v<T, x> ||
+#define sum_type_X_one_of_call(x) case x##_Kind: f(x##_);
 
 #pragma clang diagnostic ignored "-Wdynamic-class-memaccess"
 
@@ -129,11 +130,37 @@ template<bool flag = false> void static_no_match() noexcept {
 			list(sum_type_X_cast)\
 			assert("Yeah no.");\
 			return *reinterpret_cast<T*>(this);\
+		}\
+		template<typename F, Kind k>\
+		void on_one_off_help(F f) noexcept {\
+			if (kind != k) return;\
+			switch(kind) {\
+				list(sum_type_X_one_of_call)\
+				default: return;\
+			}\
+		}\
+		template<Kind... kinds>\
+		struct On_One_Off {\
+			n* ptr;\
+			On_One_Off(n* ptr) : ptr(ptr) {}\
+			template<typename F>\
+			On_One_Off<kinds...>& operator=(F f) && {\
+				(ptr->on_one_off_help<F, kinds>(f), ...);\
+				return *this;\
+			}\
+		};\
+		template<Kind... kinds>\
+		On_One_Off<kinds...> on_one_off() noexcept {\
+			return On_One_Off<kinds...>(this);\
 		}
 
-#define sum_type_base(base)\
-	base* operator->() noexcept { return (base*)this; }\
-	const base* operator->() const noexcept { return (base*)this; }
+#define ON_ONE_OFF(x, t, ...) x.on_one_off<__VA_ARGS__>() = [&]
+
+#define sum_type_base(base_)\
+	base_* operator->() noexcept { return (base_*)this; }\
+	base_* base() noexcept { return (base_*)this; }\
+	const base_* base() const noexcept { return (const base_*)this; }\
+	const base_* operator->() const noexcept { return (base_*)this; }
 
 #include <chrono>
 

@@ -1515,10 +1515,18 @@ void render::immediate(Particle particle, const Camera3D& cam, bool velocity) no
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)12);
 	}
-	auto M =
-		Matrix4f::translation(particle.pos) *
-		Matrix4f::scale(particle.scale) *
-		Matrix4f::rotate({1, 0, 0}, particle.dir);
+	Matrix4f M;
+	if (particle.face_camera) {
+		M =
+			Matrix4f::translation(particle.pos) *
+			Matrix4f::scale(particle.scale) *
+			Matrix4f::rotate({0, 0, 1}, (cam.pos - particle.pos).normed());
+	} else {
+		M =
+			Matrix4f::translation(particle.pos) *
+			Matrix4f::scale(particle.scale) *
+			Matrix4f::rotate({0, 0, 1}, particle.dir);
+	}
 
 	if (velocity) {
 		auto& shader = asset::Store.get_shader(asset::Shader_Id::Particle_Deferred);
