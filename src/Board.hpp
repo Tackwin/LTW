@@ -41,17 +41,17 @@ struct Base_Projectile {
 	Vector2f last_pos;
 	Vector2f last_dir;
 	float r = 0.1f;
+	float speed = 5.f;
 
 	size_t object_id = 0;
+	size_t from = 0;
 
 	float life_time = FLT_MAX;
 };
 
 struct Seek_Projectile : Base_Projectile {
-	size_t from = 0;
 	size_t to = 0;
 
-	float speed = 5.f;
 	float damage = 0.5f;
 
 	Seek_Projectile() noexcept {
@@ -59,19 +59,38 @@ struct Seek_Projectile : Base_Projectile {
 	}
 };
 struct Straight_Projectile : Base_Projectile {
-	size_t from = 0;
-
-	float speed = 2.f;
 	float damage = 0.5f;
 
 	size_t power = 10;
 
 	Straight_Projectile() noexcept {
+		speed = 2.f;
 		object_id = asset::Object_Id::Electron;
 	}
 };
 
-#define PROJ_LIST(X) X(Seek_Projectile) X(Straight_Projectile)
+struct Split_Projectile : Base_Projectile {
+	float split_chance = 0.6f;
+	size_t n_split = 3;
+	size_t max_split = 7;
+
+	Split_Projectile() noexcept {
+		object_id = asset::Object_Id::Neutron;
+	}
+};
+
+struct Splash_Projectile : Base_Projectile {
+	float aoe_radius = 0;
+	Vector2f target;
+
+	Splash_Projectile() {
+		speed = 3.f;
+		object_id = asset::Object_Id::Heat_Surge;
+	}
+};
+
+#define PROJ_LIST(X)\
+	X(Seek_Projectile) X(Straight_Projectile) X(Splash_Projectile) X(Split_Projectile)
 
 struct Projectile {
 	sum_type(Projectile, PROJ_LIST);
@@ -154,8 +173,10 @@ struct Board {
 	bool can_place_at(Rectangleu zone) noexcept;
 
 	void hit_event_at(Vector3f pos, const Projectile& proj) noexcept;
-	void die_event_at(Vector3f pos) noexcept;
+	void die_event_at(Unit& u) noexcept;
 
 	void pick_new_target(Tower& tower) noexcept;
 	bool is_valid_target(const Tower& t, const Unit& u) noexcept;
+
+	Projectile get_projectile(Tower& from, Unit& target) noexcept;
 };

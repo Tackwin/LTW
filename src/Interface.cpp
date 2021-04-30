@@ -325,6 +325,7 @@ void Interface::render_top_bar(render::Orders& orders) noexcept {
 	orders.push(text, 3);
 }
 
+// >ADD_BUTTON(Tackwin):
 void Interface::init_buttons() noexcept {
 	auto& b = action.state_button;
 	b[Ui_State::Build].texture_id             = asset::Texture_Id::Build_Icon;
@@ -349,4 +350,6 @@ void Interface::init_buttons() noexcept {
 	b[Ui_State::Volter_Build].texture_id      = asset::Texture_Id::Volter_Icon;
 	b[Ui_State::Surge_Spell].texture_id       = asset::Texture_Id::Dummy;
 	b[Ui_State::Upgrade].texture_id           = asset::Texture_Id::Upgrade_Icon;
+	b[Ui_State::Heat_Build].texture_id        = asset::Texture_Id::Heat_Icon;
+	b[Ui_State::Radiation_Build].texture_id   = asset::Texture_Id::Radiation_Icon;
 }

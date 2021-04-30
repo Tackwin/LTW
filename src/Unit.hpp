@@ -33,7 +33,6 @@ struct Unit_Base {
 
 struct Methane : Unit_Base {
 	Methane() noexcept {
-		health = 1.f;
 		speed = 0.5f;
 		object_id = asset::Object_Id::Methane;
 	}
@@ -41,8 +40,10 @@ struct Methane : Unit_Base {
 	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 1, .hydrogens = 4}; }
 };
 struct Ethane : Unit_Base {
+	using split_to = Methane;
+	size_t     split_n  = 2;
+
 	Ethane() noexcept {
-		health = 3.f;
 		speed = 0.4f;
 		object_id = asset::Object_Id::Ethane;
 		color /= 2;
@@ -50,8 +51,10 @@ struct Ethane : Unit_Base {
 	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 2, .hydrogens = 6}; }
 };
 struct Propane : Unit_Base {
+	using split_to = Ethane;
+	size_t     split_n  = 2;
+
 	Propane() noexcept {
-		health = 4.5f;
 		speed = 0.3f;
 		object_id = asset::Object_Id::Propane;
 		color /= 3;
@@ -59,8 +62,10 @@ struct Propane : Unit_Base {
 	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 3, .hydrogens = 8}; }
 };
 struct Butane : Unit_Base {
+	using split_to = Propane;
+	size_t     split_n  = 2;
+
 	Butane() noexcept {
-		health = 5.5f;
 		speed = 0.15f;
 		object_id = asset::Object_Id::Butane;
 		color /= 5;
@@ -82,6 +87,8 @@ struct Oxygen  : Unit_Base {
 	}
 };
 
+
+#define UNIT_SPLIT Ethane, Propane, Butane
 #define LIST_UNIT(X) X(Methane) X(Ethane) X(Propane) X(Butane) X(Water) X(Oxygen)
 
 struct Unit {
@@ -91,6 +98,3 @@ struct Unit {
 	size_t id = 0;
 	bool to_remove = false;
 };
-
-struct Board;
-extern void on_death(Board& board, Unit& unit) noexcept;

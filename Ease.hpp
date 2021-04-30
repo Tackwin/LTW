@@ -1665,9 +1665,9 @@ std::string NS::details::get_cli_flag(
 	case NS::Cli_Opts::OpenMP :
 		X("-fopenmp", "/OpenMP");
 	case NS::Cli_Opts::Debug_Symbol_Link :
-		X("-g -gno-column-info", "/DEBUG");
+		X("-g -gno-column-info -fdebug-macro ", "/DEBUG");
 	case NS::Cli_Opts::Debug_Symbol_Compile :
-		X("-g -gcodeview -gno-column-info", "/Z7");
+		X("-g -gcodeview -gno-column-info -fdebug-macro", "/Z7");
 
 	case NS::Cli_Opts::No_Default_Lib : {
 		// >TODO(Tackwin): here we need to check the linker's cli instead of the compiler.

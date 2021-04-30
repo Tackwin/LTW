@@ -287,6 +287,8 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/carbon_icon.png", Carbon_Icon);
 	X("assets/textures/hydrogen_icon.png", Hydrogen_Icon);
 	X("assets/textures/upgrade_icon.png", Upgrade_Icon);
+	X("assets/textures/heat_icon.png", Heat_Icon);
+	X("assets/textures/radiation_icon.png", Radiation_Icon);
 
 #undef X
 }
@@ -400,6 +402,10 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/propane.ply", Propane);
 	X("assets/model/butane.ply", Butane);
 	X("assets/model/plane.ply", Plane);
+	X("assets/model/heat_surge.ply", Heat_Surge);
+	X("assets/model/heat.ply", Heat);
+	X("assets/model/radiation.ply", Radiation);
+	X("assets/model/neutron.ply", Neutron);
 #undef X
 }
 

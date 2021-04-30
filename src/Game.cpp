@@ -189,6 +189,7 @@ void Game::input(Input_Info in) noexcept {
 		controller.placing->tile_pos = mouse_u;
 	}
 
+// >ADD_TOWER(Tackwin):
 	if (user_interface.action.state_button[Ui_State::Mirror_Build].just_pressed) {
 		controller.placing = Mirror{};
 		user_interface.action.back_to_main();
@@ -199,6 +200,14 @@ void Game::input(Input_Info in) noexcept {
 	}
 	if (user_interface.action.state_button[Ui_State::Volter_Build].just_pressed) {
 		controller.placing = Volter{};
+		user_interface.action.back_to_main();
+	}
+	if (user_interface.action.state_button[Ui_State::Heat_Build].just_pressed) {
+		controller.placing = Heat{};
+		user_interface.action.back_to_main();
+	}
+	if (user_interface.action.state_button[Ui_State::Radiation_Build].just_pressed) {
+		controller.placing = Radiation{};
 		user_interface.action.back_to_main();
 	}
 	if (user_interface.action.state_button[Ui_State::Surge_Spell].just_pressed) {
@@ -250,7 +259,8 @@ void Game::input(Input_Info in) noexcept {
 			if (user_interface.action.state_button[b].just_pressed) {
 				for (auto& x : controller.tower_selected) {
 					auto& tower = board.towers.id(x);
-					if (auto y = dynamic_cast<Tower_Target*>(tower.base()); y) y->target_mode = t;
+					tower.on_one_off_<TOWER_TARGET_LIST>() =
+						[t = t] (auto& y) { y.target_mode = t; };
 				}
 				break;
 			}
@@ -382,21 +392,14 @@ void game_render(Game& game, render::Orders& order) noexcept {
 		if (game.controller.board_id == i) {
 			for (auto& id : game.controller.tower_selected) if (board.towers.exist(id)) {
 				auto& x = board.towers.id(id);
-				if (x.kind == Tower::Mirror_Kind) {
+				x.on_one_off(TOWER_TARGET_LIST) (auto& y) {
 					render::Ring ring;
 					ring.color = {0, 1, 0};
 					ring.glowing_intensity = 2;
 					ring.pos = Vector3f(board.tower_box(x).center(), 0.1f);
-					ring.radius = x.Mirror_.range;
+					ring.radius = y.range;
 					order.push(ring);
-				} else if (x.kind == Tower::Mirror2_Kind) {
-					render::Ring ring;
-					ring.color = {0, 1, 0};
-					ring.glowing_intensity = 2;
-					ring.pos = Vector3f(board.tower_box(x).center(), 0.1f);
-					ring.radius = x.Mirror2_.range;
-					order.push(ring);
-				}
+				};
 			}
 		}
 

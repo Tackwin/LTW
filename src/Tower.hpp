@@ -70,6 +70,22 @@ struct Mirror2 : public Mirror {
 	}
 };
 
+struct Heat : public Tower_Base {
+	float range        = 2;
+	float attack_cd    = 0;
+	float attack_speed = 1;
+
+	size_t target_id;
+	Tower_Target::Target_Mode target_mode;
+
+	Heat() noexcept {
+		tile_size = {2, 2};
+		object_id = asset::Object_Id::Heat;
+		target_mode = Tower_Target::Target_Mode::Random;
+		texture_icon_id = asset::Texture_Id::Heat_Icon;
+	}
+};
+
 struct Sharp : public Tower_Base {
 	float range  = 1.0f;
 	float damage = 0.1f;
@@ -98,7 +114,26 @@ struct Volter : public Tower_Base {
 	}
 };
 
-#define TOWER_LIST(X) X(Mirror) X(Mirror2) X(Sharp) X(Volter)
+struct Radiation : public Tower_Base {
+	float range        = 4;
+	float attack_cd    = 0;
+	float attack_speed = 1;
+
+	size_t target_id;
+	Tower_Target::Target_Mode target_mode;
+
+	Radiation() noexcept {
+		tile_size = {2, 2};
+		object_id = asset::Object_Id::Radiation;
+		texture_icon_id = asset::Texture_Id::Radiation_Icon;
+	}
+};
+
+// >ADD_TOWER(Tackwin):
+#define TOWER_TARGET_LIST Mirror, Mirror2, Heat, Radiation
+#define TOWER_SHOOT_LIST Heat, Radiation
+#define TOWER_SEEK_PROJECTILE Mirror, Mirror2
+#define TOWER_LIST(X) X(Mirror) X(Mirror2) X(Sharp) X(Volter) X(Heat) X(Radiation)
 
 struct Tower {
 	sum_type(Tower, TOWER_LIST);

@@ -44,13 +44,11 @@ void Board::update(double dt) noexcept {
 
 		if (x->pos.y + size.y * bounding_tile_size() / 2 < cease_zone_height) x.to_remove = true;
 	}
+	
 	for (auto& x : units) if (!x.to_remove) {
 		if (x->health <= 0) {
 			if (!x.to_remove) x->to_die = true;
 			x.to_remove = true;
-		}
-		if (x.to_remove) {
-			ressources_gained = add(ressources_gained, x->get_drop());
 		}
 	}
 
@@ -62,30 +60,38 @@ void Board::update(double dt) noexcept {
 		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
 		auto base = towers[i].base();
 
-		ON_ONE_OFF(towers[i], Tower::Mirror_Kind, Tower::Mirror2_Kind) (auto& x) {
-			if constexpr (std::is_same_v<std::decay_t<decltype(x)>, Mirror> || std::is_same_v<std::decay_t<decltype(x)>, Mirror2>) {
-				if (!units.exist(x.target_id) || !is_valid_target(towers[i], units.id(x.target_id))) {
-					pick_new_target(towers[i]);
-				}
+		towers[i].on_one_off(TOWER_TARGET_LIST) (auto& x) {
+			if (!units.exist(x.target_id) || !is_valid_target(towers[i], units.id(x.target_id))) {
+				pick_new_target(towers[i]);
 			}
 		};
+		towers[i].on_one_off_<TOWER_SHOOT_LIST>() = [&] (auto& x) {
+			if (!(units.exist(x.target_id) && is_valid_target(towers[i], units.id(x.target_id))))
+				return;
 
-		if (auto x = dynamic_cast<Tower_Seek_Projectile_Shoot*>(base); x) {
-			x->attack_cd -= dt;
-			if (x->attack_cd <= 0) {
-				auto target_id = dynamic_cast<Tower_Target&>(*base).target_id;
-				if (units.exist(target_id)) {
-					Seek_Projectile new_projectile;
-					new_projectile.from = tiles[i].id;
-					new_projectile.to = target_id;
+			x.attack_cd -= dt;
+			if (x.attack_cd > 0) return;
 
-					new_projectile.pos = tower_pos;
-					projectiles.push_back(new_projectile);
+			auto p = get_projectile(towers[i], units.id(x.target_id));
+			p->pos = tower_box(towers[i]).center();
+			projectiles.push_back(p);
+			x.attack_cd = 1.f / x.attack_speed;
+		};
 
-					x->attack_cd = 1.f / x->attack_speed;
-				}
+		towers[i].on_one_off(TOWER_SEEK_PROJECTILE) (auto& x) {
+			x.attack_cd -= dt;
+			if (x.attack_cd <= 0 && units.exist(x.target_id)) {
+				Seek_Projectile new_projectile;
+				new_projectile.from = tiles[i].id;
+				new_projectile.to = x.target_id;
+				new_projectile.damage = x.damage;
+
+				new_projectile.pos = tower_pos;
+				projectiles.push_back(new_projectile);
+
+				x.attack_cd = 1.f / x.attack_speed;
 			}
-		}
+		};
 
 		if (towers[i].typecheck(Tower::Sharp_Kind)) {
 			auto& x = towers[i].Sharp_;
@@ -124,13 +130,12 @@ void Board::update(double dt) noexcept {
 		if (y.to_remove) continue;
 
 		if (y.kind == Projectile::Seek_Projectile_Kind) {
-			
 			auto& x = y.Seek_Projectile_;
 			if (!units.exist(x.to)) { y.to_remove = true; continue; }
 			auto& to = units.id(x.to);
 			if (to.to_remove) { y.to_remove = true; continue; }
 
-			x.pos += (to->pos - x.pos).normed() * x.speed * dt;
+			x.pos += x.dir * x.speed * dt;
 			if ((to->pos - x.pos).length2() < 0.1f) {
 				y.to_remove = true;
 				to->health -= x.damage;
@@ -155,14 +160,49 @@ void Board::update(double dt) noexcept {
 					break;
 				}
 			}
+		} else if (y.kind == Projectile::Splash_Projectile_Kind) {
+			auto& x = y.Splash_Projectile_;
+			
+			x.dir = (x.target - x.pos).normed();
+			x.pos += x.dir * x.speed * dt;
+
+			if (x.pos.dist_to2(x.target) < x.r * x.r) {
+				hit_event_at(Vector3f(x.pos, 0.5f), y);
+				y.to_remove = true;
+
+				for (auto& u : units) if (u->pos.dist_to2(x.target) <= x.r * x.r) u->health -= 1;
+			}
+		} else if (y.kind == Projectile::Split_Projectile_Kind) {
+			auto& x = y.Split_Projectile_;
+
+			x.pos += x.dir * x.speed * dt;
+
+			for (auto& u : units) if (!u.to_remove) {
+				auto d = (x.pos - u->pos).length2();
+
+				if (d < x.r * x.r) {
+					hit_event_at(Vector3f(x.pos, 0.5f), y);
+					u->health -= 1;
+
+					if (x.max_split > 0)
+					if (xstd::random() < x.split_chance) for (size_t i = 0; i < x.n_split; ++i) {
+						auto p = x;
+						p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
+						p.life_time += (2 - p.life_time) * 0.1f;
+						p.max_split --;
+						projectiles.push_back(p);
+					}
+					y.to_remove = true;
+					break;
+				}
+			}
 		}
 	}
 
 	for (size_t i = 0; i < units.size(); ++i) {
 		auto& x = units[i];
 		if (x->to_die) {
-			on_death(*this, x);
-			die_event_at(Vector3f(x->pos, 0.5f));
+			die_event_at(x);
 			x->to_die = false;
 		}
 	}
@@ -260,16 +300,17 @@ void Board::render(render::Orders& order) noexcept {
 	}
 	m.color = {1, 1, 1};
 
-	for (auto& x : towers) if (auto y = dynamic_cast<Tower_Seek_Projectile_Shoot*>(x.base()); y)
-		if (y->attack_cd > 0.f) {
+	for (auto& x : towers) x.on_one_off(TOWER_SEEK_PROJECTILE) (auto& y) {
+		if (y.attack_cd > 0.f) {
 			auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
 			particle.pos = Vector3f(plane_pos, bounding_tile_size() * 0.3f * x->tile_size.x);
 			particle.scale = {0.4f, 0.4f, 0.4f};
 			particle.bloom = {1, 1, 0, 0.2f};
-			particle.intensity = 1.f / y->attack_speed - y->attack_cd;
+			particle.intensity = 1.f / y.attack_speed - y.attack_cd;
 			particle.radial_velocity = true;
 			order.push(particle);
 		}
+	};
 	for (auto& x : effects) {
 		auto ease = [](auto x) { return 4 * (x * x * x - x * x * x * x * x * x); };
 		particle.pos = x.pos + Vector3f(pos, 0);
@@ -304,14 +345,14 @@ void Board::render(render::Orders& order) noexcept {
 			x.Sharp_.last_rot = x.Sharp_.rot;
 		}
 
-		if (auto y = dynamic_cast<Tower_Target*>(x.base()); y) {
-			if (units.exist(y->target_id)) {
-				auto dt = units.id(y->target_id)->pos - plane_pos;
+		x.on_one_off(TOWER_TARGET_LIST) (auto& y) {
+			if (units.exist(y.target_id)) {
+				auto dt = units.id(y.target_id)->pos - plane_pos;
 				m.dir = Vector3f(dt.normed(), 0);
 			} else {
 				m.dir = {1, 0, 0};
 			}
-		}
+		};
 
 		models_by_object[m.object_id].push_back(m);
 		m.object_blur = false;
@@ -565,12 +606,16 @@ Rectanglef Board::tower_box(const Tower& tower) noexcept {
 void Board::pick_new_target(Tower& tower) noexcept {
 	auto tower_pos = tile_box(tower->tile_rec).center();
 
-	auto target = dynamic_cast<Tower_Target*>(tower.base());
-	assert(target);
+	size_t* target_id_ptr = nullptr;
+	Tower_Target::Target_Mode mode;
+	tower.on_one_off(TOWER_TARGET_LIST) (auto& x) {
+		target_id_ptr = &x.target_id;
+		mode = x.target_mode;
+	};
+	auto& target_id = *target_id_ptr;
 
-	auto& target_id = target->target_id;
 	target_id = 0;
-	switch (target->target_mode) {
+	switch (mode) {
 		case Tower_Target::Target_Mode::First: {
 			Unit* candidate = nullptr;
 			for (auto& x : units) {
@@ -646,26 +691,73 @@ void Board::hit_event_at(Vector3f pos, const Projectile& proj) noexcept {
 	Effect d;
 	d.pos = pos;
 	d.color = V4F(1);
-	if (proj.kind == Projectile::Seek_Projectile_Kind) d.color = {1, 1, 0, 1};
+	if (proj.kind == Projectile::Seek_Projectile_Kind)   d.color = {1, 1, 0, 1};
+	if (proj.kind == Projectile::Splash_Projectile_Kind) d.color = {1, 0, 0, 1};
+	if (proj.kind == Projectile::Split_Projectile_Kind)  d.color = {0, 0, 1, 1};
 	effects.push_back(d);
 }
 
-void Board::die_event_at(Vector3f pos) noexcept {
+void Board::die_event_at(Unit& u) noexcept {
 	Effect d;
-	d.pos = pos;
+	d.pos = Vector3f(u->pos, 0.5f);
 	effects.push_back(d);
+
+	ressources_gained = add(ressources_gained, u->get_drop());
+
+	u.on_one_off(UNIT_SPLIT) (auto& x) {
+		auto n = x.split_n;
+		auto pos = x.pos;
+		auto tile = Vector2u{ x.current_tile % size.x, x.current_tile / size.x };
+		for (size_t i = 0; i < n; ++i) {
+			typename TYPE(x)::split_to spawned;
+
+			spawned.pos = pos;
+			spawn_unit_at(spawned, tile); // this push to the pool so it might invalidate x.
+		}
+	};
 }
 
+
+// >ADD_TOWER(Tackwin):
 bool Board::is_valid_target(const Tower& t, const Unit& u) noexcept {
 	auto dt = (tower_box(t).center() - u->pos).length2();
 	float r = 0;
 	switch (t.kind) {
 		case Tower::Kind::Mirror_Kind:
 			r = t.Mirror_.range;
+			return dt < r * r;
 		case Tower::Kind::Mirror2_Kind:
 			r = t.Mirror2_.range;
 			return dt < r * r;
+		case Tower::Kind::Heat_Kind:
+			r = t.Heat_.range;
+			return dt < r * r;
+		case Tower::Kind::Radiation_Kind:
+			r = t.Radiation_.range;
+			return dt < r * r;
 		default:
 			return false;
+	}
+}
+
+// >ADD_TOWER(Tackwin):
+Projectile Board::get_projectile(Tower& from, Unit& target) noexcept {
+	switch (from.kind) {
+		case Tower::Kind::Heat_Kind: {
+			Splash_Projectile p;
+			p.from = from.id;
+			p.target = target->pos;
+			return p;
+		}
+		case Tower::Kind::Radiation_Kind: {
+			Split_Projectile p;
+			p.from = from.id;
+			p.dir = (target->pos - tower_box(from).center()).normed();
+			p.object_id = asset::Object_Id::Neutron;
+			p.speed = 5;
+			p.life_time = 2;
+			return p;
+		}
+		default: return {};
 	}
 }

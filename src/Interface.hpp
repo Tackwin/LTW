@@ -12,6 +12,8 @@
 
 #include "Player.hpp"
 
+// >ADD_TOWER(Tackwin):
+// >ADD_BUTTON(Tackwin):
 enum class Ui_State {
 	Null,
 	Main,
@@ -23,6 +25,8 @@ enum class Ui_State {
 	Mirror_Build,
 	Splash_Build,
 	Volter_Build,
+	Heat_Build,
+	Radiation_Build,
 	Surge_Spell,
 	Cancel,
 	Send,
@@ -46,30 +50,32 @@ using Ui_Table = std::array<Ui_State, 4*4>;
 }
 
 struct Action {
+	using U = Ui_State;
 	static constexpr size_t N = 4;
 	static constexpr Ui_Table Main_Table = TABLE(
-		Ui_State::Null,    Ui_State::Null, Ui_State::Null,  Ui_State::Null,
-		Ui_State::Cancel,  Ui_State::Up,   Ui_State::Null,  Ui_State::Null,
-		Ui_State::Left,    Ui_State::Down, Ui_State::Right, Ui_State::Null,
-		Ui_State::Build,   Ui_State::Send, Ui_State::Next_Wave,  Ui_State::Null
+		U::Null,    U::Null, U::Null,  U::Null,
+		U::Cancel,  U::Up,   U::Null,  U::Null,
+		U::Left,    U::Down, U::Right, U::Null,
+		U::Build,   U::Send, U::Next_Wave,  U::Null
 	);
+// >ADD_TOWER(Tackwin):
 	static constexpr Ui_Table Build_Table = TABLE(
-		Ui_State::Null,         Ui_State::Null,         Ui_State::Null, Ui_State::Null,
-		Ui_State::Null,         Ui_State::Null,         Ui_State::Null, Ui_State::Null,
-		Ui_State::Mirror_Build, Ui_State::Splash_Build, Ui_State::Volter_Build, Ui_State::Null,
-		Ui_State::Main,         Ui_State::Null,         Ui_State::Null, Ui_State::Null
+		U::Null,         U::Null,         U::Null, U::Null,
+		U::Radiation_Build, U::Null,         U::Null, U::Null,
+		U::Mirror_Build, U::Splash_Build, U::Volter_Build, U::Heat_Build,
+		U::Main,         U::Null,         U::Null, U::Null
 	);
 	static constexpr Ui_Table Send1_Table = TABLE(
-		Ui_State::Null,       Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Send_First, Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Null,       Ui_State::Null, Ui_State::Null, Ui_State::Null,
-		Ui_State::Main,       Ui_State::Null, Ui_State::Null, Ui_State::Null
+		U::Null,       U::Null, U::Null, U::Null,
+		U::Send_First, U::Null, U::Null, U::Null,
+		U::Null,       U::Null, U::Null, U::Null,
+		U::Main,       U::Null, U::Null, U::Null
 	);
 
-	inline static std::unordered_map<Ui_State, Ui_Table> Button_Nav_Map = {
-		{Ui_State::Main,  Main_Table},
-		{Ui_State::Build, Build_Table},
-		{Ui_State::Send,  Send1_Table}
+	inline static std::unordered_map<U, Ui_Table> Button_Nav_Map = {
+		{U::Main,  Main_Table},
+		{U::Build, Build_Table},
+		{U::Send,  Send1_Table}
 	};
 	
 	float button_content = 0.22f / N;

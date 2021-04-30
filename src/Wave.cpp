@@ -15,7 +15,7 @@ bool Wave::spawn(double dt, Board& board) noexcept {
 			auto t = to_do / bunch.duration;
 
 			for (size_t j = 0; j < bunch.to_spawn.size(); ++j) {
-				size_t to_spawn = (size_t)(bunch.to_spawn[j] * t);
+				size_t to_spawn = (size_t)std::roundf(bunch.to_spawn[j] * t);
 				size_t left_to_spawn = to_spawn - bunch.spawned[j];
 
 				for (size_t k = 0; k < left_to_spawn; ++k) board.spawn_unit(bunch.units[j]);
@@ -52,7 +52,7 @@ Wave gen_wave(size_t n) noexcept {
 	Wave wave;
 	Wave::Bunch bunch;
 
-	size_t to_spawn = 10 * (1 + n) * (1 + n / 4);
+	size_t to_spawn = 5 * (1 + n) * (1 + n / 4);
 	if ((n % 4) == 0) bunch.add_unit(Methane(), to_spawn);
 	if ((n % 4) == 1) bunch.add_unit(Ethane(), to_spawn);
 	if ((n % 4) == 2) bunch.add_unit(Propane(), to_spawn);

@@ -27,6 +27,8 @@ namespace details {
 #define V3F(x) Vector3f{x, x, x}
 #define V4F(x) Vector4f{(x), (x), (x), (x)}
 
+#define TYPE(x) std::decay_t<decltype(x)>
+
 #define AT2(i, j, w) (i) + (j) * (w)
 
 #define dbgbool(x) printf(#x " = %s\n", (x) ? "true" : "false");
@@ -50,13 +52,22 @@ template<bool flag = false> void static_no_match() noexcept {
 #define sum_type_X_name(x) case x##_Kind: return #x;
 #define sum_type_X_cast(x) if constexpr (std::is_same_v<T, x>) { return x##_; }
 #define sum_type_X_one_of(x) std::is_same_v<T, x> ||
-#define sum_type_X_one_of_call(x) case x##_Kind: f(x##_);
+#define sum_type_X_map_kind_to_type(x)\
+	template<> struct MAP_kind_type<x##_Kind> { using type = x; };
+#define sum_type_X_map_type_to_kind(x)\
+	template<> struct MAP_type_kind<x> { static constexpr auto kind = x##_Kind; };
 
 #pragma clang diagnostic ignored "-Wdynamic-class-memaccess"
 
 #define sum_type(n, list)\
 		union { list(sum_type_X_Union) };\
 		enum Kind { None_Kind = 0 list(sum_type_X_Kind), Count } kind;\
+		template<typename T>\
+		struct MAP_type_kind {};\
+		list(sum_type_X_map_type_to_kind)\
+		template<Kind k>\
+		struct MAP_kind_type {};\
+		list(sum_type_X_map_kind_to_type)\
 		n() noexcept { kind = None_Kind; }\
 		explicit n(Kind k) noexcept {\
 			kind = k;\
@@ -126,20 +137,17 @@ template<bool flag = false> void static_no_match() noexcept {
 			return *reinterpret_cast<const T*>(this);\
 		}\
 		template<typename T>\
-		T cast() noexcept {\
+		T& cast() noexcept {\
 			list(sum_type_X_cast)\
 			assert("Yeah no.");\
 			return *reinterpret_cast<T*>(this);\
 		}\
-		template<typename F, Kind k>\
+		template<typename F, typename k>\
 		void on_one_off_help(F f) noexcept {\
-			if (kind != k) return;\
-			switch(kind) {\
-				list(sum_type_X_one_of_call)\
-				default: return;\
-			}\
+			if (kind != MAP_type_kind<k>::kind) return;\
+			f(*reinterpret_cast<k*>(this));\
 		}\
-		template<Kind... kinds>\
+		template<typename... kinds>\
 		struct On_One_Off {\
 			n* ptr;\
 			On_One_Off(n* ptr) : ptr(ptr) {}\
@@ -149,12 +157,12 @@ template<bool flag = false> void static_no_match() noexcept {
 				return *this;\
 			}\
 		};\
-		template<Kind... kinds>\
-		On_One_Off<kinds...> on_one_off() noexcept {\
+		template<typename... kinds>\
+		On_One_Off<kinds...> on_one_off_() noexcept {\
 			return On_One_Off<kinds...>(this);\
 		}
 
-#define ON_ONE_OFF(x, t, ...) x.on_one_off<__VA_ARGS__>() = [&]
+#define on_one_off(...) on_one_off_<__VA_ARGS__>() = [&]
 
 #define sum_type_base(base_)\
 	base_* operator->() noexcept { return (base_*)this; }\

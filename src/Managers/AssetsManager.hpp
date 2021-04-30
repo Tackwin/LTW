@@ -45,6 +45,8 @@ namespace asset {
 		inline static size_t Carbon_Icon       = 24;
 		inline static size_t Hydrogen_Icon     = 25;
 		inline static size_t Upgrade_Icon      = 25;
+		inline static size_t Heat_Icon         = 0;
+		inline static size_t Radiation_Icon    = 0;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
@@ -87,6 +89,10 @@ namespace asset {
 		inline static size_t Propane = 12;
 		inline static size_t Butane = 13;
 		inline static size_t Plane = 14;
+		inline static size_t Heat_Surge = 0;
+		inline static size_t Heat = 0;
+		inline static size_t Radiation = 0;
+		inline static size_t Neutron = 0;
 	};
 	struct Sound_Id {
 		inline static size_t Ui_Action = 1;
