@@ -70,9 +70,9 @@ struct Straight_Projectile : Base_Projectile {
 };
 
 struct Split_Projectile : Base_Projectile {
-	float split_chance = 0.6f;
-	size_t n_split = 3;
-	size_t max_split = 7;
+	float split_chance = 0.65f;
+	size_t n_split = 2;
+	size_t max_split = 30;
 
 	Split_Projectile() noexcept {
 		object_id = asset::Object_Id::Neutron;
@@ -105,19 +105,22 @@ struct Board {
 	} gui;
 
 	Vector2f pos = {0, 0};
-	Vector2u size = { 20, 60 };
+	Vector2u size = { 60, 20 };
 	float tile_size = 0.39f;
 	float tile_padding = 0.01f;
 
 	double seconds_elapsed = 0.0;
 
-	size_t start_zone_height = 2;
-	size_t cease_zone_height = 2;
+	size_t start_zone_width = 2;
+	size_t cease_zone_width = 2;
 
 	xstd::Pool<Tile> tiles;
 	xstd::Pool<Unit> units;
 	xstd::Pool<Tower> towers;
 	xstd::Pool<Projectile> projectiles;
+
+	std::vector<Unit> unit_to_add;
+	std::vector<Projectile> proj_to_add;
 
 	struct Effect {
 		Vector3f pos;
@@ -147,10 +150,9 @@ struct Board {
 	void update(double dt) noexcept;
 	void render(render::Orders& orders) noexcept;
 
-	Tile& tile(Vector2u pos) noexcept;
 	Rectanglef tile_box(Rectangleu rec) noexcept { return tile_box(rec.pos, rec.size); }
 	Rectanglef tile_box(Vector2u pos, Vector2u size = {1, 1}) noexcept;
-	Rectanglef tile_box(size_t idx) noexcept { return tile_box({ idx % size.x, idx / size.x }); }
+	Rectanglef tile_box(size_t idx) noexcept { return tile_box(idx_to_vec(idx)); }
 	Rectanglef tower_box(const Tower& tower) noexcept;
 
 	void unit_spatial_partition() noexcept;
@@ -166,8 +168,16 @@ struct Board {
 	void remove_tower(Tower& p) noexcept;
 
 	void spawn_unit(Unit u) noexcept;
+	void spawn_unit_at(Unit u, size_t idx) noexcept {
+		spawn_unit_at(std::move(u), {idx / size.y, idx % size.y});
+	}
 	void spawn_unit_at(Unit u, Vector2u tile) noexcept;
 
+	Tile& at(size_t idx) noexcept { return at(idx_to_vec(idx)); }
+	Tile& at(Vector2u p) noexcept;
+
+	size_t vec_to_idx(Vector2u x) noexcept { return x.y + x.x * size.y; }
+	Vector2u idx_to_vec(size_t x) noexcept { return {x / size.y, x % size.y}; }
 
 	float bounding_tile_size() noexcept { return tile_size + tile_padding; };
 	bool can_place_at(Rectangleu zone) noexcept;

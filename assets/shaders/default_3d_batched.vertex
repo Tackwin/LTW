@@ -24,7 +24,8 @@ void main() {
 	gl_Position = vec4(in_position, 1.0) * M * VP;
 	position = (vec4(in_position, 1.0) * M).xyz;
 	texture_pos = vec2(8, 8) * in_uv;
-	normal = in_normal;
+
+	normal = inverse(mat3(M)) * in_normal;
 	tag = in_tag;
 
 	curr_pos_proj = gl_Position;

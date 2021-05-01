@@ -51,7 +51,9 @@ void game_startup(Game& game) noexcept {
 		game.boards[i].pos += game.board_pos_offset / 2;
 	}
 
-	game.camera3d.pos = Vector3f(game.boards[game.controller.board_id].pos, 5);
+	auto& b = game.boards[game.controller.board_id];
+	game.camera3d.pos = Vector3f(b.pos, 10);
+	game.camera3d.pos.y -= b.size.y * 5 * b.bounding_tile_size() / 9;
 	PROFILER_END_SEQ();
 	asset::Store.ready = true;
 }
@@ -96,8 +98,8 @@ void Game::input(Input_Info in) noexcept {
 				boards[controller.board_id].spawn_unit(Methane());
 		}
 
-		if (in.mouse_infos[Mouse::Left].just_pressed) {
-			if (!controller.placing.typecheck(Tower::None_Kind)) {
+		if (in.mouse_infos[Mouse::Left].pressed) {
+			if (controller.placing.kind != Tower::None_Kind) {
 
 				if (
 					player.ressources.gold >= controller.placing->gold_cost &&

@@ -42,7 +42,7 @@ void Board::update(double dt) noexcept {
 		dt_vec = dt_vec.normed();
 		x->pos += dt_vec * x->speed * dt;
 
-		if (x->pos.y + size.y * bounding_tile_size() / 2 < cease_zone_height) x.to_remove = true;
+		if (x->current_tile < size.y) x.to_remove = true;
 	}
 	
 	for (auto& x : units) if (!x.to_remove) {
@@ -74,7 +74,7 @@ void Board::update(double dt) noexcept {
 
 			auto p = get_projectile(towers[i], units.id(x.target_id));
 			p->pos = tower_box(towers[i]).center();
-			projectiles.push_back(p);
+			proj_to_add.push_back(p);
 			x.attack_cd = 1.f / x.attack_speed;
 		};
 
@@ -87,7 +87,7 @@ void Board::update(double dt) noexcept {
 				new_projectile.damage = x.damage;
 
 				new_projectile.pos = tower_pos;
-				projectiles.push_back(new_projectile);
+				proj_to_add.push_back(new_projectile);
 
 				x.attack_cd = 1.f / x.attack_speed;
 			}
@@ -116,7 +116,7 @@ void Board::update(double dt) noexcept {
 					p.life_time = 10;
 					p.damage = 1.f;
 					p.power = 20;
-					projectiles.push_back(p);
+					proj_to_add.push_back(p);
 				}
 				x.surge_timer = x.surge_time;
 			}
@@ -190,7 +190,7 @@ void Board::update(double dt) noexcept {
 						p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
 						p.life_time += (2 - p.life_time) * 0.1f;
 						p.max_split --;
-						projectiles.push_back(p);
+						proj_to_add.push_back(p);
 					}
 					y.to_remove = true;
 					break;
@@ -216,6 +216,9 @@ void Board::update(double dt) noexcept {
 		units.remove_at(i);
 	for (size_t i = towers.size() - 1; i + 1 > 0; --i) if (towers[i].to_remove)
 		towers.remove_at(i);
+
+	for (auto& x : proj_to_add) projectiles.push_back(x); proj_to_add.clear();
+	for (auto& x : unit_to_add) units.push_back(x); unit_to_add.clear();
 }
 
 void Board::render(render::Orders& order) noexcept {
@@ -232,7 +235,7 @@ void Board::render(render::Orders& order) noexcept {
 
 	order.push(b);
 	m.origin = {0.5f, 0.5f, 0.5f};
-	for2(i, j, size) if (tiles[i + j * size.x].typecheck(Tile::Empty_Kind)) {
+	for2(i, j, size) if (at({i, j}).kind == Tile::Empty_Kind) {
 		m.pos = Vector3f(tile_box({i, j}).center() + pos, 0);
 		m.scale = tile_box({i, j}).size.x;
 		order.push(m);
@@ -246,8 +249,8 @@ void Board::render(render::Orders& order) noexcept {
 			size_t j = next_tile[i];
 			if (j == SIZE_MAX) continue;
 
-			arrow.a = tile_box({ i % size.x, i / size.x }).center() + pos;
-			arrow.b = tile_box({ j % size.x, j / size.x }).center() + pos;
+			arrow.a = tile_box(i).center() + pos;
+			arrow.b = tile_box(j).center() + pos;
 			arrow.color = V4F(0.5f);
 			arrow.color.a = 1.f;
 
@@ -412,9 +415,6 @@ void Board::render(render::Orders& order) noexcept {
 	order.push(depth);
 }
 
-Tile& Board::tile(Vector2u pos) noexcept {
-	return tiles[pos.x + pos.y * size.x];
-}
 Rectanglef Board::tile_box(Vector2u pos, Vector2u size) noexcept {
 	Rectanglef rec;
 
@@ -441,10 +441,11 @@ void Board::compute_paths() noexcept {
 	dist_tile.clear();
 	dist_tile.resize(tiles.size(), SIZE_MAX);
 
-	for (size_t i = 0; i < size.x; ++i) {
-		path.open.push_back(i);
-		path.closed[i] = true;;
-		dist_tile[i] = 0;
+	for (size_t i = 0; i < size.y; ++i) {
+		size_t idx = i;
+		path.open.push_back(idx);
+		path.closed[idx] = true;
+		dist_tile[idx] = 0;
 	}
 
 	auto neighbors_list = std::initializer_list<Vector2i>{ {0, +1}, {0, -1}, {-1, 0}, {+1, 0} };
@@ -452,13 +453,13 @@ void Board::compute_paths() noexcept {
 	path.open_idx = 0;
 	while (path.open_idx < path.open.size()) {
 		auto it = path.open[path.open_idx++];
-		auto x = it % size.x;
-		auto y = it / size.x;
+		auto x = it / size.y;
+		auto y = it % size.y;
 
 		for (auto off : neighbors_list) if (
 			0 <= x + off.x && x + off.x < size.x && 0 <= y + off.y && y + off.y < size.y
 		) {
-			size_t t = (x + off.x) + (y + off.y) * size.x;
+			size_t t = vec_to_idx({x + off.x, y + off.y});
 			if (!tiles[t]->passthrough) continue;
 			if (path.closed[t]) continue;
 
@@ -481,13 +482,13 @@ void Board::soft_compute_paths() noexcept {
 	auto neighbors_list = std::initializer_list<Vector2i>{ {0, +1}, {0, -1}, {-1, 0}, {+1, 0} };
 
 	auto it = path.open[path.open_idx++];
-	auto x = it % size.x;
-	auto y = it / size.x;
+	auto x = it / size.y;
+	auto y = it % size.y;
 
 	for (auto off : neighbors_list) if (
 		0 <= x + off.x && x + off.x < size.x && 0 <= y + off.y && y + off.y < size.y
 	) {
-		size_t t = (x + off.x) + (y + off.y) * size.x;
+		size_t t = vec_to_idx({x + off.x, y + off.y});
 		if (!tiles[t]->passthrough) continue;
 		if (path.closed[t]) continue;
 
@@ -517,7 +518,7 @@ void Board::insert_tower(Tower t) noexcept {
 	auto pos = t->tile_pos;
 
 	towers.push_back(std::move(t));
-	for2 (i, j, t->tile_size) tiles[(pos.x + i) + (pos.y + j) * size.x] = Block{};
+	for2 (i, j, t->tile_size) at(pos + Vector2u{i, j}) = Block{};
 	invalidate_paths();
 }
 
@@ -537,7 +538,7 @@ void Board::remove_tower(Tower& to_remove) noexcept {
 	auto& t = to_remove;
 	for (size_t i = 0; i < t->tile_size.x; ++i)
 	for (size_t j = 0; j < t->tile_size.y; ++j) {
-		tiles[(t->tile_pos.x + i) + (t->tile_pos.y + j) * size.x] = Empty{};
+		at(t->tile_pos + Vector2u{i, j}) = Empty{};
 	}
 	invalidate_paths();
 }
@@ -554,38 +555,44 @@ void Board::invalidate_paths() noexcept {
 	dist_tile.clear();
 	dist_tile.resize(tiles.size(), SIZE_MAX);
 
-	for (size_t i = 0; i < size.x; ++i) {
-		path.open.push_back(i);
-		dist_tile[i] = 0;
-		path.closed[i] = true;
+	for (size_t i = 0; i < size.y; ++i) {
+		size_t idx = i;
+		path.open.push_back(idx);
+		dist_tile[idx] = 0;
+		path.closed[idx] = true;
 	}
 }
 
+Tile& Board::at(Vector2u p) noexcept {
+	return tiles[vec_to_idx(p)];
+}
+
 void Board::spawn_unit(Unit u) noexcept {
-	size_t first = (size.y - start_zone_height) * size.x;
+	size_t first = (size.x - start_zone_width) * size.y;
 	size_t final = size.x * size.y;
 
 	size_t t = (size_t)(first + xstd::random() * (final - first));
-	spawn_unit_at(u, { t % size.x, t / size.x });
+	spawn_unit_at(u, t);
 }
 void Board::spawn_unit_at(Unit u, Vector2u tile) noexcept {
-	u->current_tile = tile.x + tile.y * size.x;
+	u->current_tile = vec_to_idx(tile);
 
 	auto rec = tile_box(tile);
 
 	u->pos.x = rec.x + xstd::random() * rec.w;
 	u->pos.y = rec.y + xstd::random() * rec.h;
+	u->last_pos = u->pos;
 
-	units.push_back(u);
+	unit_to_add.push_back(u);
 }
 
 bool Board::can_place_at(Rectangleu zone) noexcept {
-	if (zone.y < cease_zone_height) return false;
-	if (zone.y + zone.h > size.y - start_zone_height) return false;
+	if (zone.x < start_zone_width) return false;
+	if (zone.x + zone.w > size.x - cease_zone_width) return false;
 
 	for (size_t i = zone.x; i < zone.x + zone.w; ++i)
 	for (size_t j = zone.y; j < zone.y + zone.h; ++j) {
-		if (!tiles[i + j * size.x].typecheck(Tile::Empty_Kind)) return false;
+		if (at({i, j}).kind != Tile::Empty_Kind) return false;
 	}
 
 	return true;
@@ -683,7 +690,7 @@ void Board::unit_spatial_partition() noexcept {
 		p /= tile_size;
 		Vector2u p_u = (Vector2u)p;
 
-		unit_id_by_tile[p_u.x + p_u.y * size.x].push_back(x.id);
+		unit_id_by_tile[vec_to_idx(p_u)].push_back(x.id);
 	}
 }
 
@@ -707,7 +714,7 @@ void Board::die_event_at(Unit& u) noexcept {
 	u.on_one_off(UNIT_SPLIT) (auto& x) {
 		auto n = x.split_n;
 		auto pos = x.pos;
-		auto tile = Vector2u{ x.current_tile % size.x, x.current_tile / size.x };
+		auto tile = idx_to_vec(x.current_tile);
 		for (size_t i = 0; i < n; ++i) {
 			typename TYPE(x)::split_to spawned;
 
