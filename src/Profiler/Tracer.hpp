@@ -2,9 +2,17 @@
 
 #include <filesystem>
 #include <string>
+#include <array>
 
 #include <dyn_struct.hpp>
 #include <chrono>
+
+#ifdef _MSC_VER
+# include <intrin.h>
+#else
+# include <x86intrin.h>
+#endif
+#include "OS/Process.hpp"
 
 struct Scoped_Timer {
 
@@ -85,3 +93,35 @@ struct Scoped_Session {
 #define PROFILER_SEQ(n)
 #define PROFILER_END_SEQ()
 #endif
+
+struct Sample {
+	const char* function_name = nullptr;
+	size_t thread_id   = 0;
+	std::uint64_t cycle_start = 0;
+	std::uint64_t cycle_end   = 0;
+};
+
+struct Sample_Log {
+	static constexpr size_t MAX_SAMPLE = 4096;
+	std::array<Sample, MAX_SAMPLE> samples;
+	std::atomic<size_t> sample_count = 0;
+};
+extern Sample_Log frame_sample_log;
+
+struct Timed_Block {
+	Sample s;
+
+	Timed_Block(const char* function_name) noexcept {
+		s.function_name = function_name;
+		s.cycle_start = __rdtsc();
+		s.thread_id = get_thread_id();
+	}
+
+	~Timed_Block() noexcept {
+		s.cycle_end = __rdtsc();
+
+		frame_sample_log.samples[frame_sample_log.sample_count++] = s;
+	}
+};
+
+#define TIMED_FUNCTION() Timed_Block scoped_timed_bloc_##__COUNTER__(__FUNCSIG__);

@@ -2,6 +2,8 @@
 #include <assert.h>
 #include "OS/Process.hpp"
 
+Sample_Log frame_sample_log;
+
 Tracer::Tracer() noexcept {}
 
 void Tracer::begin_session(std::string name) noexcept {
