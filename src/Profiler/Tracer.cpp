@@ -2,7 +2,8 @@
 #include <assert.h>
 #include "OS/Process.hpp"
 
-Sample_Log frame_sample_log;
+size_t frame_sample_log_frame_idx = 0;
+Sample_Log frame_sample_log[];
 
 Tracer::Tracer() noexcept {}
 

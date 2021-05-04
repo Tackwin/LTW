@@ -6,6 +6,8 @@
 
 #include <type_traits>
 
+#include "Profiler/Tracer.hpp"
+
 void Board::input(const Input_Info& in, Vector2f mouse_world_pos) noexcept {
 	if (in.mouse_infos[Mouse::Right].just_released) {
 		auto tile = get_tile_at(mouse_world_pos);
@@ -14,6 +16,7 @@ void Board::input(const Input_Info& in, Vector2f mouse_world_pos) noexcept {
 }
 
 void Board::update(double dt) noexcept {
+	TIMED_FUNCTION;
 	seconds_elapsed += dt;
 	if (tiles.size() != size.x * size.y) tiles.resize(size.x * size.y, Empty{});
 
@@ -25,6 +28,8 @@ void Board::update(double dt) noexcept {
 	ressources_gained = {};
 	current_wave.spawn(dt, *this);
 
+	{
+	TIMED_BLOCK("Units");
 	for (auto& x : units) x->life_time += dt;
 
 	for (auto& x : units) if (!x.to_remove) {
@@ -52,10 +57,15 @@ void Board::update(double dt) noexcept {
 		}
 	}
 
+	unit_spatial_partition();
+	}
+
 	for (auto& x : effects) {
 		x.age -= dt;
 	}
 
+	{
+	TIMED_BLOCK("Towers");
 	for (size_t i = 0; i < towers.size(); ++i) {
 		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
 		auto base = towers[i].base();
@@ -123,7 +133,10 @@ void Board::update(double dt) noexcept {
 			x.to_surge = x.always_surge;
 		}
 	}
+	}
 
+	{
+	TIMED_BLOCK("Projectiles");
 	for (auto& y : projectiles) {
 		y->life_time -= dt;
 		if (y->life_time < 0) y.to_remove = true;
@@ -177,28 +190,49 @@ void Board::update(double dt) noexcept {
 
 			x.pos += x.dir * x.speed * dt;
 
-			for (auto& u : units) if (!u.to_remove) {
-				auto d = (x.pos - u->pos).length2();
+			Vector2u proj_tile;
+			proj_tile.x = (size_t)std::clamp(
+				(x.pos.x + bounding_tile_size() * size.x / 2.f) / bounding_tile_size(),
+				0.f,
+				size.x - 1.f
+			);
+			proj_tile.y = (size_t)std::clamp(
+				(x.pos.y + bounding_tile_size() * size.y / 2.f) / bounding_tile_size(),
+				0.f,
+				size.y - 1.f
+			);
 
-				if (d < x.r * x.r) {
-					hit_event_at(Vector3f(x.pos, 0.5f), y);
-					u->health -= 1;
+			for (int off_x = -1; off_x <= 1; ++off_x) for (int off_y = -1; off_y <= 1; ++off_y)
+			if (size.x > proj_tile.x + off_x && size.y > proj_tile.y + off_y) {
+				auto vec = Vector2u{proj_tile.x + off_x, proj_tile.y + off_y};
+				for (auto& u_id : unit_id_by_tile[vec_to_idx(vec)]) {
+					auto& u = units.id(u_id);
+					if (u.to_remove) continue;
+					auto d = (x.pos - u->pos).length2();
 
-					if (x.max_split > 0)
-					if (xstd::random() < x.split_chance) for (size_t i = 0; i < x.n_split; ++i) {
-						auto p = x;
-						p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
-						p.life_time += (2 - p.life_time) * 0.1f;
-						p.max_split --;
-						proj_to_add.push_back(p);
+					if (d < x.r * x.r) {
+						hit_event_at(Vector3f(x.pos, 0.5f), y);
+						u->health -= 1;
+
+						if (x.max_split > 0)
+						if (xstd::random() < x.split_chance) for (size_t i = 0; i < x.n_split; ++i) {
+							auto p = x;
+							p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
+							p.life_time += (2 - p.life_time) * 0.1f;
+							p.max_split --;
+							proj_to_add.push_back(p);
+						}
+						y.to_remove = true;
+						break;
 					}
-					y.to_remove = true;
-					break;
 				}
 			}
 		}
 	}
+	}
 
+	{
+	TIMED_BLOCK("Units");
 	for (size_t i = 0; i < units.size(); ++i) {
 		auto& x = units[i];
 		if (x->to_die) {
@@ -206,19 +240,21 @@ void Board::update(double dt) noexcept {
 			x->to_die = false;
 		}
 	}
+	}
 
+	{
+	TIMED_BLOCK("Remove and addition");
 	xstd::remove_all(
 		effects, [](auto& x) { return x.age < 0; }
 	);
-	for (size_t i = projectiles.size() - 1; i + 1 > 0; --i) if (projectiles[i].to_remove)
-		projectiles.remove_at(i);
-	for (size_t i = units.size() - 1; i + 1 > 0; --i) if (units[i].to_remove)
-		units.remove_at(i);
-	for (size_t i = towers.size() - 1; i + 1 > 0; --i) if (towers[i].to_remove)
-		towers.remove_at(i);
+
+	projectiles.remove_all([](auto& x) { return x.to_remove; });
+	units.remove_all([](auto& x) { return x.to_remove; });
+	towers.remove_all([](auto& x) { return x.to_remove; });
 
 	for (auto& x : proj_to_add) projectiles.push_back(x); proj_to_add.clear();
 	for (auto& x : unit_to_add) units.push_back(x); unit_to_add.clear();
+	}
 }
 
 void Board::render(render::Orders& order) noexcept {
@@ -680,17 +716,11 @@ void Board::pick_new_target(Tower& tower) noexcept {
 }
 
 void Board::unit_spatial_partition() noexcept {
-	// >TODO(Tackwin): this crash.
-	return;
 	unit_id_by_tile.resize(size.x * size.y);
 	for (auto& x : unit_id_by_tile) x.clear();
 
 	for (auto& x : units) {
-		Vector2f p = x->pos + Vector2f{size.x - 1.f, size.y - 1.f} * tile_size / 2;
-		p /= tile_size;
-		Vector2u p_u = (Vector2u)p;
-
-		unit_id_by_tile[vec_to_idx(p_u)].push_back(x.id);
+		unit_id_by_tile[x->current_tile].push_back(x.id);
 	}
 }
 

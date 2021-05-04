@@ -477,8 +477,8 @@ Input_Info get_new_frame_input(const Input_Record& records, double dt) noexcept 
 	new_record.mouse_pos.y = (screen_pos.y - new_record.mouse_pos.y) / Environment.viewport_size.y;
 	new_record.mouse_delta = new_record.mouse_pos - last_mouse_pos;
 
-	new_record.key_captured = ImGui::GetIO().WantCaptureKeyboard;
-	new_record.mouse_captured = ImGui::GetIO().WantCaptureMouse;
+	//new_record.key_captured = ImGui::GetIO().WantCaptureKeyboard;
+	//new_record.mouse_captured = ImGui::GetIO().WantCaptureMouse;
 
 	new_record.new_character = current_char;
 	current_char = '\0';

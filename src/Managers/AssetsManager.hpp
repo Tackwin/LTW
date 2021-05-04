@@ -47,6 +47,7 @@ namespace asset {
 		inline static size_t Upgrade_Icon      = 25;
 		inline static size_t Heat_Icon         = 0;
 		inline static size_t Radiation_Icon    = 0;
+		inline static size_t Cursor            = 0;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;

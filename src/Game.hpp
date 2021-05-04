@@ -36,6 +36,7 @@ struct Game {
 	struct Gui {
 		bool board_open = true;
 		bool game_debug_open = true;
+		bool render_profiler = false;
 		bool debug_depth_buffer = false;
 
 		size_t edge_blur = 1;

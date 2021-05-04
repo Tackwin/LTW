@@ -97,31 +97,35 @@ struct Scoped_Session {
 struct Sample {
 	const char* function_name = nullptr;
 	size_t thread_id   = 0;
-	std::uint64_t cycle_start = 0;
-	std::uint64_t cycle_end   = 0;
+	std::uint64_t time_start = 0;
+	std::uint64_t time_end   = 0;
 };
 
 struct Sample_Log {
+	static constexpr size_t MAX_FRAME_RECORD = 200;
 	static constexpr size_t MAX_SAMPLE = 4096;
 	std::array<Sample, MAX_SAMPLE> samples;
 	std::atomic<size_t> sample_count = 0;
 };
-extern Sample_Log frame_sample_log;
+extern size_t frame_sample_log_frame_idx;
+extern Sample_Log frame_sample_log[Sample_Log::MAX_FRAME_RECORD];
 
 struct Timed_Block {
 	Sample s;
 
 	Timed_Block(const char* function_name) noexcept {
 		s.function_name = function_name;
-		s.cycle_start = __rdtsc();
+		s.time_start = xstd::nanoseconds();
 		s.thread_id = get_thread_id();
 	}
 
 	~Timed_Block() noexcept {
-		s.cycle_end = __rdtsc();
+		s.time_end = xstd::nanoseconds();
 
-		frame_sample_log.samples[frame_sample_log.sample_count++] = s;
+		auto& f = frame_sample_log[frame_sample_log_frame_idx];
+		f.samples[f.sample_count++] = s;
 	}
 };
 
-#define TIMED_FUNCTION() Timed_Block scoped_timed_bloc_##__COUNTER__(__FUNCSIG__);
+#define TIMED_FUNCTION Timed_Block scoped_timed_bloc_##__COUNTER__(__FUNCSIG__);
+#define TIMED_BLOCK(name) Timed_Block scoped_timed_bloc_##__COUNTER__(name);

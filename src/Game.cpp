@@ -1,6 +1,7 @@
 #include "Game.hpp"
 
 #include <stdio.h>
+#include <set>
 #include "GL/glew.h"
 
 #include "global.hpp"
@@ -285,6 +286,8 @@ void Game::input(Input_Info in) noexcept {
 }
 
 Game_Request Game::update(double dt) noexcept {
+	TIMED_FUNCTION;
+
 	running_ms = dt;
 
 	input_record.push_back(get_new_frame_input(input_record, dt));
@@ -338,7 +341,13 @@ void Game::next_wave() noexcept {
 }
 
 Game_Request game_update(Game& game, double dt) noexcept {
-	return game.update(dt);
+	auto res = game.update(dt);
+
+	frame_sample_log_frame_idx++;
+	frame_sample_log_frame_idx %= Sample_Log::MAX_FRAME_RECORD;
+	frame_sample_log[frame_sample_log_frame_idx].sample_count = 0;
+
+	return res;
 }
 
 void game_render(Game& game, render::Orders& order) noexcept {
@@ -350,6 +359,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 		if (ImGui::CollapsingHeader("SSAO")) {
 			ImGui::SliderSize("radius", &game.gui.edge_blur, 0, 10);
 		}
+		ImGui::Checkbox("Render Profiler", &game.gui.render_profiler);
 		ImGui::Checkbox("depth buffer", &game.gui.debug_depth_buffer);
 		ImGui::SliderFloat("Cam speed", &game.camera_speed, 0, 10);
 		temp = game.controller.board_id;
@@ -366,9 +376,12 @@ void game_render(Game& game, render::Orders& order) noexcept {
 			1'000'000 * game.running_ms
 		);
 		size_t units = 0;
+		size_t projectiles = 0;
 
 		for (auto& x : game.boards) units += x.units.size();
+		for (auto& x : game.boards) projectiles += x.projectiles.size();
 		ImGui::Text("Units: %zu", units);
+		ImGui::Text("Projectiles: %zu", projectiles);
 		ImGui::End();
 	}
 
@@ -424,4 +437,101 @@ void game_render(Game& game, render::Orders& order) noexcept {
 	}
 
 	game.user_interface.render(order);
+
+	if (game.gui.render_profiler) {
+		render::Camera cam;
+		cam.rec = {{0, 0}, {1920, 1080}};
+		cam.rec.pos += cam.rec.size / 2;
+		order.push(render::Push_Ui{});
+		order.push(cam);
+
+		defer {
+			order.push(render::Pop_Camera{});
+			order.push(render::Pop_Ui{});
+		};
+
+		thread_local std::set<const char*> function_names;
+		function_names.clear();
+		for (size_t i = 0; i < Sample_Log::MAX_FRAME_RECORD; ++i)
+			for (size_t j = 0; j < frame_sample_log[i].sample_count; ++j) {
+				function_names.insert(frame_sample_log[i].samples[j].function_name);
+			}
+
+		size_t max_time = 0;
+		for (size_t i = 0; i < Sample_Log::MAX_FRAME_RECORD; ++i) {
+			for (size_t j = 0; j < frame_sample_log[i].sample_count; ++j) {
+				auto& it = frame_sample_log[i].samples[j];
+				max_time = std::max(max_time, it.time_end - it.time_start);
+			}
+		}
+		max_time = std::max(max_time, (size_t)2'200'000 /*ns*/);
+
+		Vector2f cursor = {10, 10};
+		for (size_t i = 0; i < Sample_Log::MAX_FRAME_RECORD; ++i) {
+			float cursor_y = cursor.y;
+			auto& it = frame_sample_log[i];
+
+			for (auto& f : function_names) {
+				size_t sum = 0;
+				for (size_t j = 0; j < it.sample_count; ++j) {
+					auto& sample = it.samples[j];
+					if (sample.function_name != f) continue;
+
+					sum += sample.time_end - sample.time_start;
+				}
+
+				render::Rectangle r;
+				r.pos = cursor;
+				r.size = {5.f, 50.f * sum / max_time};
+				     if (sum < 1'000'000) r.color = {0, 0, 1, 1};
+				else if (sum < 2'000'000) r.color = {1, 1, 0, 1};
+				else                      r.color = {1, 0, 0, 1};
+
+				order.push(r);
+
+				cursor.y += 100;
+			}
+
+			cursor.x += 5;
+			cursor.y = cursor_y;
+		}
+		cursor = {10, 10};
+		for (auto& f : function_names) {
+			size_t anchor = 1'000'000;
+
+			render::Rectangle r;
+			r.pos = cursor;
+			r.pos.y += 50.f * anchor / max_time;
+			r.size = {5 * Sample_Log::MAX_FRAME_RECORD, 2};
+			r.color = {0.5f, 0.5f, 0.5f, 0.5f};
+
+			order.push(r);
+			anchor = 2'000'000;
+
+			r.pos = cursor;
+			r.pos.y += 50.f * anchor / max_time;
+			r.size = {5 * Sample_Log::MAX_FRAME_RECORD, 2};
+			r.color = {1.f, 1.f, 1.f, 1.f};
+
+			order.push(r);
+			cursor.y += 100;
+		}
+
+		cursor.x = 50 + 5 * Sample_Log::MAX_FRAME_RECORD;
+		cursor.y = 10;
+		for (auto& f : function_names) {
+			render::Text text;
+			text.color = {1, 1, 1, 1};
+			text.font_id = asset::Font_Id::Consolas;
+			text.height = 20;
+			text.origin = {0, 0};
+			text.pos = cursor;
+			text.text = order.string(f);
+			text.text_length = strlen(f);
+
+			order.push(text);
+			cursor.y += 100;
+		}
+	}
+
 }

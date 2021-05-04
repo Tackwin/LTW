@@ -289,6 +289,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/upgrade_icon.png", Upgrade_Icon);
 	X("assets/textures/heat_icon.png", Heat_Icon);
 	X("assets/textures/radiation_icon.png", Radiation_Icon);
+	X("assets/textures/cursor.png", Cursor);
 
 #undef X
 }

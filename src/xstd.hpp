@@ -246,18 +246,15 @@ namespace xstd {
 	template<typename T>
 	struct Pool {
 		inline static size_t ID = 1;
-		std::vector<size_t> indexes;
 		std::vector<T> pool;
 		std::unordered_map<size_t, size_t> pool_ids;
 
 		void resize(size_t n, T v = {}) noexcept {
 			pool.resize(n, v);
-			for (size_t i = indexes.size(); i < n; ++i) {
-				indexes.push_back(ID++);
-				assign_id(i, indexes.back());
+			for (size_t i = pool_ids.size(); i < n; ++i) {
+				pool_ids[ID] = i;
+				assign_id(i, ID++);
 			}
-			pool_ids.clear();
-			for (size_t i = 0; i < pool.size(); ++i) pool_ids[indexes[i]] = i;
 		}
 		void clear() noexcept {
 			pool.clear();
@@ -265,16 +262,15 @@ namespace xstd {
 		}
 		void push_back(const T& v) noexcept {
 			pool.push_back(v);
-			indexes.push_back(ID++);
-			pool_ids[indexes.back()] = pool.size() - 1;
-			assign_id(pool.size() - 1, indexes.back());
+			pool_ids[ID] = pool.size() - 1;
+			assign_id(pool.size() - 1, ID++);
 		}
 
-		void remove_at(size_t idx) noexcept {
-			pool_ids.erase(indexes[idx]);
-			for (auto& [_, x] : pool_ids) if (x > idx) x--;
-			pool.erase(std::begin(pool) + idx);
-			indexes.erase(std::begin(indexes) + idx);
+		template<typename F>
+		void remove_all(F f) noexcept {
+			pool_ids.clear();
+			xstd::remove_all(pool, f);
+			for (size_t i = 0; i < pool.size(); ++i) pool_ids[pool[i].id] = i;
 		}
 
 		auto begin() noexcept {
