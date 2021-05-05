@@ -44,7 +44,8 @@ namespace asset {
 		inline static size_t Volter_Icon       = 23;
 		inline static size_t Carbon_Icon       = 24;
 		inline static size_t Hydrogen_Icon     = 25;
-		inline static size_t Upgrade_Icon      = 25;
+		inline static size_t Oxygen_Icon       = 0;
+		inline static size_t Upgrade_Icon      = 0;
 		inline static size_t Heat_Icon         = 0;
 		inline static size_t Radiation_Icon    = 0;
 		inline static size_t Cursor            = 0;

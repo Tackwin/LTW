@@ -16,7 +16,7 @@ struct Unit_Base {
 	size_t target_tile  = SIZE_MAX;
 	Vector2f pos;
 	Vector2f last_pos;
-	float speed = 0.5f;
+	float speed = 2.f;
 
 	float health = 1.f;
 
@@ -27,13 +27,16 @@ struct Unit_Base {
 	Vector3f color = {1, 1, 1};
 
 	bool to_die = false;
+	float invincible = 0.f;
+
+	virtual void hit(float damage) noexcept;
 
 	virtual Ressources get_drop() noexcept { return {}; }
 };
 
 struct Methane : Unit_Base {
 	Methane() noexcept {
-		speed = 0.5f;
+		speed = 2.f;
 		object_id = asset::Object_Id::Methane;
 	}
 
@@ -44,7 +47,7 @@ struct Ethane : Unit_Base {
 	size_t     split_n  = 2;
 
 	Ethane() noexcept {
-		speed = 0.4f;
+		speed = 1.5f;
 		object_id = asset::Object_Id::Ethane;
 		color /= 2;
 	}
@@ -55,7 +58,7 @@ struct Propane : Unit_Base {
 	size_t     split_n  = 2;
 
 	Propane() noexcept {
-		speed = 0.3f;
+		speed = 0.75f;
 		object_id = asset::Object_Id::Propane;
 		color /= 3;
 	}
@@ -66,7 +69,7 @@ struct Butane : Unit_Base {
 	size_t     split_n  = 2;
 
 	Butane() noexcept {
-		speed = 0.15f;
+		speed = 0.25f;
 		object_id = asset::Object_Id::Butane;
 		color /= 5;
 	}
@@ -75,9 +78,10 @@ struct Butane : Unit_Base {
 struct Water   : Unit_Base {
 	Water()   noexcept {
 		object_id = asset::Object_Id::Water;
-		health = 0.5f;
 		speed = 2;
 	}
+
+	virtual Ressources get_drop() noexcept { return {.gold = 1, .hydrogens = 2, .oxygens = 1}; }
 };
 struct Oxygen  : Unit_Base {
 	Oxygen() noexcept {
@@ -85,10 +89,19 @@ struct Oxygen  : Unit_Base {
 		health = 1.f;
 		speed  = 1.f;
 	}
+	virtual Ressources get_drop() noexcept { return {.gold = 1, .oxygens = 2}; }
 };
 
+template<typename T> struct Merge {};
+template<typename T> using Merge_t = typename Merge<T>::type;
+template<>           struct Merge<Methane> { using type = Ethane; };
+template<>           struct Merge<Ethane>  { using type = Propane; };
+template<>           struct Merge<Propane> { using type = Butane; };
 
+#define UNIT_MERGE Methane, Ethane, Propane
 #define UNIT_SPLIT Ethane, Propane, Butane
+#define UNIT_DIE_CATALYST_MERGE Water
+#define UNIT_DIE_INVINCIBLE_BUFF Oxygen
 #define LIST_UNIT(X) X(Methane) X(Ethane) X(Propane) X(Butane) X(Water) X(Oxygen)
 
 struct Unit {

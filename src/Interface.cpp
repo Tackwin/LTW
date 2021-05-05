@@ -274,6 +274,8 @@ void Interface::render_top_bar(render::Orders& orders) noexcept {
 		pos_carbon.x += 0.075f;
 		Vector2f pos_hydro = pos_carbon;
 		pos_hydro.x += 0.075f;
+		Vector2f pos_oxy= pos_hydro;
+		pos_oxy.x += 0.075f;
 
 		auto push_ressource = [&](size_t texture_id, Vector2f pos, size_t n) {
 			temp_string.clear();
@@ -309,6 +311,7 @@ void Interface::render_top_bar(render::Orders& orders) noexcept {
 		push_ressource(Texture_Id::Gold_Icon,     pos_gold,   current_player->ressources.gold);
 		push_ressource(Texture_Id::Carbon_Icon,   pos_carbon, current_player->ressources.carbons);
 		push_ressource(Texture_Id::Hydrogen_Icon, pos_hydro,  current_player->ressources.hydrogens);
+		push_ressource(Texture_Id::Oxygen_Icon,   pos_oxy,    current_player->ressources.oxygens);
 	}
 
 	temp_string = "Wave: #" + std::to_string(current_wave + 1);

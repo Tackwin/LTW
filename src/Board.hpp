@@ -47,12 +47,16 @@ struct Base_Projectile {
 	size_t from = 0;
 
 	float life_time = FLT_MAX;
+
+	bool hit = false;
 };
 
 struct Seek_Projectile : Base_Projectile {
 	size_t to = 0;
 
 	float damage = 0.5f;
+
+	size_t unit_hit = 0;
 
 	Seek_Projectile() noexcept {
 		object_id = asset::Object_Id::Photon;
@@ -62,6 +66,7 @@ struct Straight_Projectile : Base_Projectile {
 	float damage = 0.5f;
 
 	size_t power = 10;
+	size_t unit_hit = 0;
 
 	Straight_Projectile() noexcept {
 		speed = 2.f;
@@ -70,11 +75,16 @@ struct Straight_Projectile : Base_Projectile {
 };
 
 struct Split_Projectile : Base_Projectile {
-	float split_chance = 0.65f;
+	float split_chance = 0.6f;
 	size_t n_split = 2;
 	size_t max_split = 30;
 
+	size_t unit_hit = 0;
+
+	float damage = 1.f;
+
 	Split_Projectile() noexcept {
+		speed = 1.f;
 		object_id = asset::Object_Id::Neutron;
 	}
 };
@@ -88,6 +98,16 @@ struct Splash_Projectile : Base_Projectile {
 		object_id = asset::Object_Id::Heat_Surge;
 	}
 };
+
+// travel behavior
+#define PROJ_SEEK_LIST Seek_Projectile
+#define PROJ_TARGET_LIST Splash_Projectile
+#define PROJ_STRAIGHT_LIST Straight_Projectile, Split_Projectile
+
+// hit behavior
+#define PROJ_SPLASH_LIST Splash_Projectile
+#define PROJ_SPLIT_LIST Split_Projectile
+#define PROJ_SIMPLE_HIT_LIST Seek_Projectile, Split_Projectile
 
 #define PROJ_LIST(X)\
 	X(Seek_Projectile) X(Straight_Projectile) X(Splash_Projectile) X(Split_Projectile)

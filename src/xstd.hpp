@@ -164,6 +164,20 @@ template<bool flag = false> void static_no_match() noexcept {
 
 #define on_one_off(...) on_one_off_<__VA_ARGS__>() = [&]
 
+template<typename... Ts>
+struct For_Each_ {
+	template<typename T>
+	struct tag { using type = T; };
+
+	template<typename F>
+	For_Each_<Ts...>& operator=(F f) && {
+		(f(tag<Ts>()), ...);
+		return *this;
+	};
+};
+
+#define for_each_type(...) For_Each_<__VA_ARGS__>() = [&]
+
 #define sum_type_base(base_)\
 	base_* operator->() noexcept { return (base_*)this; }\
 	base_* base() noexcept { return (base_*)this; }\
@@ -268,9 +282,16 @@ namespace xstd {
 
 		template<typename F>
 		void remove_all(F f) noexcept {
-			pool_ids.clear();
-			xstd::remove_all(pool, f);
-			for (size_t i = 0; i < pool.size(); ++i) pool_ids[pool[i].id] = i;
+			size_t s = pool.size();
+			for (size_t i = 0; i < s; ++i) if (f(pool[i])) {
+				pool_ids[pool[s - 1].id] = i;
+				pool_ids.erase(pool[i].id);
+				pool[i] = pool[s - 1];
+
+				--i;
+				--s;
+			}
+			pool.resize(s);
 		}
 
 		auto begin() noexcept {

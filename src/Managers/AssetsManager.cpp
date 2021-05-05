@@ -286,6 +286,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/volter_icon.png", Volter_Icon);
 	X("assets/textures/carbon_icon.png", Carbon_Icon);
 	X("assets/textures/hydrogen_icon.png", Hydrogen_Icon);
+	X("assets/textures/oxygen_icon.png", Oxygen_Icon);
 	X("assets/textures/upgrade_icon.png", Upgrade_Icon);
 	X("assets/textures/heat_icon.png", Heat_Icon);
 	X("assets/textures/radiation_icon.png", Radiation_Icon);

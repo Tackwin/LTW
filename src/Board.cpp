@@ -30,7 +30,10 @@ void Board::update(double dt) noexcept {
 
 	{
 	TIMED_BLOCK("Units");
-	for (auto& x : units) x->life_time += dt;
+	for (auto& x : units) {
+		x->life_time += dt;
+		x->invincible -= dt;
+	}
 
 	for (auto& x : units) if (!x.to_remove) {
 		auto next = next_tile[x->current_tile];
@@ -142,54 +145,21 @@ void Board::update(double dt) noexcept {
 		if (y->life_time < 0) y.to_remove = true;
 		if (y.to_remove) continue;
 
-		if (y.kind == Projectile::Seek_Projectile_Kind) {
-			auto& x = y.Seek_Projectile_;
-			if (!units.exist(x.to)) { y.to_remove = true; continue; }
+		y.on_one_off(PROJ_SEEK_LIST) (auto& x) {
+			if (!units.exist(x.to)) { y.to_remove = true; return; }
 			auto& to = units.id(x.to);
-			if (to.to_remove) { y.to_remove = true; continue; }
+			if (to.to_remove) { y.to_remove = true; return; }
 
-			x.pos += x.dir * x.speed * dt;
 			if ((to->pos - x.pos).length2() < 0.1f) {
-				y.to_remove = true;
-				to->health -= x.damage;
-				hit_event_at(Vector3f(x.pos, 0.5f), y);
+				x.unit_hit = x.to;
+				x.hit = true;
 			}
 
 			auto target = units.id(x.to)->pos;
 			x.dir = (target - x.pos).normalize();
-		} else if (y.kind == Projectile::Straight_Projectile_Kind) {
-			auto& x = y.Straight_Projectile_;
+		};
 
-			x.pos += x.dir * x.speed * dt;
-
-			for (auto& u : units) if (!u.to_remove) {
-				auto d = (x.pos - u->pos).length2();
-
-				if (d < x.r * x.r) {
-					hit_event_at(Vector3f(x.pos, 0.5f), y);
-					u->health -= x.damage;
-					x.power--;
-					if (x.power == 0) y.to_remove = true;
-					break;
-				}
-			}
-		} else if (y.kind == Projectile::Splash_Projectile_Kind) {
-			auto& x = y.Splash_Projectile_;
-			
-			x.dir = (x.target - x.pos).normed();
-			x.pos += x.dir * x.speed * dt;
-
-			if (x.pos.dist_to2(x.target) < x.r * x.r) {
-				hit_event_at(Vector3f(x.pos, 0.5f), y);
-				y.to_remove = true;
-
-				for (auto& u : units) if (u->pos.dist_to2(x.target) <= x.r * x.r) u->health -= 1;
-			}
-		} else if (y.kind == Projectile::Split_Projectile_Kind) {
-			auto& x = y.Split_Projectile_;
-
-			x.pos += x.dir * x.speed * dt;
-
+		y.on_one_off(PROJ_STRAIGHT_LIST) (auto& x) {
 			Vector2u proj_tile;
 			proj_tile.x = (size_t)std::clamp(
 				(x.pos.x + bounding_tile_size() * size.x / 2.f) / bounding_tile_size(),
@@ -211,23 +181,54 @@ void Board::update(double dt) noexcept {
 					auto d = (x.pos - u->pos).length2();
 
 					if (d < x.r * x.r) {
-						hit_event_at(Vector3f(x.pos, 0.5f), y);
-						u->health -= 1;
-
-						if (x.max_split > 0)
-						if (xstd::random() < x.split_chance) for (size_t i = 0; i < x.n_split; ++i) {
-							auto p = x;
-							p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
-							p.life_time += (2 - p.life_time) * 0.1f;
-							p.max_split --;
-							proj_to_add.push_back(p);
-						}
-						y.to_remove = true;
-						break;
+						x.hit = true;
+						x.unit_hit = u_id;
+						return;
 					}
 				}
 			}
-		}
+		};
+		
+		y.on_one_off(PROJ_TARGET_LIST) (auto& x) {
+			x.dir = (x.target - x.pos).normed();
+			if (x.pos.dist_to2(x.target) < x.r * x.r) x.hit = true;
+		};
+
+		y.on_one_off(PROJ_SPLIT_LIST) (auto& x) {
+			if (x.hit) {
+				if (x.max_split > 0)
+				if (xstd::random() < x.split_chance) for (size_t i = 0; i < x.n_split; ++i) {
+					auto p = x;
+					p.dir = Vector2f::createUnitVector(2 * xstd::random() * 3.1415926);
+					p.life_time += (2 - p.life_time) * 0.1f;
+					p.speed += (10 - p.speed) * 0.1f;
+					p.max_split --;
+					p.hit = false;
+					proj_to_add.push_back(p);
+				}
+				y.to_remove = true;
+			}
+		};
+
+		y.on_one_off(PROJ_SPLASH_LIST) (auto& x) {
+			if (x.hit) {
+				hit_event_at(Vector3f(x.pos, 0.5f), y);
+				y.to_remove = true;
+
+				for (auto& u : units) if (u->pos.dist_to2(x.target) <= x.r * x.r) u->hit(1);
+			}
+		};
+
+		y.on_one_off(PROJ_SIMPLE_HIT_LIST) (auto& x) {
+			if (!units.exist(x.unit_hit)) return;
+			if (x.hit) {
+				y.to_remove = true;
+				units.id(x.unit_hit)->hit(x.damage);
+				hit_event_at(Vector3f(x.pos, 0.5f), y);
+			}
+		};
+
+		y->pos += y->dir * y->speed * dt;
 	}
 	}
 
@@ -718,8 +719,9 @@ void Board::pick_new_target(Tower& tower) noexcept {
 void Board::unit_spatial_partition() noexcept {
 	unit_id_by_tile.resize(size.x * size.y);
 	for (auto& x : unit_id_by_tile) x.clear();
+	for (auto& x : unit_id_by_tile) x.reserve(1000);
 
-	for (auto& x : units) {
+	for (auto& x : units) if (x->current_tile < unit_id_by_tile.size()) {
 		unit_id_by_tile[x->current_tile].push_back(x.id);
 	}
 }
@@ -750,6 +752,34 @@ void Board::die_event_at(Unit& u) noexcept {
 
 			spawned.pos = pos;
 			spawn_unit_at(spawned, tile); // this push to the pool so it might invalidate x.
+		}
+	};
+
+	u.on_one_off(UNIT_DIE_CATALYST_MERGE) (auto& x) {
+		for_each_type(UNIT_MERGE) (auto tag) {
+			using T = typename decltype(tag)::type;
+			size_t n = 0;
+			for (auto& u : unit_id_by_tile[x.current_tile]) {
+				auto& y = units.id(u);
+				if (y.kind == Unit::MAP_type_kind<T>::kind && !y.to_remove && !y->to_die) {
+					n++;
+				}
+			}
+
+			for (size_t i = 0; i < n / 2; ++i) {
+				Merge_t<T> to_merge;
+				to_merge.pos = pos;
+
+				spawn_unit_at(to_merge, x.current_tile);
+			}
+		};
+	};
+
+	u.on_one_off(UNIT_DIE_CATALYST_MERGE) (auto& x) {
+		for (auto& u : unit_id_by_tile[x.current_tile]) {
+			auto& y = units.id(u);
+			if (y.to_remove) continue;
+			y->invincible = std::max(1.f, y->invincible + 1.f);
 		}
 	};
 }
@@ -791,7 +821,7 @@ Projectile Board::get_projectile(Tower& from, Unit& target) noexcept {
 			p.from = from.id;
 			p.dir = (target->pos - tower_box(from).center()).normed();
 			p.object_id = asset::Object_Id::Neutron;
-			p.speed = 5;
+			p.speed = 2;
 			p.life_time = 2;
 			return p;
 		}
