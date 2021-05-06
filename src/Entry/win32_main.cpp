@@ -24,6 +24,8 @@
 
 #include "Graphic/FrameBuffer.hpp"
 
+#include "std/vector.hpp"
+
 #include "Game.hpp"
 
 IMGUI_IMPL_API LRESULT  ImGui_ImplWin32_WndProcHandler(
@@ -104,7 +106,7 @@ void toggle_fullscren(HWND hwnd) {
 	}
 }
 
-std::vector<size_t> posted_char;
+xstd::vector<size_t> posted_char;
 LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept {
 	ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
 
@@ -142,7 +144,7 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-Game game;
+Game game = {};
 sound::Orders sound_orders;
 
 struct Game_Proc {
@@ -159,7 +161,6 @@ int WINAPI WinMain(
 	HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd
 #endif
 ) {
-	game = {};
 
 	PROFILER_SESSION_BEGIN("Startup");
 	defer { PROFILER_SESSION_END("output/trace/"); };
@@ -355,7 +356,7 @@ void game_loop(DWORD main_thread_id) noexcept {
 			}
 		} 
 
-		nanosleep(1'000'0);
+		//nanosleep(10'000);
 	}
 }
 

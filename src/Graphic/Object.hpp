@@ -1,9 +1,9 @@
 #pragma once
-#include <vector>
 #include <optional>
 #include <filesystem>
 
 #include "Math/Vector.hpp"
+#include "std/vector.hpp"
 
 struct Object {
 
@@ -40,6 +40,6 @@ struct Object {
 		Vector3f normal;
 		Vector2f uv;
 	};
-	std::vector<Vertex> vertices;
-	std::vector<unsigned short> faces;
+	xstd::vector<Vertex> vertices;
+	xstd::vector<unsigned short> faces;
 };

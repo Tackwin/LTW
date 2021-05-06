@@ -3,6 +3,7 @@
 #include <array>
 
 #include "Graphic/Render.hpp"
+#include "std/vector.hpp"
 
 #include "Math/Vector.hpp"
 #include "Math/Rectangle.hpp"
@@ -27,6 +28,8 @@ enum class Ui_State {
 	Volter_Build,
 	Heat_Build,
 	Radiation_Build,
+	Circuit_Build,
+	Block_Build,
 	Surge_Spell,
 	Cancel,
 	Send,
@@ -61,7 +64,7 @@ struct Action {
 // >ADD_TOWER(Tackwin):
 	static constexpr Ui_Table Build_Table = TABLE(
 		U::Null,         U::Null,         U::Null, U::Null,
-		U::Radiation_Build, U::Null,         U::Null, U::Null,
+		U::Radiation_Build, U::Circuit_Build,         U::Block_Build, U::Null,
 		U::Mirror_Build, U::Splash_Build, U::Volter_Build, U::Heat_Build,
 		U::Main,         U::Null,         U::Null, U::Null
 	);
@@ -108,7 +111,7 @@ struct Tower_Selection {
 	Vector2f pos;
 
 	xstd::Pool<Tower>* pool = nullptr;
-	std::vector<size_t> selection;
+	xstd::vector<size_t> selection;
 
 	static constexpr size_t N = 4;
 

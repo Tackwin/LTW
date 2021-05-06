@@ -159,12 +159,6 @@ struct Rectangle_t {
 		return result;
 	}
 
-	constexpr bool is_fully_inside(const std::vector<my_type_t>& vec) const noexcept {
-		my_type_t result = *this;
-		for (auto& x : vec) result = result.exclude(x);
-		return result.area() == 0;
-	}
-
 	constexpr Side intersect_side(const Rectangle_t<T>& other) const noexcept {
 		if (!intersect(other)) return Side::None;
 
@@ -313,19 +307,6 @@ struct Rectangle_t {
 		return p.inRect(pos, size);
 	}
 
-	static Rectangle_t<T> hull(std::vector<Rectangle_t<T>> recs) noexcept {
-		Rectangle_t<T> hull = recs[0];
-
-		for (auto rec : recs) {
-			hull.x = std::min(rec.x, hull.x);
-			hull.y = std::min(rec.y, hull.y);
-		}
-		for (auto rec : recs) {
-			hull.w = std::max(rec.x + rec.w, hull.w + hull.x) - hull.x;
-			hull.h = std::max(rec.y + rec.h, hull.h + hull.y) - hull.y;
-		}
-		return hull;
-	}
 
 	T get_intersection_area(const Rectangle_t<T>& other) const noexcept {
 		Rectangle_t<T> big;
@@ -389,16 +370,4 @@ double dist_to2(const Vector<2, T>& vec, const Rectangle_t<T> & rec) noexcept {
 
 inline void printf(const Rectanglef& rec) noexcept {
 	printf("%3.3f, %3.3f, %3.3f, %3.3f\n", rec.x, rec.y, rec.w, rec.h);
-}
-
-template<typename T> bool check_not_fully_inside(
-	const Rectangle_t<T>& to_check, std::vector<Rectangle_t<T>> vec
-) noexcept {
-	if (vec.empty()) return false;
-
-	auto area = 0;
-
-	for (auto& x : vec) area += x.get_intersection_area(to_check);
-
-	return to_check.area() >= 0;
 }

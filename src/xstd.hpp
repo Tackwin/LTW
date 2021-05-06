@@ -1,9 +1,12 @@
 #pragma once
-#include <cassert>
+#include <assert.h>
 
-#include <vector>
+#include <string_view>
 #include <atomic>
-#include <unordered_map>
+
+#include "std/vector.hpp"
+#include "std/unordered_map.hpp"
+#include "std/hash.hpp"
 
 namespace details {
 	template<typename Callable>
@@ -188,18 +191,6 @@ struct For_Each_ {
 
 namespace xstd {
 
-	template<typename T>
-	void remove_all(std::vector<T>& vec) noexcept {
-		vec.erase(
-			std::remove_if(BEG_END(vec), [](auto& x) { return x.to_remove; }),
-			std::end(vec)
-		);
-	}
-	template<typename T, typename F>
-	void remove_all(std::vector<T>& vec, F pred) noexcept {
-		vec.erase(std::remove_if(BEG_END(vec), pred), std::end(vec));
-	}
-
 	[[nodiscard]] inline std::uint64_t nanoseconds() noexcept {
 		return std::chrono::duration_cast<std::chrono::nanoseconds>(
 			std::chrono::system_clock::now().time_since_epoch()
@@ -207,10 +198,6 @@ namespace xstd {
 	}
 	[[nodiscard]] inline double seconds() noexcept {
 		return nanoseconds() / 1'000'000'000.0;
-	}
-	[[nodiscard]] inline std::uint64_t uuid() noexcept {
-		static std::atomic<std::uint16_t> counter = 0;
-		return (nanoseconds() << 16) | (counter++);
 	}
 	template<typename T>
 	constexpr T max(T a, T b) noexcept {
@@ -221,8 +208,10 @@ namespace xstd {
 		return a < b ? a : b;
 	}
 	
-	inline std::vector<std::string> split(std::string_view str, std::string_view delim) noexcept {
-		std::vector<std::string> result;
+	inline xstd::vector<std::string> split(
+		std::string_view str, std::string_view delim
+	) noexcept {
+		xstd::vector<std::string> result;
 
 		size_t i = 0;
 		for (; i < str.size(); i += delim.size()) {
@@ -233,13 +222,6 @@ namespace xstd {
 		}
 
 		return result;
-	}
-
-	constexpr inline size_t hash_combine(size_t a, size_t b) noexcept {
-#pragma warning(push)
-#pragma warning(disable: 4307)
-		return a + 0x9e3779b9u + (b << 6) + (b >> 2);
-#pragma warning(pop)
 	}
 
 	inline size_t seed() noexcept {
@@ -260,8 +242,8 @@ namespace xstd {
 	template<typename T>
 	struct Pool {
 		inline static size_t ID = 1;
-		std::vector<T> pool;
-		std::unordered_map<size_t, size_t> pool_ids;
+		xstd::vector<T> pool;
+		xstd::unordered_map<size_t, size_t> pool_ids;
 
 		void resize(size_t n, T v = {}) noexcept {
 			pool.resize(n, v);
@@ -346,12 +328,9 @@ namespace xstd {
 		return a * (t - 1) + b * t;
 	}
 
-	template< typename T, typename Pred > typename std::vector<T>::iterator
-	insert_sorted(std::vector<T> & vec, T const& item, Pred pred) {
-		return vec.insert(
-			std::upper_bound( vec.begin(), vec.end(), item, pred ),
-			item 
-		);
+	[[nodiscard]] inline std::uint64_t uuid() noexcept {
+		static std::atomic<std::uint16_t> counter = 0;
+		return (nanoseconds() << 16) | (counter++);
 	}
 }
 constexpr size_t operator""_id(const char* user, size_t size) {

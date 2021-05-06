@@ -14,6 +14,8 @@
 #endif
 #include "OS/Process.hpp"
 
+#include "std/vector.hpp"
+
 struct Scoped_Timer {
 
 	std::string cat;
@@ -43,7 +45,7 @@ private:
 	dyn_struct current_session;
 	std::string current_session_name;
 	bool session_running = false;
-	std::vector<Scoped_Timer*> timers;
+	xstd::vector<Scoped_Timer*> timers;
 
 public:
 	static Tracer& get() noexcept { static Tracer t; return t; };

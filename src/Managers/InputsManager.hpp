@@ -2,7 +2,6 @@
 #include <list>
 #include <array>
 #include <deque>
-#include <vector>
 #include <atomic>
 #include <optional>
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <vector>
 #include <optional>
 
 #include "Graphic/Render.hpp"
@@ -25,7 +24,7 @@ struct Controller {
 	Vector2f end_drag_selection;
 	bool ended_drag_selection = false;
 
-	std::vector<size_t> tower_selected;
+	xstd::vector<size_t> tower_selected;
 };
 
 struct Game_Request {

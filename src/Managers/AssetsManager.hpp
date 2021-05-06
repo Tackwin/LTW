@@ -49,6 +49,7 @@ namespace asset {
 		inline static size_t Heat_Icon         = 0;
 		inline static size_t Radiation_Icon    = 0;
 		inline static size_t Cursor            = 0;
+		inline static size_t Circuit_Icon      = 0;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
@@ -95,6 +96,8 @@ namespace asset {
 		inline static size_t Heat = 0;
 		inline static size_t Radiation = 0;
 		inline static size_t Neutron = 0;
+		inline static size_t Circuit = 0;
+		inline static size_t Block = 0;
 	};
 	struct Sound_Id {
 		inline static size_t Ui_Action = 1;

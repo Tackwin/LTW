@@ -37,7 +37,7 @@ void Tower_Selection::render(render::Orders& orders) noexcept {
 	orders.push(rec);
 
 	thread_local std::map<Tower::Kind, size_t> n_by_kind;
-	thread_local std::vector<std::pair<size_t, Tower::Kind>> kind_by_n;
+	thread_local xstd::vector<std::pair<size_t, Tower::Kind>> kind_by_n;
 	n_by_kind.clear();
 	kind_by_n.clear();
 	for (auto& x : selection) if (pool->exist(x)) n_by_kind[pool->id(x).kind]++;
@@ -355,4 +355,6 @@ void Interface::init_buttons() noexcept {
 	b[Ui_State::Upgrade].texture_id           = asset::Texture_Id::Upgrade_Icon;
 	b[Ui_State::Heat_Build].texture_id        = asset::Texture_Id::Heat_Icon;
 	b[Ui_State::Radiation_Build].texture_id   = asset::Texture_Id::Radiation_Icon;
+	b[Ui_State::Circuit_Build].texture_id     = asset::Texture_Id::Circuit_Icon;
+	b[Ui_State::Block_Build].texture_id     = asset::Texture_Id::Dummy;
 }

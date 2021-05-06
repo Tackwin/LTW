@@ -2,7 +2,7 @@
 
 #include <filesystem>
 #include <optional>
-#include <vector>
+#include "std/vector.hpp"
 
 #include "Math/Vector.hpp"
 #include "Math/Rectangle.hpp"
@@ -24,7 +24,7 @@ struct Font {
 			Rectangleu rect;
 			std::uint8_t code;
 		};
-		std::vector<Char> chars;
+		xstd::vector<Char> chars;
 
 		std::optional<Char> map(uint8_t code) const noexcept;
 	} info;

@@ -129,11 +129,35 @@ struct Radiation : public Tower_Base {
 	}
 };
 
+struct Circuit : public Tower_Base {
+	float range         = 4;
+	float attack_cd     = 0;
+	float attack_speed  = 1;
+
+	size_t target_id = 0;
+	Tower_Target::Target_Mode target_mode;
+
+	Circuit() noexcept {
+		tile_size = {2, 2};
+		object_id = asset::Object_Id::Circuit;
+		texture_icon_id = asset::Texture_Id::Circuit_Icon;
+	}
+};
+
+struct Block_Tower : public Tower_Base {
+	Block_Tower() noexcept {
+		tile_size = {1, 1};
+		object_id = asset::Object_Id::Block;
+		texture_icon_id = asset::Texture_Id::Dummy;
+	}
+};
+
 // >ADD_TOWER(Tackwin):
-#define TOWER_TARGET_LIST Mirror, Mirror2, Heat, Radiation
-#define TOWER_SHOOT_LIST Heat, Radiation
+#define TOWER_TARGET_LIST Mirror, Mirror2, Heat, Radiation, Circuit
+#define TOWER_SHOOT_LIST Heat, Radiation, Circuit
 #define TOWER_SEEK_PROJECTILE Mirror, Mirror2
-#define TOWER_LIST(X) X(Mirror) X(Mirror2) X(Sharp) X(Volter) X(Heat) X(Radiation)
+#define TOWER_LIST(X) X(Mirror) X(Mirror2) X(Sharp) X(Volter) X(Heat) X(Radiation) X(Circuit)\
+	X(Block_Tower)
 
 struct Tower {
 	sum_type(Tower, TOWER_LIST);

@@ -127,7 +127,7 @@ void render::immediate3d(std::span<Rectangle> rectangle) noexcept {
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
-	thread_local std::vector<std::uint8_t> instance_data;
+	thread_local xstd::vector<std::uint8_t> instance_data;
 
 	thread_local GLuint quad_vao = 0;
 	thread_local GLuint quad_vbo = 0;
@@ -219,7 +219,7 @@ void render::immediate3d(std::span<Circle> circles) noexcept {
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
-	thread_local std::vector<std::uint8_t> instance_data;
+	thread_local xstd::vector<std::uint8_t> instance_data;
 
 	thread_local GLuint instance_vao = 0;
 	thread_local GLuint vbo = 0;
@@ -336,7 +336,7 @@ void render::immediate3d(std::span<Arrow> arrows) noexcept {
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
-	thread_local std::vector<std::uint8_t> instance_data;
+	thread_local xstd::vector<std::uint8_t> instance_data;
 
 	thread_local GLuint instance_head_vao = 0;
 	thread_local GLuint instance_quad_vao = 0;
@@ -890,7 +890,7 @@ void render::immediate2d(std::span<Rectangle> rectangle) noexcept {
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
-	thread_local std::vector<std::uint8_t> instance_data;
+	thread_local xstd::vector<std::uint8_t> instance_data;
 
 	thread_local GLuint quad_vao = 0;
 	thread_local GLuint quad_vbo = 0;
@@ -1007,7 +1007,7 @@ void render::immediate2d(std::span<Circle> circles) noexcept {
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
-	thread_local std::vector<std::uint8_t> instance_data;
+	thread_local xstd::vector<std::uint8_t> instance_data;
 
 	thread_local GLuint instance_vao = 0;
 	thread_local GLuint vbo = 0;
@@ -1145,7 +1145,7 @@ void render::immediate2d(std::span<Arrow> arrows) noexcept {
 
 	thread_local GLuint instance_vbo = 0;
 	thread_local size_t instance_vbo_size = 0;
-	thread_local std::vector<std::uint8_t> instance_data;
+	thread_local xstd::vector<std::uint8_t> instance_data;
 
 	thread_local GLuint instance_head_vao = 0;
 	thread_local GLuint instance_quad_vao = 0;
@@ -1324,7 +1324,7 @@ void render::immediate(
 ) noexcept {
 	constexpr size_t GPU_Instance_Size = 16 * 4 * 2 + 4 + 4 * 3;
 
-	thread_local std::vector<std::uint8_t> host_instance_data;
+	thread_local xstd::vector<std::uint8_t> host_instance_data;
 	thread_local Gpu_Vector                device_instance_data;
 
 	thread_local GLuint vao = 0;

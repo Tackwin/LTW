@@ -4,6 +4,8 @@
 
 #include "Managers/AssetsManager.hpp"
 
+#include "std/vector.hpp"
+
 struct Frame_Buffer {
 
 	Frame_Buffer(Vector2u size, size_t n_samples, std::string label = "Frame Buffer") noexcept;
@@ -22,7 +24,7 @@ struct Frame_Buffer {
 
 	size_t buffer;
 
-	std::vector<size_t> color_attachment;
+	xstd::vector<size_t> color_attachment;
 	size_t depth_attachment;
 
 	size_t n_samples;

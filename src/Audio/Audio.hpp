@@ -1,7 +1,7 @@
 #pragma once
 #include "miniaudio.h"
 
-#include <vector>
+#include "std/vector.hpp"
 #include "Managers/AssetsManager.hpp"
 
 extern void sound_callback(
@@ -13,7 +13,7 @@ namespace sound {
 		bool healthy = false;
 		ma_device device;
 
-		std::vector<size_t> playing_sound;
+		xstd::vector<size_t> playing_sound;
 
 		void init() noexcept {
 			ma_device_config device_config = ma_device_config_init(ma_device_type_playback);

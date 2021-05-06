@@ -6,11 +6,13 @@
 
 #include "global.hpp"
 
-std::vector<Vector3f> generate_ssao_samples(size_t n) noexcept {
+#include "std/vector.hpp"
+
+xstd::vector<Vector3f> generate_ssao_samples(size_t n) noexcept {
 	std::uniform_real_distribution<float> unit(0.f, 1.f);
 	std::uniform_real_distribution<float> angle(0.f, 3.1415926);
 	std::default_random_engine generator;
-	std::vector<Vector3f> result;
+	xstd::vector<Vector3f> result;
 	for (unsigned int i = 0; i < n; ++i) {
 		float angles[2] = { angle(generator), angle(generator) };
 		auto sample = Vector3f::createUnitVector(angles);
@@ -31,7 +33,7 @@ uint32_t get_noise_texture() noexcept {
 		std::uniform_real_distribution<float> float_dist(-1, 1);
 		std::default_random_engine generator(0);
 
-		std::vector<Vector3f> noise;
+		xstd::vector<Vector3f> noise;
 
 		for (unsigned int i = 0; i < 16; i++) {
 			Vector3f noise_vec;
@@ -157,12 +159,12 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 
 void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 	glEnable(GL_DEPTH_TEST);
-	thread_local std::vector<render::Order> cam_stack;
-	thread_local std::vector<render::Batch> batch_stack;
-	thread_local std::vector<std::vector<render::Rectangle>> rectangle_batch;
-	thread_local std::vector<std::vector<render::Circle>>    circle_batch;
-	thread_local std::vector<std::vector<render::Arrow>>     arrow_batch;
-	thread_local std::vector<std::vector<render::Model>>     model_batch;
+	thread_local xstd::vector<render::Order> cam_stack;
+	thread_local xstd::vector<render::Batch> batch_stack;
+	thread_local xstd::vector<xstd::vector<render::Rectangle>> rectangle_batch;
+	thread_local xstd::vector<xstd::vector<render::Circle>>    circle_batch;
+	thread_local xstd::vector<xstd::vector<render::Arrow>>     arrow_batch;
+	thread_local xstd::vector<xstd::vector<render::Model>>     model_batch;
 
 	cam_stack.clear();
 	batch_stack.clear();
@@ -320,7 +322,7 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 }
 void render_transparent(render::Orders& orders, render::Render_Param& param) noexcept {
 	glDisable(GL_DEPTH_TEST);
-	thread_local std::vector<render::Order> cam_stack;
+	thread_local xstd::vector<render::Order> cam_stack;
 
 	cam_stack.clear();
 
@@ -363,7 +365,7 @@ void render_transparent(render::Orders& orders, render::Render_Param& param) noe
 
 void render_ui(render::Orders& orders, render::Render_Param param) noexcept {
 	glDisable(GL_DEPTH_TEST);
-	thread_local std::vector<render::Order> cam_stack;
+	thread_local xstd::vector<render::Order> cam_stack;
 
 
 	cam_stack.clear();

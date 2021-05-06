@@ -3,6 +3,9 @@
 #include <optional>
 #include <unordered_set>
 
+#include "std/vector.hpp"
+#include "std/bloom_filter.hpp"
+
 #include "xstd.hpp"
 #include "Managers/InputsManager.hpp"
 #include "Math/Vector.hpp"
@@ -47,8 +50,6 @@ struct Base_Projectile {
 	size_t from = 0;
 
 	float life_time = FLT_MAX;
-
-	bool hit = false;
 };
 
 struct Seek_Projectile : Base_Projectile {
@@ -56,7 +57,6 @@ struct Seek_Projectile : Base_Projectile {
 
 	float damage = 0.5f;
 
-	size_t unit_hit = 0;
 
 	Seek_Projectile() noexcept {
 		object_id = asset::Object_Id::Photon;
@@ -66,7 +66,6 @@ struct Straight_Projectile : Base_Projectile {
 	float damage = 0.5f;
 
 	size_t power = 10;
-	size_t unit_hit = 0;
 
 	Straight_Projectile() noexcept {
 		speed = 2.f;
@@ -79,7 +78,6 @@ struct Split_Projectile : Base_Projectile {
 	size_t n_split = 2;
 	size_t max_split = 30;
 
-	size_t unit_hit = 0;
 
 	float damage = 1.f;
 
@@ -99,8 +97,19 @@ struct Splash_Projectile : Base_Projectile {
 	}
 };
 
+struct Circuit_Projectile : Base_Projectile {
+	size_t to = 0;
+	float next_radius = 0.5f;
+	size_t left_bounce = SIZE_MAX;
+
+	Circuit_Projectile() {
+		speed = 3.f;
+		object_id = asset::Object_Id::Circuit;
+	}
+};
+
 // travel behavior
-#define PROJ_SEEK_LIST Seek_Projectile
+#define PROJ_SEEK_LIST Seek_Projectile, Circuit_Projectile
 #define PROJ_TARGET_LIST Splash_Projectile
 #define PROJ_STRAIGHT_LIST Straight_Projectile, Split_Projectile
 
@@ -108,9 +117,11 @@ struct Splash_Projectile : Base_Projectile {
 #define PROJ_SPLASH_LIST Splash_Projectile
 #define PROJ_SPLIT_LIST Split_Projectile
 #define PROJ_SIMPLE_HIT_LIST Seek_Projectile, Split_Projectile
+#define PROJ_GO_NEXT_LIST Circuit_Projectile
 
 #define PROJ_LIST(X)\
-	X(Seek_Projectile) X(Straight_Projectile) X(Splash_Projectile) X(Split_Projectile)
+	X(Seek_Projectile) X(Straight_Projectile) X(Splash_Projectile) X(Split_Projectile)\
+	X(Circuit_Projectile)
 
 struct Projectile {
 	sum_type(Projectile, PROJ_LIST);
@@ -139,8 +150,11 @@ struct Board {
 	xstd::Pool<Tower> towers;
 	xstd::Pool<Projectile> projectiles;
 
-	std::vector<Unit> unit_to_add;
-	std::vector<Projectile> proj_to_add;
+	xstd::vector<Unit> unit_to_add;
+	xstd::vector<Projectile> proj_to_add;
+
+	static constexpr size_t BOUNCE_UNIT_PREFIX = 0;
+	xstd::bloom_filter_idx<1'000'000, 5> event_record;
 
 	struct Effect {
 		Vector3f pos;
@@ -148,15 +162,15 @@ struct Board {
 		static constexpr float Lifetime = 0.1f;
 		float age = Lifetime;
 	};
-	std::vector<Effect> effects;
+	xstd::vector<Effect> effects;
 
-	std::vector<std::vector<size_t>> unit_id_by_tile;
+	xstd::vector<xstd::vector<size_t>> unit_id_by_tile;
 
-	std::vector<size_t> next_tile;
-	std::vector<size_t> dist_tile;
+	xstd::vector<size_t> next_tile;
+	xstd::vector<size_t> dist_tile;
 	struct Path_Construction {
-		std::vector<bool> closed;
-		std::vector<size_t> open;
+		xstd::vector<bool> closed;
+		xstd::vector<size_t> open;
 		size_t open_idx = 0;
 		bool dirty = true;
 		bool soft_dirty = false;

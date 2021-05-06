@@ -145,14 +145,17 @@ void Board::update(double dt) noexcept {
 		if (y->life_time < 0) y.to_remove = true;
 		if (y.to_remove) continue;
 
+		bool   hit = false;
+		size_t unit_hit = 0;
+
 		y.on_one_off(PROJ_SEEK_LIST) (auto& x) {
 			if (!units.exist(x.to)) { y.to_remove = true; return; }
 			auto& to = units.id(x.to);
 			if (to.to_remove) { y.to_remove = true; return; }
 
 			if ((to->pos - x.pos).length2() < 0.1f) {
-				x.unit_hit = x.to;
-				x.hit = true;
+				unit_hit = x.to;
+				hit = true;
 			}
 
 			auto target = units.id(x.to)->pos;
@@ -181,8 +184,8 @@ void Board::update(double dt) noexcept {
 					auto d = (x.pos - u->pos).length2();
 
 					if (d < x.r * x.r) {
-						x.hit = true;
-						x.unit_hit = u_id;
+						hit = true;
+						unit_hit = u_id;
 						return;
 					}
 				}
@@ -191,11 +194,11 @@ void Board::update(double dt) noexcept {
 		
 		y.on_one_off(PROJ_TARGET_LIST) (auto& x) {
 			x.dir = (x.target - x.pos).normed();
-			if (x.pos.dist_to2(x.target) < x.r * x.r) x.hit = true;
+			if (x.pos.dist_to2(x.target) < x.r * x.r) hit = true;
 		};
 
 		y.on_one_off(PROJ_SPLIT_LIST) (auto& x) {
-			if (x.hit) {
+			if (hit) {
 				if (x.max_split > 0)
 				if (xstd::random() < x.split_chance) for (size_t i = 0; i < x.n_split; ++i) {
 					auto p = x;
@@ -203,7 +206,6 @@ void Board::update(double dt) noexcept {
 					p.life_time += (2 - p.life_time) * 0.1f;
 					p.speed += (10 - p.speed) * 0.1f;
 					p.max_split --;
-					p.hit = false;
 					proj_to_add.push_back(p);
 				}
 				y.to_remove = true;
@@ -211,7 +213,7 @@ void Board::update(double dt) noexcept {
 		};
 
 		y.on_one_off(PROJ_SPLASH_LIST) (auto& x) {
-			if (x.hit) {
+			if (hit) {
 				hit_event_at(Vector3f(x.pos, 0.5f), y);
 				y.to_remove = true;
 
@@ -220,11 +222,57 @@ void Board::update(double dt) noexcept {
 		};
 
 		y.on_one_off(PROJ_SIMPLE_HIT_LIST) (auto& x) {
-			if (!units.exist(x.unit_hit)) return;
-			if (x.hit) {
+			if (!units.exist(unit_hit)) return;
+			if (hit) {
 				y.to_remove = true;
-				units.id(x.unit_hit)->hit(x.damage);
+				units.id(unit_hit)->hit(x.damage);
 				hit_event_at(Vector3f(x.pos, 0.5f), y);
+			}
+		};
+
+		y.on_one_off(PROJ_GO_NEXT_LIST) (auto& x) {
+			if (!units.exist(x.to)) return;
+			if (hit) {
+				auto& u = units.id(unit_hit);
+				u->hit(1);
+				hit_event_at(Vector3f(x.pos, 0.5f), y);
+
+				auto event = xstd::hash_combine(BOUNCE_UNIT_PREFIX, y.id);
+				event      = xstd::hash_combine(event, u.id);
+				event_record.insert(event);
+
+				Vector2u proj_tile;
+				proj_tile.x = (size_t)std::clamp(
+					(x.pos.x + bounding_tile_size() * size.x / 2.f) / bounding_tile_size(),
+					0.f,
+					size.x - 1.f
+				);
+				proj_tile.y = (size_t)std::clamp(
+					(x.pos.y + bounding_tile_size() * size.y / 2.f) / bounding_tile_size(),
+					0.f,
+					size.y - 1.f
+				);
+
+				auto test_prefix = xstd::hash_combine(BOUNCE_UNIT_PREFIX, y.id);
+				float r = x.next_radius * x.next_radius;
+				bool found_bounce = false;
+				
+				for (int off_x = -1; off_x <= 1; ++off_x) for (int off_y = -1; off_y <= 1; ++off_y)
+				if (size.x > proj_tile.x + off_x && size.y > proj_tile.y + off_y) {
+					auto vec = Vector2u{proj_tile.x + off_x, proj_tile.y + off_y};
+					for (auto& u_id : unit_id_by_tile[vec_to_idx(vec)]) {
+						if (event_record.test(xstd::hash_combine(test_prefix, u_id))) continue;
+						if (units.id(u_id)->pos.dist_to2(x.pos) > r) continue;
+
+						x.to = u_id;
+						x.left_bounce--;
+
+						found_bounce = true;
+						break;
+					}
+				}
+
+				if (!found_bounce) y.to_remove = true;
 			}
 		};
 
@@ -245,9 +293,7 @@ void Board::update(double dt) noexcept {
 
 	{
 	TIMED_BLOCK("Remove and addition");
-	xstd::remove_all(
-		effects, [](auto& x) { return x.age < 0; }
-	);
+	effects.erase([](auto& x) { return x.age < 0; });
 
 	projectiles.remove_all([](auto& x) { return x.to_remove; });
 	units.remove_all([](auto& x) { return x.to_remove; });
@@ -316,7 +362,7 @@ void Board::render(render::Orders& order) noexcept {
 	m.object_blur = false;
 	m.dir = {1, 0, 0};
 
-	thread_local std::unordered_map<size_t, std::vector<render::Model>> models_by_object;
+	thread_local std::unordered_map<size_t, xstd::vector<render::Model>> models_by_object;
 	for (auto& [_, x] : models_by_object) x.clear();
 
 	for (auto& x : units) {
@@ -802,6 +848,9 @@ bool Board::is_valid_target(const Tower& t, const Unit& u) noexcept {
 		case Tower::Kind::Radiation_Kind:
 			r = t.Radiation_.range;
 			return dt < r * r;
+		case Tower::Kind::Circuit_Kind:
+			r = t.Circuit_.range;
+			return dt < r * r;
 		default:
 			return false;
 	}
@@ -823,6 +872,12 @@ Projectile Board::get_projectile(Tower& from, Unit& target) noexcept {
 			p.object_id = asset::Object_Id::Neutron;
 			p.speed = 2;
 			p.life_time = 2;
+			return p;
+		}
+		case Tower::Kind::Circuit_Kind: {
+			Circuit_Projectile p;
+			p.from = from.id;
+			p.to   = target.id;
 			return p;
 		}
 		default: return {};

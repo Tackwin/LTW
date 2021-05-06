@@ -291,6 +291,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/heat_icon.png", Heat_Icon);
 	X("assets/textures/radiation_icon.png", Radiation_Icon);
 	X("assets/textures/cursor.png", Cursor);
+	X("assets/textures/circuit_icon.png", Circuit_Icon);
 
 #undef X
 }
@@ -408,6 +409,8 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/heat.ply", Heat);
 	X("assets/model/radiation.ply", Radiation);
 	X("assets/model/neutron.ply", Neutron);
+	X("assets/model/circuit.ply", Circuit);
+	X("assets/model/block.ply", Block);
 #undef X
 }
 

@@ -213,6 +213,14 @@ void Game::input(Input_Info in) noexcept {
 		controller.placing = Radiation{};
 		user_interface.action.back_to_main();
 	}
+	if (user_interface.action.state_button[Ui_State::Circuit_Build].just_pressed) {
+		controller.placing = Circuit{};
+		user_interface.action.back_to_main();
+	}
+	if (user_interface.action.state_button[Ui_State::Block_Build].just_pressed) {
+		controller.placing = Block_Tower{};
+		user_interface.action.back_to_main();
+	}
 	if (user_interface.action.state_button[Ui_State::Surge_Spell].just_pressed) {
 		for (auto& i : controller.tower_selected) if (
 			board.towers.id(i).kind == Tower::Volter_Kind
