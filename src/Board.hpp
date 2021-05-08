@@ -6,6 +6,8 @@
 #include "std/vector.hpp"
 #include "std/bloom_filter.hpp"
 
+#include "Audio/Audio.hpp"
+
 #include "xstd.hpp"
 #include "Managers/InputsManager.hpp"
 #include "Math/Vector.hpp"
@@ -17,12 +19,13 @@
 struct Common_Tile {
 	Vector2u tile_pos = {0, 0};
 	Vector4f color = {.1f, .1f, .1f, 1};
+	Vector4f target_color = {1.f, 1.f, 1.f, 1.f};
 	bool passthrough = true;
 };
 struct Empty : Common_Tile {
 	bool end = false;
 
-	Empty() noexcept { color = {.1f, .1f, .1f, 1}; }
+	Empty() noexcept { color = {1.f, 1.f, 1.f, 1}; }
 };
 struct Block : Common_Tile {
 	Block() noexcept {
@@ -50,6 +53,8 @@ struct Base_Projectile {
 	size_t from = 0;
 
 	float life_time = FLT_MAX;
+
+	Vector3f color_modifier = {0, 0, 0};
 };
 
 struct Seek_Projectile : Base_Projectile {
@@ -181,7 +186,7 @@ struct Board {
 	Wave current_wave;
 
 	void input(const Input_Info& in, Vector2f mouse_world_pos) noexcept;
-	void update(double dt) noexcept;
+	void update(audio::Orders& audio_orders, double dt) noexcept;
 	void render(render::Orders& orders) noexcept;
 
 	Rectanglef tile_box(Rectangleu rec) noexcept { return tile_box(rec.pos, rec.size); }
@@ -217,7 +222,7 @@ struct Board {
 	bool can_place_at(Rectangleu zone) noexcept;
 
 	void hit_event_at(Vector3f pos, const Projectile& proj) noexcept;
-	void die_event_at(Unit& u) noexcept;
+	void die_event_at(audio::Orders& audio_orders, Unit& u) noexcept;
 
 	void pick_new_target(Tower& tower) noexcept;
 	bool is_valid_target(const Tower& t, const Unit& u) noexcept;

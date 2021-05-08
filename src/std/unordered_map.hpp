@@ -375,6 +375,9 @@ struct hashmap
 
 };
 
+
+#include <unordered_map>
+
 namespace xstd {
-    template<typename K, typename V> using unordered_map = zedland::hashmap<K, V>;
+    template<typename K, typename V> using unordered_map = std::unordered_map<K, V>;
 }

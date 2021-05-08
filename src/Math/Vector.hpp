@@ -230,10 +230,20 @@ struct Vector : public __vec_member<D, T> {
 	__vec_member<3, T>(v2.x, v2.y, z)
 	{}
 
+	template<size_t Dp = D>
+		constexpr Vector(std::enable_if_t<Dp == 3, Vector<4, T>> z) :
+	__vec_member<3, T>(z.x, z.y, z.z)
+	{}
+
     
 	template<size_t Dp = D>
 		constexpr Vector(T x, T y, T z, std::enable_if_t<Dp == 4, T> w) :
 	__vec_member<4, T>(x, y, z, w)
+	{}
+
+	template<size_t Dp = D>
+		constexpr Vector(Vector<3, T> v3, std::enable_if_t<Dp == 4, T> w) :
+	__vec_member<4, T>(v3.x, v3.y, v3.z, w)
 	{}
 
 

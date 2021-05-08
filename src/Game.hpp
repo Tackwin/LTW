@@ -3,6 +3,7 @@
 #include <array>
 #include <optional>
 
+#include "Audio/Audio.hpp"
 #include "Graphic/Render.hpp"
 
 #include "Math/Vector.hpp"
@@ -76,7 +77,7 @@ struct Game {
 	}
 
 	void input(Input_Info in) noexcept;
-	Game_Request update(double dt) noexcept;
+	Game_Request update(audio::Orders& audio_orders, double dt) noexcept;
 
 	void next_wave() noexcept;
 };
@@ -88,7 +89,7 @@ struct Game {
 #define EXTERN extern
 #endif	
 
-EXTERN Game_Request game_update(Game& game, double dt) noexcept;
+EXTERN Game_Request game_update(Game& game, audio::Orders& audio_orders, double dt) noexcept;
 EXTERN void game_render(Game& game, render::Orders& orders) noexcept;
 EXTERN void game_startup(Game& game) noexcept;
 EXTERN void game_shutdown(Game& game) noexcept;

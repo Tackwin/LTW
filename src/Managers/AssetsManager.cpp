@@ -429,6 +429,7 @@ void Store_t::load_known_sounds() noexcept {
 	}
 	X("assets/sounds/ui_action.wav",   Ui_Action);
 	X("assets/sounds/range1_shot.wav", Mirror_Shoot);
+	X("assets/sounds/geiger_hit.wav", Die);
 #undef X
 }
 

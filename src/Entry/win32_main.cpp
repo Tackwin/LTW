@@ -145,7 +145,7 @@ LRESULT WINAPI window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) no
 }
 
 Game game = {};
-sound::Orders sound_orders;
+audio::Orders sound_orders;
 
 struct Game_Proc {
 	decltype(&game_startup)  startup  = game_startup;
@@ -334,27 +334,31 @@ void game_loop(DWORD main_thread_id) noexcept {
 
 		time_since_update_ns += dt;
 
-		for (; time_since_update_ns > update_every_ns; time_since_update_ns -= update_every_ns) {
+		do {
 			if (render_request_stop) continue;
 			Main_Mutex.lock();
 			defer { Main_Mutex.unlock(); };
+			for (; time_since_update_ns > update_every_ns; time_since_update_ns -= update_every_ns)
+			{
+				game_loop_started = true;
+				for (auto& x : posted_char) current_char = x;
+				posted_char.clear();
 
-			game_loop_started = true;
-			for (auto& x : posted_char) current_char = x;
-			posted_char.clear();
+				auto response = game_proc.update(
+					game, sound_orders, update_every_ns / 1'000'000'000.0
+				);
 
-			auto response = game_proc.update(game, update_every_ns / 1'000'000'000.0);
-
-			if (response.confine_cursor) {
-				RECT r;
-				GetWindowRect((HWND)platform::handle_window, &r);
-				ClipCursor(&r);
-			} else {
-				// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are
-				// destroying it we need to restore the old clipCursor by doing GetClipCursor...
-				ClipCursor(nullptr);
+				if (response.confine_cursor) {
+					RECT r;
+					GetWindowRect((HWND)platform::handle_window, &r);
+					ClipCursor(&r);
+				} else {
+					// >ClipCursor >TODO(Tackwin): If a user had a clip cursor before us we are
+					// destroying it we need to restore the old clipCursor by doing GetClipCursor...
+					ClipCursor(nullptr);
+				}
 			}
-		} 
+		} while(false);
 
 		//nanosleep(10'000);
 	}
@@ -539,6 +543,6 @@ void destroy_gl_context(HGLRC gl_context) noexcept {
 }
 
 void sound_callback(ma_device* device, void* output, const void* input, ma_uint32 frame_count) {
-	auto sound_orders = (sound::Orders*)device->pUserData;
+	auto sound_orders = (audio::Orders*)device->pUserData;
 	if (sound_orders) sound_orders->callback(output, input, frame_count);
 }

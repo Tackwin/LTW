@@ -102,6 +102,7 @@ namespace asset {
 	struct Sound_Id {
 		inline static size_t Ui_Action = 1;
 		inline static size_t Mirror_Shoot = 2;
+		inline static size_t Die = 3;
 	};
 
 

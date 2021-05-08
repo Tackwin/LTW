@@ -64,7 +64,6 @@ void game_shutdown(Game&) noexcept {
 	PROFILER_END_SEQ();
 }
 
-
 void Game::input(Input_Info in) noexcept {
 	if (!in.focused) return;
 	if (in.mouse_pos.x < 0 || in.mouse_pos.x > 1 || in.mouse_pos.y < 0 || in.mouse_pos.y > 1)
@@ -293,7 +292,7 @@ void Game::input(Input_Info in) noexcept {
 	}
 }
 
-Game_Request Game::update(double dt) noexcept {
+Game_Request Game::update(audio::Orders& audio_orders, double dt) noexcept {
 	TIMED_FUNCTION;
 
 	running_ms = dt;
@@ -333,7 +332,7 @@ Game_Request Game::update(double dt) noexcept {
 
 	board.input(in, camera3d.project(in.mouse_pos));
 	for (size_t i = 0; i < boards.size(); ++i) {
-		boards[i].update(dt);
+		boards[i].update(audio_orders, dt);
 		players[i].ressources = add(players[i].ressources, boards[i].ressources_gained);
 		boards[i].ressources_gained = {};
 	}
@@ -348,8 +347,8 @@ void Game::next_wave() noexcept {
 	wave++;
 }
 
-Game_Request game_update(Game& game, double dt) noexcept {
-	auto res = game.update(dt);
+Game_Request game_update(Game& game, audio::Orders& audio_orders, double dt) noexcept {
+	auto res = game.update(audio_orders, dt);
 
 	frame_sample_log_frame_idx++;
 	frame_sample_log_frame_idx %= Sample_Log::MAX_FRAME_RECORD;

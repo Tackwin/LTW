@@ -15,7 +15,7 @@ void Board::input(const Input_Info& in, Vector2f mouse_world_pos) noexcept {
 	}
 }
 
-void Board::update(double dt) noexcept {
+void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 	TIMED_FUNCTION;
 	seconds_elapsed += dt;
 	if (tiles.size() != size.x * size.y) tiles.resize(size.x * size.y, Empty{});
@@ -27,6 +27,12 @@ void Board::update(double dt) noexcept {
 
 	ressources_gained = {};
 	current_wave.spawn(dt, *this);
+
+	for (auto& x : tiles) {
+		auto d = (x->target_color - x->color).length();
+		d = std::max(d, 0.1f);
+		x->color += (x->target_color - x->color).normed() * d * dt;
+	}
 
 	{
 	TIMED_BLOCK("Units");
@@ -207,6 +213,11 @@ void Board::update(double dt) noexcept {
 					p.speed += (10 - p.speed) * 0.1f;
 					p.max_split --;
 					proj_to_add.push_back(p);
+					
+					audio::Sound s;
+					s.asset_id = asset::Sound_Id::Die;
+					s.volume = 0.1f;
+					audio_orders.add_sound(s);
 				}
 				y.to_remove = true;
 			}
@@ -285,7 +296,7 @@ void Board::update(double dt) noexcept {
 	for (size_t i = 0; i < units.size(); ++i) {
 		auto& x = units[i];
 		if (x->to_die) {
-			die_event_at(x);
+			die_event_at(audio_orders, x);
 			x->to_die = false;
 		}
 	}
@@ -320,6 +331,7 @@ void Board::render(render::Orders& order) noexcept {
 	m.origin = {0.5f, 0.5f, 0.5f};
 	for2(i, j, size) if (at({i, j}).kind == Tile::Empty_Kind) {
 		m.pos = Vector3f(tile_box({i, j}).center() + pos, 0);
+		m.color = Vector3f(at({i, j})->color);
 		m.scale = tile_box({i, j}).size.x;
 		order.push(m);
 	}
@@ -779,10 +791,25 @@ void Board::hit_event_at(Vector3f pos, const Projectile& proj) noexcept {
 	if (proj.kind == Projectile::Seek_Projectile_Kind)   d.color = {1, 1, 0, 1};
 	if (proj.kind == Projectile::Splash_Projectile_Kind) d.color = {1, 0, 0, 1};
 	if (proj.kind == Projectile::Split_Projectile_Kind)  d.color = {0, 0, 1, 1};
+
+
+	
+	Vector2u proj_tile;
+	proj_tile.x = (size_t)std::clamp(
+		(proj->pos.x + bounding_tile_size() * size.x / 2.f) / bounding_tile_size(),
+		0.f,
+		size.x - 1.f
+	);
+	proj_tile.y = (size_t)std::clamp(
+		(proj->pos.y + bounding_tile_size() * size.y / 2.f) / bounding_tile_size(),
+		0.f,
+		size.y - 1.f
+	);
+	at(proj_tile)->color += Vector4f(proj->color_modifier, 0);
 	effects.push_back(d);
 }
 
-void Board::die_event_at(Unit& u) noexcept {
+void Board::die_event_at(audio::Orders& audio_orders, Unit& u) noexcept {
 	Effect d;
 	d.pos = Vector3f(u->pos, 0.5f);
 	effects.push_back(d);
@@ -863,6 +890,7 @@ Projectile Board::get_projectile(Tower& from, Unit& target) noexcept {
 			Splash_Projectile p;
 			p.from = from.id;
 			p.target = target->pos;
+			p.color_modifier = {1, 0, 0};
 			return p;
 		}
 		case Tower::Kind::Radiation_Kind: {
@@ -872,6 +900,7 @@ Projectile Board::get_projectile(Tower& from, Unit& target) noexcept {
 			p.object_id = asset::Object_Id::Neutron;
 			p.speed = 2;
 			p.life_time = 2;
+			p.color_modifier = {0, 0, 0.5f};
 			return p;
 		}
 		case Tower::Kind::Circuit_Kind: {
