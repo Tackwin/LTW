@@ -12,6 +12,7 @@ namespace file {
 		read_whole_text(const std::filesystem::path& path) noexcept;
 	[[nodiscard]] extern std::optional<std::vector<std::uint8_t>>
 		read_whole_file(const std::filesystem::path& path) noexcept;
+	[[nodiscard]] extern size_t get_file_size(const std::filesystem::path& path) noexcept;
 
 	[[nodiscard]] extern bool overwrite_file_byte(
 		std::filesystem::path path, const std::vector<std::uint8_t>& bytes

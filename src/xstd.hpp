@@ -332,6 +332,13 @@ namespace xstd {
 		static std::atomic<std::uint16_t> counter = 0;
 		return (nanoseconds() << 16) | (counter++);
 	}
+
+
+	inline std::string from_wstring(const std::wstring& wstring) noexcept {
+		std::string s;
+		for (auto c : wstring) s += (char)c;
+		return s;
+	}
 }
 constexpr size_t operator""_id(const char* user, size_t size) {
 	size_t seed = 0;

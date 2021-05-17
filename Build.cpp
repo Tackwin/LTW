@@ -76,6 +76,8 @@ void common_build_options(Build& b, Flags& flags) noexcept {
 		b.add_define("UNICODE");
 		b.add_define("_UNICODE");
 
+		b.add_library("Psapi");
+		b.add_library("Dbghelp");
 		b.add_library("Imm32");
 		b.add_library("Dwmapi");
 		b.add_library("Xinput");

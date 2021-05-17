@@ -316,6 +316,7 @@ Game_Request Game::update(audio::Orders& audio_orders, double dt) noexcept {
 	}
 
 	wave_timer -= dt;
+
 	if (wave_timer <= 0) {
 		next_wave();
 
@@ -542,3 +543,4 @@ void game_render(Game& game, render::Orders& order) noexcept {
 	}
 
 }
+

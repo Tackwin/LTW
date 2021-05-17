@@ -40,6 +40,25 @@ std::optional<std::string> file::read_whole_text(const std::filesystem::path& pa
 	return buffer;
 }
 
+size_t file::get_file_size(const std::filesystem::path& path) noexcept {
+	auto handle = CreateFile(
+		path.native().c_str(),
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		nullptr
+	);
+	if (handle == INVALID_HANDLE_VALUE) return 0;
+	defer{ CloseHandle(handle); };
+
+	LARGE_INTEGER large_int;
+	GetFileSizeEx(handle, &large_int);
+	return large_int.QuadPart;
+}
+
+
 std::optional<std::vector<std::uint8_t>>
 file::read_whole_file(const std::filesystem::path& path) noexcept {
 	auto handle = CreateFile(

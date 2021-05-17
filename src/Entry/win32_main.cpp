@@ -28,6 +28,8 @@
 
 #include "Game.hpp"
 
+#include "Inspector.hpp"
+
 IMGUI_IMPL_API LRESULT  ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 );
@@ -398,6 +400,11 @@ void windows_loop() noexcept {
 		ImGui::Checkbox("Render", &render_param.render);
 		ImGui::Text("Fps: % 4d, ms: % 5.2lf", (int)(1 / dt), dt * 1000);
 		ImGui::End();
+	}
+
+	thread_local bool debug_window_open = true;
+	if (debug_window_open) {
+		handle_debug();
 	}
 
 	if (game_loop_started) {
