@@ -21,6 +21,12 @@ struct Tower_Base {
 
 	size_t kill_count = 0;
 
+	float attack_speed = 1;
+	float attack_cd = 0;
+
+	float attack_slowdown_cd = 0;
+	float attack_slowdown    = 1;
+
 	Tower_Base() noexcept {}
 	virtual ~Tower_Base() noexcept {};
 };
@@ -38,9 +44,8 @@ struct Tower_Target {
 	size_t target_id;
 	Target_Mode target_mode;
 };
+
 struct Tower_Seek_Projectile_Shoot {
-	float attack_speed = 1;
-	float attack_cd    = 0;
 	float damage       = 1;
 	float range        = 1;
 };
@@ -72,9 +77,6 @@ struct Mirror2 : public Mirror {
 
 struct Heat : public Tower_Base {
 	float range        = 2;
-	float attack_cd    = 0;
-	float attack_speed = 1;
-
 	size_t target_id;
 	Tower_Target::Target_Mode target_mode;
 
@@ -116,8 +118,6 @@ struct Volter : public Tower_Base {
 
 struct Radiation : public Tower_Base {
 	float range        = 4;
-	float attack_cd    = 0;
-	float attack_speed = 1;
 
 	size_t target_id;
 	Tower_Target::Target_Mode target_mode;
@@ -131,8 +131,6 @@ struct Radiation : public Tower_Base {
 
 struct Circuit : public Tower_Base {
 	float range         = 4;
-	float attack_cd     = 0;
-	float attack_speed  = 1;
 
 	size_t target_id = 0;
 	Tower_Target::Target_Mode target_mode;

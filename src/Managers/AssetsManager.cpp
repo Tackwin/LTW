@@ -411,6 +411,7 @@ void Store_t::load_known_objects() noexcept {
 	X("assets/model/neutron.ply", Neutron);
 	X("assets/model/circuit.ply", Circuit);
 	X("assets/model/block.ply", Block);
+	X("assets/model/chloroform.ply", Chloroform);
 #undef X
 }
 

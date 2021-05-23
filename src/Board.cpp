@@ -79,6 +79,11 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
 		auto base = towers[i].base();
 
+		towers[i]->attack_slowdown_cd -= dt;
+		if (towers[i]->attack_slowdown_cd < 0) {
+			towers[i]->attack_slowdown = 1;
+		}
+
 		towers[i].on_one_off(TOWER_TARGET_LIST) (auto& x) {
 			if (!units.exist(x.target_id) || !is_valid_target(towers[i], units.id(x.target_id))) {
 				pick_new_target(towers[i]);
@@ -94,7 +99,8 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 			auto p = get_projectile(towers[i], units.id(x.target_id));
 			p->pos = tower_box(towers[i]).center();
 			proj_to_add.push_back(p);
-			x.attack_cd = 1.f / x.attack_speed;
+
+			x.attack_cd = 1.f / (x.attack_speed * x.attack_slowdown);
 		};
 
 		towers[i].on_one_off(TOWER_SEEK_PROJECTILE) (auto& x) {
@@ -108,7 +114,7 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 				new_projectile.pos = tower_pos;
 				proj_to_add.push_back(new_projectile);
 
-				x.attack_cd = 1.f / x.attack_speed;
+				x.attack_cd = 1.f / (x.attack_speed * x.attack_slowdown);
 			}
 		};
 
@@ -855,6 +861,16 @@ void Board::die_event_at(audio::Orders& audio_orders, Unit& u) noexcept {
 			y->invincible = std::max(1.f, y->invincible + 1.f);
 		}
 	};
+
+	if (u.kind == Unit::Chloroform_Kind) {
+		auto& cl = u.Chloroform_;
+		auto r = cl.debuff_range * cl.debuff_range;
+
+		for (auto& t : towers) if ((tower_box(t).center() - u->pos).length2() < r) {
+			t->attack_slowdown_cd = std::max(cl.debuff_cd, t->attack_slowdown_cd);
+			t->attack_slowdown    = std::min(cl.debuff_as, t->attack_slowdown);
+		}
+	}
 }
 
 

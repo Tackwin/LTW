@@ -91,6 +91,19 @@ struct Oxygen  : Unit_Base {
 	}
 	virtual Ressources get_drop() noexcept { return {.gold = 1, .oxygens = 2}; }
 };
+struct Chloroform  : Unit_Base {
+
+	float debuff_range = 1.f;
+	float debuff_cd = 1.f;
+	float debuff_as = 0.5f;
+
+	Chloroform() noexcept {
+		object_id = asset::Object_Id::Chloroform;
+		health = 1.f;
+		speed  = 0.75f;
+	}
+	virtual Ressources get_drop() noexcept { return {.gold = 1, .carbons = 1, .hydrogens = 2}; }
+};
 
 template<typename T> struct Merge {};
 template<typename T> using Merge_t = typename Merge<T>::type;
@@ -102,7 +115,7 @@ template<>           struct Merge<Propane> { using type = Butane; };
 #define UNIT_SPLIT Ethane, Propane, Butane
 #define UNIT_DIE_CATALYST_MERGE Water
 #define UNIT_DIE_INVINCIBLE_BUFF Oxygen
-#define LIST_UNIT(X) X(Methane) X(Ethane) X(Propane) X(Butane) X(Water) X(Oxygen)
+#define LIST_UNIT(X) X(Methane) X(Ethane) X(Propane) X(Butane) X(Water) X(Oxygen) X(Chloroform)
 
 struct Unit {
 	sum_type(Unit, LIST_UNIT);

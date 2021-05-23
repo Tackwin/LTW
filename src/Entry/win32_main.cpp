@@ -402,7 +402,7 @@ void windows_loop() noexcept {
 		ImGui::End();
 	}
 
-	thread_local bool debug_window_open = true;
+	thread_local bool debug_window_open = false;
 	if (debug_window_open) {
 		handle_debug();
 	}

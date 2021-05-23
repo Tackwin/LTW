@@ -55,6 +55,7 @@ Wave gen_wave(size_t n) noexcept {
 	size_t to_spawn = 5 * (1 + n) * (1 + n / 4);
 	if (n > 10) bunch.add_unit(Water(), (9 + to_spawn) / 10);
 	if (n > 20) bunch.add_unit(Oxygen(), (9 + to_spawn) / 10);
+	if (n > 30) bunch.add_unit(Chloroform(), (9 + to_spawn) / 10);
 	if ((n % 4) == 0) bunch.add_unit(Methane(), to_spawn);
 	if ((n % 4) == 1) bunch.add_unit(Ethane(), to_spawn);
 	if ((n % 4) == 2) bunch.add_unit(Propane(), to_spawn);
