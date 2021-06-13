@@ -161,13 +161,13 @@ struct Board {
 	static constexpr size_t BOUNCE_UNIT_PREFIX = 0;
 	xstd::bloom_filter_idx<1'000'000, 5> event_record;
 
-	struct Effect {
+	struct Particle_Effect {
 		Vector3f pos;
 		Vector4f color = {1, 1, 1, 1};
 		static constexpr float Lifetime = 0.1f;
 		float age = Lifetime;
 	};
-	xstd::vector<Effect> effects;
+	xstd::vector<Particle_Effect> effects;
 
 	xstd::vector<xstd::vector<size_t>> unit_id_by_tile;
 

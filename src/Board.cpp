@@ -79,9 +79,10 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
 		auto base = towers[i].base();
 
-		towers[i]->attack_slowdown_cd -= dt;
-		if (towers[i]->attack_slowdown_cd < 0) {
-			towers[i]->attack_slowdown = 1;
+		for (auto& x : towers) {
+			xstd::remove_all(
+				xstd::span(x->effects), [] (const Effect& e) { return e->cooldown <= 0; }
+			);
 		}
 
 		towers[i].on_one_off(TOWER_TARGET_LIST) (auto& x) {
@@ -100,7 +101,7 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 			p->pos = tower_box(towers[i]).center();
 			proj_to_add.push_back(p);
 
-			x.attack_cd = 1.f / (x.attack_speed * x.attack_slowdown);
+			x.attack_cd = 1.f / (x.attack_speed * x.attack_speed_factor);
 		};
 
 		towers[i].on_one_off(TOWER_SEEK_PROJECTILE) (auto& x) {
@@ -114,7 +115,7 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 				new_projectile.pos = tower_pos;
 				proj_to_add.push_back(new_projectile);
 
-				x.attack_cd = 1.f / (x.attack_speed * x.attack_slowdown);
+				x.attack_cd = 1.f / (x.attack_speed * x.attack_speed_factor);
 			}
 		};
 
@@ -791,7 +792,7 @@ void Board::unit_spatial_partition() noexcept {
 }
 
 void Board::hit_event_at(Vector3f pos, const Projectile& proj) noexcept {
-	Effect d;
+	Particle_Effect d;
 	d.pos = pos;
 	d.color = V4F(1);
 	if (proj.kind == Projectile::Seek_Projectile_Kind)   d.color = {1, 1, 0, 1};
@@ -816,7 +817,7 @@ void Board::hit_event_at(Vector3f pos, const Projectile& proj) noexcept {
 }
 
 void Board::die_event_at(audio::Orders& audio_orders, Unit& u) noexcept {
-	Effect d;
+	Particle_Effect d;
 	d.pos = Vector3f(u->pos, 0.5f);
 	effects.push_back(d);
 
@@ -867,8 +868,12 @@ void Board::die_event_at(audio::Orders& audio_orders, Unit& u) noexcept {
 		auto r = cl.debuff_range * cl.debuff_range;
 
 		for (auto& t : towers) if ((tower_box(t).center() - u->pos).length2() < r) {
-			t->attack_slowdown_cd = std::max(cl.debuff_cd, t->attack_slowdown_cd);
-			t->attack_slowdown    = std::min(cl.debuff_as, t->attack_slowdown);
+			Effect e;
+			e.kind = Effect::Kind::Slow_AS_Kind;
+			e->cooldown = cl.debuff_cd;
+			e.Slow_AS_.debuff = cl.debuff_as;
+
+			t->effects.push_back(e);
 		}
 	}
 }

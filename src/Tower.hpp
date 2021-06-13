@@ -1,10 +1,13 @@
 #pragma once
 
 #include "xstd.hpp"
+#include "std/vector.hpp"
 #include "Math/Vector.hpp"
 #include "Graphic/Render.hpp"
 
 #include "Managers/AssetsManager.hpp"
+
+#include "Effect.hpp"
 
 struct Tower_Base {
 	union {
@@ -21,11 +24,11 @@ struct Tower_Base {
 
 	size_t kill_count = 0;
 
+	float attack_speed_factor = 1;
 	float attack_speed = 1;
 	float attack_cd = 0;
 
-	float attack_slowdown_cd = 0;
-	float attack_slowdown    = 1;
+	xstd::small_vector<Effect, 4> effects;
 
 	Tower_Base() noexcept {}
 	virtual ~Tower_Base() noexcept {};
