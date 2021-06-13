@@ -23,8 +23,6 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 	if (path_construction.soft_dirty) soft_compute_paths();
 	else if (path_construction.dirty) compute_paths();
 
-	unit_spatial_partition();
-
 	ressources_gained = {};
 	current_wave.spawn(dt, *this);
 
@@ -191,14 +189,14 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 			for (int off_x = -1; off_x <= 1; ++off_x) for (int off_y = -1; off_y <= 1; ++off_y)
 			if (size.x > proj_tile.x + off_x && size.y > proj_tile.y + off_y) {
 				auto vec = Vector2u{proj_tile.x + off_x, proj_tile.y + off_y};
-				for (auto& u_id : unit_id_by_tile[vec_to_idx(vec)]) {
-					auto& u = units.id(u_id);
+				for (auto& u_id : unit_idx_by_tile[vec_to_idx(vec)]) {
+					auto& u = units[u_id];
 					if (u.to_remove) continue;
 					auto d = (x.pos - u->pos).length2();
 
 					if (d < x.r * x.r) {
 						hit = true;
-						unit_hit = u_id;
+						unit_hit = u.id;
 						return;
 					}
 				}
@@ -783,11 +781,18 @@ void Board::pick_new_target(Tower& tower) noexcept {
 
 void Board::unit_spatial_partition() noexcept {
 	unit_id_by_tile.resize(size.x * size.y);
+	unit_idx_by_tile.resize(size.x * size.y);
 	for (auto& x : unit_id_by_tile) x.clear();
 	for (auto& x : unit_id_by_tile) x.reserve(1000);
+	for (auto& x : unit_idx_by_tile) x.clear();
+	for (auto& x : unit_idx_by_tile) x.reserve(1000);
 
-	for (auto& x : units) if (x->current_tile < unit_id_by_tile.size()) {
-		unit_id_by_tile[x->current_tile].push_back(x.id);
+	for (size_t i = 0; i < units.size(); ++i) {
+		auto& x = units[i];
+		if (x->current_tile < unit_id_by_tile.size()) {
+			unit_id_by_tile[x->current_tile].push_back(x.id);
+			unit_idx_by_tile[x->current_tile].push_back(i);
+		}
 	}
 }
 

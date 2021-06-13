@@ -125,7 +125,7 @@ namespace xstd {
 		small_vector() noexcept {
 			for (size_t i = 0; i < S; ++i) stack_data[i] = {};
 		}
-		~small_vector() noexcept { delete[] heap_data; size = 0; capacity = 0; };
+		~small_vector() noexcept { if (capacity > S) delete[] heap_data; size = 0; capacity = 0; };
 
 		small_vector(const small_vector<T, S>& other) noexcept { *this = other; }
 		small_vector& operator=(const small_vector<T, S>& other) noexcept {
@@ -182,7 +182,7 @@ namespace xstd {
 		}
 		constexpr const T& operator[](size_t idx) const noexcept {
 			#ifdef _DEBUG
-			assert_(idx < size_);
+			assert_(idx < size);
 			#endif
 			return data()[idx];
 		}
@@ -236,7 +236,7 @@ namespace xstd {
 		}
 		constexpr const T& operator[](size_t idx) const noexcept {
 			#ifdef _DEBUG
-			assert_(idx < size_);
+			assert_(idx < size);
 			#endif
 			return data[idx];
 		}

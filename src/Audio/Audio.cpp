@@ -54,7 +54,8 @@ void audio::Orders::callback(void* output, const void* input, ma_uint32 frame_co
 		s.current_frame += frame_read;
 	}
 
-	for (size_t i = 0; i < frame_count; ++i) ((std::int16_t*)output)[i] = frame_out[i];
+	for (size_t i = 0; i < frame_count; ++i)
+		((std::int16_t*)output)[i] = frame_out[i];
 
 	playing_sounds.remove_all([](auto& x) { return x.to_remove; });
 }

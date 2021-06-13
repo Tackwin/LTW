@@ -170,6 +170,7 @@ struct Board {
 	xstd::vector<Particle_Effect> effects;
 
 	xstd::vector<xstd::vector<size_t>> unit_id_by_tile;
+	xstd::vector<xstd::vector<size_t>> unit_idx_by_tile;
 
 	xstd::vector<size_t> next_tile;
 	xstd::vector<size_t> dist_tile;
