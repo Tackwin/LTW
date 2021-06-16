@@ -56,6 +56,21 @@ exit
 
 namespace EASE_NAMESPACE {
 
+namespace details {
+	template<typename Callable>
+	struct Defer {
+		~Defer() noexcept { todo(); }
+		Defer(Callable todo) noexcept : todo(todo) {};
+	private:
+		Callable todo;
+	};
+};
+
+#define CONCAT_(x, y) x##y
+#define CONCAT(x, y) CONCAT_(x, y)
+#define defer details::Defer CONCAT(defer_, __COUNTER__) = [&]
+
+
 static std::filesystem::path Working_Directory;
 
 struct Flags {
@@ -66,6 +81,7 @@ struct Flags {
 	// true it should be enough ?
 	bool clean = false;
 	bool openmp = false;
+	bool silent = false;
 	bool release = false;
 	bool scratch = false;
 	bool install = false;
@@ -73,6 +89,7 @@ struct Flags {
 	bool show_help = false;
 	bool link_only = false;
 	bool no_inline = false;
+	bool profile_build = false;
 	bool no_default_lib = false;
 	bool compile_native = false;
 	bool generate_debug = false;
@@ -282,6 +299,7 @@ enum class Cli_Opts {
 	Include,
 	Link,
 	Lib_Path,
+	Time_Trace,
 	Define,
 	Optimisation,
 	No_Optimisation,
@@ -418,6 +436,9 @@ NS::Flags NS::Flags::parse(int argc, char** argv) noexcept {
 			++i;
 			flags.verbose_level = std::stoi(argv[i]);
 		}
+		if (strcmp(it, "--silent") == 0) {
+			flags.silent = true;
+		}
 		if (strcmp(it, "--release") == 0) {
 			flags.release = true;
 			if (i + 1 < argc) {
@@ -438,6 +459,9 @@ NS::Flags NS::Flags::parse(int argc, char** argv) noexcept {
 		}
 		if (strcmp(it, "--no-install-path") == 0) {
 			flags.no_install_path = true;
+		}
+		if (strcmp(it, "--profile-build") == 0) {
+			flags.profile_build = true;
 		}
 		if (strcmp(it, "--no-default-lib") == 0) {
 			flags.no_default_lib = true;
@@ -527,6 +551,9 @@ const char* NS::Flags::help_message() noexcept {
 	"--openmp                     Will compile with openmp if available.\n"
 	"                    Exemple: ./Build.exe --openmp\n\n"
 
+	"--silent                     Will disable any write to the stdout.\n"
+	"                    Exemple: ./Build.exe --silent"
+
 	"--no-watch-source-changed    Will disable watching for change in Build.cpp.\n"
 	"                    Exemple: ./Build.exe --no-watch-source-changed\n\n"
 
@@ -536,6 +563,10 @@ const char* NS::Flags::help_message() noexcept {
 	"-l|--link                    Will only link the program, then exit. There must be a complete\n"
 	"                             state available. Will not check for incremental compilation.\n"
 	"                    Exemple: ./Build.exe -l | ./Build.exe --link\n\n"
+
+	"--profile-build              Will produce an output file that contains information about the\n"
+	"                             time spent on each aspect of the compilation.\n"
+	"                    Exemple: ./Build.exe --profile-build"
 
 	"--verbose <level>            Change the level of verbosity.\n"
 	"                             Level 0 (default) will show a simple progress message.\n"
@@ -652,6 +683,7 @@ size_t NS::Flags::hash() const noexcept {
 	size_t h = 0;
 	h = combine(h, clean);
 	h = combine(h, openmp);
+	h = combine(h, silent);
 	h = combine(h, release);
 	h = combine(h, scratch);
 	h = combine(h, install);
@@ -659,6 +691,7 @@ size_t NS::Flags::hash() const noexcept {
 	h = combine(h, no_inline);
 	h = combine(h, show_help);
 	h = combine(h, link_only);
+	h = combine(h, profile_build);
 	h = combine(h, compile_native);
 	h = combine(h, generate_debug);
 	h = combine(h, no_default_lib);
@@ -1097,9 +1130,12 @@ NS::Commands compile_command_object(const NS::Build_State& state, const NS::Buil
 		command += " " + get_cli_flag(b.cli, Cli_Opts::Compile);
 		command += " " + get_cli_flag(b.cli, Cli_Opts::Std_Version, b.std_ver);
 
+		if (b.flags.openmp)         command += " " + get_cli_flag(b.cli, Cli_Opts::OpenMP);
+		if (b.flags.no_inline)      command += " " + get_cli_flag(b.cli, Cli_Opts::No_Inline);
+		if (b.flags.profile_build)  command += " " + get_cli_flag(b.cli, Cli_Opts::Time_Trace);
 		if (b.flags.compile_native) command += " " + get_cli_flag(b.cli, Cli_Opts::Native);
-		if (b.flags.openmp) command += " " + get_cli_flag(b.cli, Cli_Opts::OpenMP);
-		if (b.flags.release){
+
+		if (b.flags.release) {
 			std::string param = "3";
 			if (b.flags.release_level) param = std::to_string(*b.flags.release_level);
 			command += " " + get_cli_flag(b.cli, Cli_Opts::Optimisation, param);
@@ -1107,11 +1143,10 @@ NS::Commands compile_command_object(const NS::Build_State& state, const NS::Buil
 		else
 			command += " " + get_cli_flag(b.cli, Cli_Opts::No_Optimisation);
 
-		if (b.flags.no_inline) command += " " + get_cli_flag(b.cli, Cli_Opts::No_Inline);
 
 		command += " " + get_cli_flag(b.cli, Cli_Opts::Object_Output, o.generic_string());
 
-		for (auto& d : b.defines) command += " " + get_cli_flag(b.cli, Cli_Opts::Define, d);
+		for (auto& d : b.defines)       command += " " + get_cli_flag(b.cli, Cli_Opts::Define, d);
 		for (auto& d : b.flags.defines) command += " " + get_cli_flag(b.cli, Cli_Opts::Define, d);
 
 		for (auto& x : b.header_files) if (std::filesystem::is_directory(x))
@@ -1299,20 +1334,17 @@ NS::Commands compile_command_incremetal_check(const NS::Build& b) noexcept {
 	return commands;
 }
 
-void execute(const NS::Build& build, const NS::Commands& c, bool full_thread = false) noexcept {
+bool execute(const NS::Build& build, const NS::Commands& c) noexcept {
 	#ifndef NO_THREAD
 	std::vector<std::thread> threads;
 	std::atomic<bool> stop_flag = false;
 
-	size_t n_thread = build.flags.j;
-	if (full_thread) n_thread = c.entries.size();
-
-	for (size_t i = 0; i < n_thread; ++i) {
+	for (size_t i = 0; i < build.flags.j; ++i) {
 		threads.push_back(std::thread([&, i] {
-			for (size_t j = i; j < c.entries.size(); j += n_thread) {
+			for (size_t j = i; j < c.entries.size(); j += build.flags.j) {
 				if (stop_flag) return;
 
-				if (build.flags.verbose_level >= 0) {
+				if (build.flags.verbose_level >= 0 && !build.flags.silent) {
 					printf(
 						"[%*d/%*d] %s\n",
 						(int)(1 + std::log10((double)c.entries.size())),
@@ -1322,7 +1354,8 @@ void execute(const NS::Build& build, const NS::Commands& c, bool full_thread = f
 						c.entries[j].short_desc.c_str()
 					);
 				}
-				if (build.flags.verbose_level > 0) printf("%s\n", c.entries[j].command.c_str());
+				if (build.flags.verbose_level > 0 && !build.flags.silent)
+					printf("%s\n", c.entries[j].command.c_str());
 				auto ret = system(c.entries[j].command.c_str());
 			
 				if (ret != 0) stop_flag = true;
@@ -1331,7 +1364,7 @@ void execute(const NS::Build& build, const NS::Commands& c, bool full_thread = f
 	}
 	for (auto& x : threads) x.join();
 
-	if (stop_flag) {
+	if (stop_flag && !build.flags.silent) {
 		printf("There was an error in the build. There should be more informations above.");
 	}
 #else
@@ -1339,15 +1372,18 @@ void execute(const NS::Build& build, const NS::Commands& c, bool full_thread = f
 	for (size_t i = 0; i < c.entries.size(); i++) {
 		if (stop_flag) return;
 
-		printf(
-			"[%*d/%*d] %s\n",
-			(int)(1 + std::log10((double)c.entries.size())),
-			(int)(1 + i),
-			(int)(1 + std::log10((double)c.entries.size())),
-			(int)c.entries.size(),
-			c.entries[i].short_desc.c_str()
-		);
-		if (build.flags.verbose_level > 0) printf("%s\n", c.entries[i].command.c_str());
+		if (build.flags.verbose_level >= 0 && !build.flags.silent) {
+			printf(
+				"[%*d/%*d] %s\n",
+				(int)(1 + std::log10((double)c.entries.size())),
+				(int)(1 + i),
+				(int)(1 + std::log10((double)c.entries.size())),
+				(int)c.entries.size(),
+				c.entries[i].short_desc.c_str()
+			);
+		}
+		if (build.flags.verbose_level > 0 && !build.flags.silent)
+			printf("%s\n", c.entries[i].command.c_str());
 		auto ret = system(c.entries[i].command.c_str());
 	
 		if (ret != 0) stop_flag = true;
@@ -1357,6 +1393,8 @@ void execute(const NS::Build& build, const NS::Commands& c, bool full_thread = f
 		printf("There was an error in the build. There should be more informations above.");
 	}
 #endif
+
+	return stop_flag;
 }
 
 void add_install_path(NS::Build& b) noexcept {
@@ -1368,7 +1406,7 @@ void add_install_path(NS::Build& b) noexcept {
 }
 
 void handle_build(Build& b, NS::States& new_states) noexcept {
-	printf("Building %s\n", b.name.c_str());
+	if (!b.flags.silent) printf("Building %s\n", b.name.c_str());
 
 	if (!b.flags.no_install_path) add_install_path(b);
 
@@ -1382,7 +1420,6 @@ void handle_build(Build& b, NS::States& new_states) noexcept {
 		b.flags.scratch = true;
 	}
 
-	std::string to_dump;
 	switch (b.target) {
 	case NS::Build::Target::Header_Only : {
 		for (auto& x : b.pre_compile) execute(b, x);
@@ -1418,7 +1455,12 @@ void handle_build(Build& b, NS::States& new_states) noexcept {
 		std::filesystem::create_directory(b.flags.get_build_path());
 		std::filesystem::create_directory(b.flags.get_temp_path());
 
-		for (auto& x : b.pre_compile) execute(b, x);
+		defer { std::filesystem::remove_all(b.flags.get_temp_path()); };
+
+		bool early_fail = false;
+		for (auto& x : b.pre_compile) if (early_fail |= execute(b, x); early_fail) break;
+
+		if (early_fail) break;
 
 		::NS::Commands c;
 
@@ -1432,18 +1474,22 @@ void handle_build(Build& b, NS::States& new_states) noexcept {
 		if (!b.flags.link_only) {
 			if (b.flags.assembly) {
 				c = compile_assembly({}, b);
-				execute(b, c);
+				early_fail |= execute(b, c);
 			}
 
+			if (early_fail) break;
+
 			c = compile_command_incremetal_check(b);
-			execute(b, c, true);
+			early_fail |= execute(b, c);
+			if (early_fail) break;
 			set_files_hashes(b.flags.get_temp_path(), new_state);
 			if (!b.flags.scratch)
 				b.current_state = NS::Build_State::get_unchanged(b.current_state, new_state);
 
 			c = compile_command_object(b.current_state, b);
 
-			execute(b, c);
+			early_fail |= execute(b, c);
+			if (early_fail) break;
 			for (auto& x : b.post_compile) execute(b, x);
 		}
 		if (b.target == NS::Build::Target::Static) {
@@ -1456,19 +1502,23 @@ void handle_build(Build& b, NS::States& new_states) noexcept {
 			b.to_install.push_back(*x.output);
 		}
 
-		for (auto& x : b.pre_link) execute(b, x);
-		execute(b, c);
-		for (auto& x : b.post_link) execute(b, x);
+		for (auto& x : b.pre_link) if (early_fail |= execute(b, x); early_fail) break;
+		if (early_fail) break;
+
+		early_fail |= execute(b, c);
+		if (early_fail) break;
+
+		for (auto& x : b.post_link) if (early_fail |= execute(b, x); early_fail) break;
+		if (early_fail) break;
 
 		if (b.target == NS::Build::Target::Exe && b.flags.run_after_compilation) {
 			std::string run = NS::details::get_output_path(b).generic_string();
 			for (auto& x : b.flags.rest_args) run += " " + x;
 			if (!Env::Win32) run = "./" + run;
-			printf("Running %s\n", run.c_str());
+			if (!b.flags.silent) printf("Running %s\n", run.c_str());
 			system(run.c_str());
 		}
 
-		std::filesystem::remove_all(b.flags.get_temp_path());
 		break;
 	}
 	default:
@@ -1589,7 +1639,8 @@ int main(int argc, char** argv) {
 		// here, and save us a variable in the state.txt
 
 		if (last_write > old_states.last_write_build_script || flags.recompile_build_script) {
-			printf("Detected change in %s... Recompiling.\n", NS::Env::Build_Script_Path);
+			if (!b.flags.silent)
+				printf("Detected change in %s... Recompiling.\n", NS::Env::Build_Script_Path);
 
 			old_states.last_write_build_script = last_write;
 			old_states.save_to_file(flags.get_state_path());
@@ -1612,7 +1663,7 @@ int main(int argc, char** argv) {
 				}
 
 				return system(command_stage.c_str());
-			} else {
+			} else if (!b.flags.silent) {
 				printf(
 					"There was a problem with the automatic recompilation of the build script: \n"
 				);
@@ -1665,15 +1716,17 @@ std::string NS::details::get_cli_flag(
 	case NS::Cli_Opts::OpenMP :
 		X("-fopenmp", "/OpenMP");
 	case NS::Cli_Opts::Debug_Symbol_Link :
-		X("-g -gno-column-info -fdebug-macro ", "/DEBUG");
+		X("-g -gno-column-info", "/DEBUG");
 	case NS::Cli_Opts::Debug_Symbol_Compile :
-		X("-g -gcodeview -gno-column-info -fdebug-macro", "/Z7");
+		X("-g -gcodeview -gno-column-info", "/Z7");
 
 	case NS::Cli_Opts::No_Default_Lib : {
 		// >TODO(Tackwin): here we need to check the linker's cli instead of the compiler.
 		X("-Xlinker /NODEFAULTLIB", "/NODEFAULTLIB");
 	}
 
+	case NS::Cli_Opts::Time_Trace :
+		X(std::string("-ftime-trace"), "");
 	case NS::Cli_Opts::Arch_32 :
 		X(std::string("-m32"), "");
 	case NS::Cli_Opts::Native :

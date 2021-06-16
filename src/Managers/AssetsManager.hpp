@@ -50,6 +50,7 @@ namespace asset {
 		inline static size_t Radiation_Icon    = 0;
 		inline static size_t Cursor            = 0;
 		inline static size_t Circuit_Icon      = 0;
+		inline static size_t Slow_AS_Icon      = 0;
 	};
 	struct Shader_Id {
 		inline static size_t Default = 1;
@@ -71,6 +72,7 @@ namespace asset {
 		inline static size_t Additive = 17;
 		inline static size_t Particle_Deferred = 18;
 		inline static size_t Particle_Bloom = 19;
+		inline static size_t World_Sprite = 0;
 	};
 	struct Font_Id {
 		inline static size_t Consolas{1};

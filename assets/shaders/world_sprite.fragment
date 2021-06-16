@@ -1,0 +1,29 @@
+#version 450
+layout (location = 0) out vec4 g_albedo;
+layout (location = 1) out vec4 g_normal;
+layout (location = 2) out vec4 g_position;
+layout (location = 3) out vec4 g_velocity;
+
+uniform sampler2D color_texture;
+
+in vec2 texture_pos;
+in vec3 position;
+in vec3 normal;
+flat in uint tag;
+
+void main() {
+	vec4 texel = texture(
+		color_texture,
+		texture_pos
+	);
+
+	g_normal = vec4(normal, 1);
+	g_albedo = vec4(
+		texel.r,
+		texel.g,
+		texel.b,
+		1
+	);
+	g_position = vec4(position, 1);
+	g_velocity = vec4(0, 0, 0, 1);
+}

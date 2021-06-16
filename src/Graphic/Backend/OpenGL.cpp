@@ -161,13 +161,15 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 	glEnable(GL_DEPTH_TEST);
 	thread_local xstd::vector<render::Order> cam_stack;
 	thread_local xstd::vector<render::Batch> batch_stack;
-	thread_local xstd::vector<xstd::vector<render::Rectangle>> rectangle_batch;
-	thread_local xstd::vector<xstd::vector<render::Circle>>    circle_batch;
-	thread_local xstd::vector<xstd::vector<render::Arrow>>     arrow_batch;
-	thread_local xstd::vector<xstd::vector<render::Model>>     model_batch;
+	thread_local xstd::vector<xstd::vector<render::World_Sprite>> world_sprite_batch;
+	thread_local xstd::vector<xstd::vector<render::Rectangle>>    rectangle_batch;
+	thread_local xstd::vector<xstd::vector<render::Circle>>       circle_batch;
+	thread_local xstd::vector<xstd::vector<render::Arrow>>        arrow_batch;
+	thread_local xstd::vector<xstd::vector<render::Model>>        model_batch;
 
 	cam_stack.clear();
 	batch_stack.clear();
+	for (auto& x : world_sprite_batch) x.clear();
 	for (auto& x : rectangle_batch) x.clear();
 	for (auto& x : circle_batch) x.clear();
 	for (auto& x : arrow_batch) x.clear();
@@ -297,21 +299,41 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept {
 				glClear(GL_DEPTH_BUFFER_BIT);
 				break;
 			}
+			case render::Order::World_Sprite_Kind: {
+				assert(!batch_stack.empty());
+				world_sprite_batch[batch_stack.size() - 1].push_back(x.World_Sprite_);
+				break;
+			}
 			case render::Order::Batch_Kind: {
 				batch_stack.push_back(x.Batch_);
 				if (batch_stack.size() > model_batch.size())
 					model_batch.resize(batch_stack.size());
+				if (batch_stack.size() > world_sprite_batch.size())
+					world_sprite_batch.resize(batch_stack.size());
 				break;
 			}
 			case render::Order::Pop_Batch_Kind: {
 				assert(!batch_stack.empty());
 				
-				render::immediate(
-					model_batch[batch_stack.size() - 1],
-					batch_stack.back(),
-					cam_stack.back().Camera3D_
-				);
+				if (model_batch[batch_stack.size() - 1].size() > 0) {
+					render::immediate(
+						model_batch[batch_stack.size() - 1],
+						batch_stack.back(),
+						cam_stack.back().Camera3D_
+					);
+				}
+				if (world_sprite_batch[batch_stack.size() - 1].size() > 0) {
+					auto span =
+						xstd::span<render::World_Sprite>(world_sprite_batch[batch_stack.size() - 1]);
+
+					render::immediate(
+						span,
+						batch_stack.back(),
+						cam_stack.back().Camera3D_
+					);
+				}
 				model_batch[batch_stack.size() - 1].clear();
+				world_sprite_batch[batch_stack.size() - 1].clear();
 				batch_stack.pop_back();
 				break;
 			}

@@ -55,7 +55,7 @@ namespace xstd {
 
 			auto new_data = new T[n];
 			for (size_t i = 0; i < size_; ++i) new_data[i] = move(data_[i]);
-			delete[] data_;
+			if (data_) delete[] data_;
 			data_ = new_data;
 
 			capacity = n;
@@ -166,7 +166,7 @@ namespace xstd {
 
 			auto new_data = new T[n];
 			for (size_t i = 0; i < size; ++i) new_data[i] = move(data()[i]);
-			delete[] heap_data;
+			if (capacity >= S) delete[] heap_data;
 			heap_data = new_data;
 
 			capacity = n;
@@ -227,6 +227,10 @@ namespace xstd {
 			data = small_vec.data();
 			size = small_vec.size;
 		}
+		span(xstd::vector<T>& vec) noexcept {
+			data = vec.data();
+			size = vec.size();
+		}
 
 		constexpr T& operator[](size_t idx) noexcept {
 			#ifdef _DEBUG
@@ -255,6 +259,27 @@ namespace xstd {
 			--s;
 			--i;
 		}
+		vec.size = s;
+	}
+	template<typename T, typename F>
+	void remove_all(xstd::vector<T>& vec, F&& f) noexcept {
+		size_t s = vec.size_;
+		for (size_t i = 0; i < s; ++i) if (f(vec[i])) {
+			vec[i] = vec[s - 1];
+			--s;
+			--i;
+		}
+		vec.size_ = s;
+	}
+	template<typename T, size_t D, typename F>
+	void remove_all(xstd::small_vector<T, D>& vec, F&& f) noexcept {
+		size_t s = vec.size;
+		for (size_t i = 0; i < s; ++i) if (f(vec[i])) {
+			vec[i] = vec[s - 1];
+			--s;
+			--i;
+		}
+		vec.size = s;
 	}
 
 	#undef move

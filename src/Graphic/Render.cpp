@@ -1558,3 +1558,89 @@ void render::immediate(Particle particle, const Camera3D& cam, bool velocity) no
 		glDepthMask(GL_TRUE);
 	}
 }
+
+void render::immediate(
+	xstd::span<World_Sprite> world_sprite, const Batch& batch, const Camera3D& cam
+) noexcept {
+	static GLuint quad_vao{ 0 };
+	static GLuint quad_vbo{ 0 };
+
+	constexpr size_t GPU_Instance_Size = 16 * 4 + 4;
+	thread_local xstd::vector<std::uint8_t> host_instance_data;
+	thread_local Gpu_Vector                device_instance_data;
+
+	if (!quad_vao) {
+		static float quad_vertices[] = {
+			// positions    
+			-0.5f, +0.5f, 0.0f, -0.0f, +1.0f,
+			-0.5f, -0.5f, 0.0f, -0.0f, -0.0f,
+			+0.5f, +0.5f, 0.0f, +1.0f, +1.0f,
+			+0.5f, -0.5f, 0.0f, +1.0f, -0.0f
+		};
+
+		// setup plane VAO
+		glGenVertexArrays(1, &quad_vao);
+		glBindVertexArray(quad_vao);
+		glGenBuffers(1, &quad_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), &quad_vertices, GL_STATIC_DRAW);
+#ifdef GL_DEBUG
+		auto label = "World Sprite rectangle VBO";
+		glObjectLabel(GL_BUFFER, quad_vbo, (GLsizei)strlen(label) - 1, label);
+#endif
+	}
+
+	auto& texture = asset::Store.get_albedo(batch.texture_id);
+	auto& shader  = asset::Store.get_shader(batch.shader_id);
+
+	device_instance_data.debug_name = "Instance data";
+	device_instance_data.target = GL_ARRAY_BUFFER;
+	device_instance_data.fit(world_sprite.size * GPU_Instance_Size);
+
+	glBindVertexArray(quad_vao);
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 20, (void*)0);
+
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 20, (void*)12);
+
+	glBindBuffer(GL_ARRAY_BUFFER, device_instance_data.buffer);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 1, GL_UNSIGNED_INT, GL_FALSE, GPU_Instance_Size, (void*)0);
+	glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+
+	vertex_attrib_matrix(3, 4, GPU_Instance_Size);
+
+	texture.bind(5);
+	shader.use();
+	shader.set_texture(5);
+	shader.set_uniform("VP", cam.get_VP());
+
+	auto offset = [&](Vector3f origin) { return origin * -1.f; };
+
+	host_instance_data.clear();
+	host_instance_data.resize(world_sprite.size * GPU_Instance_Size);
+	size_t off = 0;
+	auto color = V3F(1);
+	for (auto& x : world_sprite) {
+		uint32_t tag = 0;
+		auto M =
+			Matrix4f::translation(x.pos) *
+			Matrix4f::scale(V3F(x.size)) *
+			Matrix4f::rotate({0, 0, 1}, cam.dir * -1.f);
+		#define X(a)\
+			memcpy(host_instance_data.data() + off, (uint8_t*)&a, sizeof(a)); off += sizeof(a);
+		X(tag);
+		X(M);
+		#undef X
+	}
+
+	device_instance_data.upload(host_instance_data.size(), host_instance_data.data());
+
+	glBindVertexArray(quad_vao);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, world_sprite.size);
+
+	for (size_t i = 0; i < 13; ++i) glDisableVertexAttribArray(i);
+}

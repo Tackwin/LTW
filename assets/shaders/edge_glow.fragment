@@ -50,7 +50,7 @@ void main() {
     float d = length(frag_pos - cam_pos);
     float cut = 3;
     if (d > cut) {
-        edge_mult = cut / (d + 5 * (d - cut));
+        edge_mult = 1.0 / (d - cut);
     }
 
     float dt_drag_pos = length(diff(buffer_position, TexCoords, edge_width));

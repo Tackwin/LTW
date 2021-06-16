@@ -1,0 +1,22 @@
+#version 300 es
+
+layout (location = 0) in vec3 in_position;
+layout (location = 1) in vec2 in_uv;
+layout (location = 2) in uint in_tag;
+layout (location = 3) in mat4 M;
+
+flat out vec2 texture_pos;
+out vec3 position;
+out vec3 normal;
+flat out uint tag;
+
+uniform mat4 VP;
+
+void main() {
+	gl_Position = vec4(in_position, 1.0) * M * VP;
+	position = (vec4(in_position, 1.0) * M).xyz;
+	texture_pos = in_uv;
+	normal = inverse(mat3(M)) * vec3(0, 0, 1);
+
+	tag = in_tag;
+}

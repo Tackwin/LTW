@@ -291,6 +291,7 @@ void Store_t::load_known_textures() noexcept {
 	X("assets/textures/heat_icon.png", Heat_Icon);
 	X("assets/textures/radiation_icon.png", Radiation_Icon);
 	X("assets/textures/cursor.png", Cursor);
+	X("assets/textures/slow_as.png", Slow_AS_Icon);
 	X("assets/textures/circuit_icon.png", Circuit_Icon);
 
 #undef X
@@ -373,6 +374,12 @@ void Store_t::load_known_shaders() noexcept {
 		"assets/shaders/particle_bloom.fragment",
 		"",
 		Particle_Bloom
+	);
+	X(
+		"assets/shaders/world_sprite.vertex",
+		"assets/shaders/world_sprite.fragment",
+		"",
+		World_Sprite
 	);
 #undef X
 }

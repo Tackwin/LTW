@@ -77,11 +77,11 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 		Vector2f tower_pos = tile_box(towers[i]->tile_pos, towers[i]->tile_size).center();
 		auto base = towers[i].base();
 
-		for (auto& x : towers) {
-			xstd::remove_all(
-				xstd::span(x->effects), [] (const Effect& e) { return e->cooldown <= 0; }
-			);
-		}
+		apply_effects(towers[i], towers[i]->effects);
+		for (auto& e : towers[i]->effects) e->cooldown -= dt;
+		xstd::remove_all(towers[i]->effects, [] (const Effect& e) {
+			return e->cooldown <= 0;
+		});
 
 		towers[i].on_one_off(TOWER_TARGET_LIST) (auto& x) {
 			if (!units.exist(x.target_id) || !is_valid_target(towers[i], units.id(x.target_id))) {
@@ -92,19 +92,22 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 			if (!(units.exist(x.target_id) && is_valid_target(towers[i], units.id(x.target_id))))
 				return;
 
-			x.attack_cd -= dt;
-			if (x.attack_cd > 0) return;
+			auto timeout = 1.f / (x.attack_speed * x.attack_speed_factor);
+
+			x.attack_cd += dt;
+			if (x.attack_cd < timeout) return;
 
 			auto p = get_projectile(towers[i], units.id(x.target_id));
 			p->pos = tower_box(towers[i]).center();
 			proj_to_add.push_back(p);
 
-			x.attack_cd = 1.f / (x.attack_speed * x.attack_speed_factor);
+			x.attack_cd = 0;
 		};
 
 		towers[i].on_one_off(TOWER_SEEK_PROJECTILE) (auto& x) {
-			x.attack_cd -= dt;
-			if (x.attack_cd <= 0 && units.exist(x.target_id)) {
+			auto timeout = 1.f / (x.attack_speed * x.attack_speed_factor);
+			x.attack_cd += dt;
+			if (x.attack_cd >= timeout && units.exist(x.target_id)) {
 				Seek_Projectile new_projectile;
 				new_projectile.from = tiles[i].id;
 				new_projectile.to = x.target_id;
@@ -113,7 +116,7 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 				new_projectile.pos = tower_pos;
 				proj_to_add.push_back(new_projectile);
 
-				x.attack_cd = 1.f / (x.attack_speed * x.attack_speed_factor);
+				x.attack_cd = 0;
 			}
 		};
 
@@ -425,6 +428,11 @@ void Board::render(render::Orders& order) noexcept {
 	}
 
 	m.origin = {0.5f, 0.5f, 0.0f};
+
+	thread_local xstd::unordered_map<
+		size_t, xstd::small_vector<render::World_Sprite, 16>
+	> world_sprite_batches;
+	world_sprite_batches.clear();
 	for (auto& x : towers) {
 		auto plane_pos = tile_box(x->tile_pos, x->tile_size).center() + pos;
 
@@ -465,6 +473,23 @@ void Board::render(render::Orders& order) noexcept {
 		m.scale = x->tile_size.x * bounding_tile_size();
 		m.pos.z = 0;
 		models_by_object[m.object_id].push_back(m);
+
+		render::World_Sprite effect_sprite;
+		effect_sprite.size = x->tile_size.x / 25.f;
+		effect_sprite.pos.y = plane_pos.y;
+		effect_sprite.pos.z = 
+			asset::Store.get_object(x->object_id).size.z * x->tile_size.x * tile_size +
+			bounding_tile_size() * 0.1f * x->tile_size.x;
+
+		for (size_t i = 0; i < x->effects.size; ++i) {
+			float t = 0.5f;
+			if (x->effects.size > 1) t = i / (x->effects.size - 1.f);
+			t -= 0.5f;
+
+			effect_sprite.pos.x = plane_pos.x + t * x->effects.size * effect_sprite.size;
+
+			world_sprite_batches[get_effect_icon(x->effects[i].kind)].push_back(effect_sprite);
+		}
 	}
 	
 	m.texture_id = asset::Texture_Id::Palette;
@@ -513,6 +538,15 @@ void Board::render(render::Orders& order) noexcept {
 	}
 	depth.func = depth.Less;
 	order.push(depth);
+
+	for (auto& [text_id, x] : world_sprite_batches) if (text_id) {
+		b.object_id = 0;
+		b.texture_id = text_id;
+		b.shader_id = asset::Shader_Id::World_Sprite;
+		order.push(b);
+		for (auto& y : x) order.push(y);
+		order.push(render::Pop_Batch());
+	}
 }
 
 Rectanglef Board::tile_box(Vector2u pos, Vector2u size) noexcept {

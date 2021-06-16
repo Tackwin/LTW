@@ -137,6 +137,8 @@ struct Interface {
 
 	Tower_Selection tower_selection;
 
+	xstd::vector<render::Sprite> world_sprites;
+
 	size_t current_wave = 0;
 	float seconds_to_wave = 0;
 

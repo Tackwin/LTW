@@ -6,6 +6,7 @@
 #include "Math/Rectangle.hpp"
 #include "Math/Matrix.hpp"
 #include "xstd.hpp"
+#include "std/vector.hpp"
 
 namespace render {
 	struct Order_Base {
@@ -171,23 +172,28 @@ namespace render {
 				Vector2f size;
 			};
 		};
-		Vector2f origin;
+		Vector2f origin = {};
 		float rotation = 0.f;
 		Vector4f color = V4F(1);
-		Rectanglef texture_rect;
+		Rectanglef texture_rect = {V2F(0), V2F(1)};
 		size_t texture = 0;
 		size_t shader = 0;
 
-		Sprite() {
-			texture_rect.pos  = V2F(0);
-			texture_rect.size = V2F(1);
-		};
+		// Need to shut up deleted implictly default constructor.
+		Sprite() { rec = {}; }
+	};
+
+	struct World_Sprite : Order_Base {
+		Vector3f pos = {};
+		float size = 1.f;
+
+		size_t texture_id = 0;
 	};
 
 	#define ORDER_LIST(X)\
 	X(Rectangle) X(Circle) X(Camera) X(Pop_Camera) X(Arrow) X(Text) X(Sprite) X(Model) X(Camera3D)\
 	X(Pop_Camera3D) X(Clear_Depth) X(Batch) X(Pop_Batch) X(Push_Ui) X(Pop_Ui) X(Depth_Test)\
-	X(Color_Mask) X(Ring) X(Particle)
+	X(Color_Mask) X(Ring) X(Particle) X(World_Sprite)
 
 	struct Order {
 		sum_type(Order, ORDER_LIST);
@@ -259,6 +265,9 @@ namespace render {
 	extern void immediate3d(std::span<Circle> circles) noexcept;
 	extern void immediate3d(std::span<Arrow> arrows) noexcept;
 
+	extern void immediate(
+		xstd::span<World_Sprite> world_sprite, const Batch& batch, const Camera3D& camera
+	) noexcept;
 	extern void immediate(Ring ring, const Camera3D& camera) noexcept;
 	extern void immediate(Particle particle, const Camera3D& camera, bool velocity) noexcept;
 	extern void immediate(

@@ -3,6 +3,8 @@
 #include "xstd.hpp"
 #include "std/vector.hpp"
 
+
+
 struct Effect_Base {
 	float cooldown = 0.f;
 };
@@ -22,3 +24,4 @@ struct Effect {
 
 struct Tower;
 extern void apply_effects(Tower& tower, xstd::span<Effect> effects) noexcept;
+extern size_t get_effect_icon(Effect::Kind e) noexcept;
