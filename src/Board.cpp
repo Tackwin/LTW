@@ -254,11 +254,8 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 			if (hit) {
 				auto& u = units.id(unit_hit);
 				u->hit(1);
+				auto age = u->life_time;
 				hit_event_at(Vector3f(x.pos, 0.5f), y);
-
-				auto event = xstd::hash_combine(BOUNCE_UNIT_PREFIX, y.id);
-				event      = xstd::hash_combine(event, u.id);
-				event_record.insert(event);
 
 				Vector2u proj_tile;
 				proj_tile.x = (size_t)std::clamp(
@@ -272,18 +269,19 @@ void Board::update(audio::Orders& audio_orders, double dt) noexcept {
 					size.y - 1.f
 				);
 
-				auto test_prefix = xstd::hash_combine(BOUNCE_UNIT_PREFIX, y.id);
 				float r = x.next_radius * x.next_radius;
 				bool found_bounce = false;
 				
 				for (int off_x = -1; off_x <= 1; ++off_x) for (int off_y = -1; off_y <= 1; ++off_y)
 				if (size.x > proj_tile.x + off_x && size.y > proj_tile.y + off_y) {
 					auto vec = Vector2u{proj_tile.x + off_x, proj_tile.y + off_y};
-					for (auto& u_id : unit_id_by_tile[vec_to_idx(vec)]) {
-						if (event_record.test(xstd::hash_combine(test_prefix, u_id))) continue;
-						if (units.id(u_id)->pos.dist_to2(x.pos) > r) continue;
+					for (auto& u_idx : unit_idx_by_tile[vec_to_idx(vec)]) {
+						auto& v = units[u_idx];
+						if (v.id == u.id) continue;
+						if (v->pos.dist_to2(x.pos) > r) continue;
 
-						x.to = u_id;
+						x.to = v.id;
+						x.speed += 1.f;
 						x.left_bounce--;
 
 						found_bounce = true;
@@ -960,6 +958,8 @@ Projectile Board::get_projectile(Tower& from, Unit& target) noexcept {
 			p.object_id = asset::Object_Id::Neutron;
 			p.speed = 2;
 			p.life_time = 2;
+			p.split_chance = 1;
+			p.max_split = 8;
 			p.color_modifier = {0, 0, 0.5f};
 			return p;
 		}

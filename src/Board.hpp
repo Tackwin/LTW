@@ -158,9 +158,6 @@ struct Board {
 	xstd::vector<Unit> unit_to_add;
 	xstd::vector<Projectile> proj_to_add;
 
-	static constexpr size_t BOUNCE_UNIT_PREFIX = 0;
-	xstd::bloom_filter_idx<1'000'000, 5> event_record;
-
 	struct Particle_Effect {
 		Vector3f pos;
 		Vector4f color = {1, 1, 1, 1};
