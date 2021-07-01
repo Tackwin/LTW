@@ -8,6 +8,7 @@
 #include "std/unordered_map.hpp"
 #include "std/hash.hpp"
 
+
 namespace details {
 	template<typename Callable>
 	struct Defer {

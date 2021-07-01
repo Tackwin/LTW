@@ -1,12 +1,12 @@
 #include "Graphic/Render.hpp"
 #include "Graphic/FrameBuffer.hpp"
 
-#include "GL/glew.h"
-#include "GL/wglew.h"
+#include "GL/gl3w.h"
 
 #include "global.hpp"
 
 #include "std/vector.hpp"
+#include <random>
 
 xstd::vector<Vector3f> generate_ssao_samples(size_t n) noexcept {
 	std::uniform_real_distribution<float> unit(0.f, 1.f);

@@ -6,7 +6,7 @@
 #ifdef ES
 #include <GLES3/gl3.h>
 #else
-#include <GL/glew.h>
+#include <GL/gl3w.h>
 #endif
 
 Frame_Buffer::Frame_Buffer(Vector2u size, size_t n_samples, std::string label) noexcept {

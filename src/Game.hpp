@@ -67,7 +67,7 @@ struct Game {
 	Vector2f zqsd_vector;
 
 	float time_to_income = 0.f;
-	float income_interval = 1.f;
+	float income_interval = 30.f;
 
 	double running_ms = 0;
 

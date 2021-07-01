@@ -1,8 +1,7 @@
 #pragma once
 
 #include <type_traits>
-#include <functional>
-#include <random>
+
 
 #include "dyn_struct.hpp"
 
@@ -186,26 +185,6 @@ struct Vector : public __vec_member<D, T> {
 		}
 
 		return createUnitVector(r);
-	}
-	static Vector<D, T> rand(
-		const Vector<D, T>& min,
-		const Vector<D, T>& max,
-		std::default_random_engine rng = std::default_random_engine()
-		) {
-		Vector<D, T> r;
-
-		if constexpr (std::is_integral_v<T>) {
-			for (size_t i = 0u; i < D; ++i) {
-				r[i] = std::uniform_int_distribution<T>(min[i], max[i])(rng);
-			}
-			return r;
-		}
-
-		for (size_t i = 0u; i < D; ++i) {
-			r[i] = std::uniform_real_distribution<T>(min[i], max[i])(rng);
-		}
-
-		return r;
 	}
 #pragma endregion
     
@@ -406,9 +385,7 @@ struct Vector : public __vec_member<D, T> {
 	}
 
 	template<typename L>
-		std::enable_if_t<
-		std::is_invocable_r_v<T, L, T>, Vector<D, T>
-		> applyCW(L lamb) const noexcept {
+	Vector<D, T> applyCW(L lamb) const noexcept {
 		Vector<D, T> res;
 		for (size_t i = 0; i < D; ++i) {
 			res[i] = lamb(this->components[i]);
@@ -510,6 +487,7 @@ struct Vector : public __vec_member<D, T> {
 		}
 		return *this;
 	}
+
 	template<typename U>
 		Vector<D, T>& operator-=(const U& other) {
 		return this->operator+=(static_cast<T>(-1) * other);
@@ -566,7 +544,7 @@ struct Vector : public __vec_member<D, T> {
 		}
 		return results;
 	}
-    
+
 	explicit operator const std::string() const {
 		std::string r = std::to_string(this->components[0]);
 		for (size_t i = 1u; i < D; ++i) {

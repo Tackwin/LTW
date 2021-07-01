@@ -2,7 +2,7 @@
 #ifdef ES
 #include <GLES3/gl3.h>
 #else
-#include <GL/glew.h>
+#include <GL/gl3w.h>
 #endif
 
 #define STB_IMAGE_IMPLEMENTATION

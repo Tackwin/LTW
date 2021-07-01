@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <set>
-#include "GL/glew.h"
+#include "GL/gl3w.h"
 
 #include "global.hpp"
 #include "imgui/imgui.h"
@@ -311,7 +311,6 @@ Game_Request Game::update(audio::Orders& audio_orders, double dt) noexcept {
 	time_to_income -= dt;
 	if (time_to_income < 0) {
 		time_to_income += income_interval;
-
 		for (auto& x : players) x.ressources.gold += x.income;
 	}
 

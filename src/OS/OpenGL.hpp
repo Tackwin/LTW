@@ -3,8 +3,7 @@
 #ifdef ES
 #include <GLES3/gl3.h>
 #else
-#include <GL/glew.h>
-#include <GL/wglew.h>
+#include <GL/gl3w.h>
 namespace opengl {
 	typedef HGLRC WINAPI Create_Context_Attribs_ARB(HDC, HGLRC, const int*);
 	typedef HGLRC WINAPI Make_Current_ARB(HDC, HGLRC, const int*);

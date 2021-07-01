@@ -5,6 +5,7 @@
 #include "xstd.hpp"
 #include "global.hpp"
 
+#include "GL/gl3w.h"
 #include "OS/file.hpp"
 #include "OS/OpenGL.hpp"
 
@@ -141,7 +142,16 @@ namespace asset {
 }
 
 void Store_t::monitor_path(std::filesystem::path dir) noexcept {
+
+// >TODO(Tackwin): >Refacto >OpenGL Loader see win32_main.cpp
+#define WGL_CONTEXT_MAJOR_VERSION_ARB           0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB           0x2092
+#define WGL_CONTEXT_PROFILE_MASK_ARB            0x9126
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB        0x00000001
 #ifndef WEB
+
+	using wglCreateContextAttribsARB_t = HGLRC (*)(HDC, HGLRC, const int *);
+
 	static int attribs[] = {
 		WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
 		WGL_CONTEXT_MINOR_VERSION_ARB, 0,
@@ -150,7 +160,9 @@ void Store_t::monitor_path(std::filesystem::path dir) noexcept {
 		0
 	};
 
-	auto gl = wglCreateContextAttribsARB(
+	auto gl_context =
+		(wglCreateContextAttribsARB_t)gl3wGetProcAddress("wglCreateContextAttribsARB");
+	auto gl = gl_context(
 		(HDC)platform::handle_dc_window, (HGLRC)platform::main_opengl_context, attribs
 	);
 

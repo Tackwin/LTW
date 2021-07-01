@@ -5,8 +5,7 @@
 #ifdef ES
 #include <GLES3/gl3.h>
 #else
-#include <GL/glew.h>
-#include <GL/wglew.h>
+#include <GL/gl3w.h>
 #endif
 
 #include "Graphic/Shader.hpp"

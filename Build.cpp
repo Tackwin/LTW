@@ -15,17 +15,17 @@ Build build(Flags flags) noexcept {
 	if (Env::Win32 && flags.generate_debug) {
 		flags.no_default_lib = true;
 	}
-
+    
 	auto b = Build::get_default(flags);
 	b.name = "LTW";
-
+    
 	b.add_header("./src/");
 	b.add_source_recursively("./src/");
-
+    
 	common_build_options(b, flags);
 	auto game = build_game(flags);
 	game.next = b;
-//	return game;
+    //	return game;
 	return b;
 }
 
@@ -34,19 +34,19 @@ Build build_game(Flags& flags) noexcept {
 	b.name = "game";
 	b.target = Build::Target::Shared;
 	b.flags.output = "assets/dll/";
-
+    
 	b.add_header("./src/");
 	b.add_source_recursively("./src/");
 	b.del_source_recursively("./src/Entry/");
-
+    
 	b.add_define("BUILD_DLL");
-
+    
 	common_build_options(b, flags);
 	return b;
 }
 
 void common_build_options(Build& b, Flags& flags) noexcept {
-	b.add_define("GLEW_STATIC");
+	b.add_define("IMGUI_IMPL_OPENGL_LOADER_GL3W");
 	b.add_define("NOMINMAX");
 	b.add_define("PROFILER");
 	b.add_define("CONSOLE");
@@ -70,12 +70,12 @@ void common_build_options(Build& b, Flags& flags) noexcept {
 			b.add_library("Kernel32");
 		}
 	}
-
+    
 	if (Env::Win32) {
 		b.add_define("WIN32_LEAN_AND_MEAN");
 		b.add_define("UNICODE");
 		b.add_define("_UNICODE");
-
+        
 		b.add_library("Psapi");
 		b.add_library("Dbghelp");
 		b.add_library("Imm32");

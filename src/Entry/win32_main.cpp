@@ -12,8 +12,7 @@
 #include "Profiler/Tracer.hpp"
 #include "xstd.hpp"
 
-#include "GL/glew.h"
-#include "GL/wglew.h"
+#include "GL/gl3w.h"
 
 #include "global.hpp"
 
@@ -28,7 +27,14 @@
 
 #include "Game.hpp"
 
+
 #include "Inspector.hpp"
+
+using wglSwapIntervalEXT_t = BOOL (*)(int interval);
+using wglCreateContextAttribsARB_t = HGLRC (*)(HDC, HGLRC, const int *);
+
+wglSwapIntervalEXT_t wglSwapIntervalEXT = nullptr;
+wglCreateContextAttribsARB_t wglCreateContextAttribsARB = nullptr;
 
 IMGUI_IMPL_API LRESULT  ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
@@ -449,6 +455,8 @@ std::optional<std::string> get_last_error_message() noexcept {
 
 
 std::optional<HGLRC> create_gl_context(HWND handle_window) noexcept {
+#define WGL_CONTEXT_FLAGS_ARB                   0x2094
+#define WGL_CONTEXT_DEBUG_BIT_ARB               0x0001
 	static int attribs[] = {
 	#ifndef NDEBUG
 		WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB,
@@ -514,12 +522,14 @@ std::optional<HGLRC> create_gl_context(HWND handle_window) noexcept {
 		return std::nullopt;
 	}
 
-	PROFILER_SEQ("glew");
-	glewExperimental = true; // Needed for core profile
-	if (glewInit() != GLEW_OK) {
-		printf("Can't init glew\n");
+	PROFILER_SEQ("gl3w");
+	if (gl3wInit() != GL3W_OK) {
+		printf("Can't init gl3w\n");
 		return gl_context;
 	}
+	wglSwapIntervalEXT = (wglSwapIntervalEXT_t)gl3wGetProcAddress("wglSwapIntervalEXT");
+	wglCreateContextAttribsARB =
+		(wglCreateContextAttribsARB_t)gl3wGetProcAddress("wglCreateContextAttribsARB");
 
 	PROFILER_SEQ("second context");
 	auto gl = wglCreateContextAttribsARB(dc, nullptr, attribs);
