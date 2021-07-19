@@ -1,9 +1,7 @@
 #pragma once
 
 #include <type_traits>
-
-
-#include "dyn_struct.hpp"
+#include "std/int.hpp"
 
 #pragma warning(push)
 #pragma warning(disable: 4201)
@@ -15,9 +13,6 @@
 #define DBL_EPSILON 0.000000001
 #endif
 
-static constexpr auto Vector2_Type_Tag = "Vector2<T>"_id;
-static constexpr auto Vector4_Type_Tag = "Vector4<T>"_id;
-
 #define COLOR_UNROLL(x) (x).r, (x).g, (x).b, (x).a
 #define XYZW_UNROLL(v) (v).x, (v).y, (v).z, (v).w
 
@@ -27,14 +22,14 @@ struct Vector;
 template<typename T> using Vector2 = Vector<2U, T>;
 template<typename T> using Vector3 = Vector<3U, T>;
 template<typename T> using Vector4 = Vector<4U, T>;
-using Vector2u = Vector2<std::size_t>;
-using Vector2i = Vector2<std::int32_t>;
+using Vector2u = Vector2<size_t>;
+using Vector2i = Vector2<int32_t>;
 using Vector2f = Vector2<float>;
 using Vector2d = Vector2<double>;
 using Vector3f = Vector3<float>;
 using Vector3d = Vector3<double>;
-using Vector4i = Vector4<std::int32_t>;
-using Vector4u = Vector4<std::size_t>;
+using Vector4i = Vector4<int32_t>;
+using Vector4u = Vector4<size_t>;
 using Vector4f = Vector4<float>;
 using Vector4d = Vector4<double>;
 using Vector4b = Vector4<bool>;
@@ -170,13 +165,6 @@ struct Vector : public __vec_member<D, T> {
 		static bool equal(const V& A, const V& B, double eps = DBL_EPSILON) {
 		return (A - B).length2() <= eps * eps;
 	}
-	static Vector<D, T> clamp(const Vector<D, T>& V, const Vector<D, T>& min, const Vector<D, T>& max) {
-		Vector<D, T> result;
-		for (std::size_t i = 0u; i < D; ++i) {
-			result[i] = std::clamp(V[i], min[i], max[i]);
-		}
-		return result;
-	}
 	static Vector<D, T> rand_unit(double(*rng)(void)) {
 		double r[D - 1];
 
@@ -230,13 +218,6 @@ struct Vector : public __vec_member<D, T> {
 		return D;
 	}
 
-	Vector<D, T>& clamp(const Vector<D, T>& min, const Vector<D, T>& max) {
-		for (std::size_t i = 0u; i < D; ++i) {
-			this->components[i] = std::clamp(this->components[i], min[i], max[i]);
-		}
-		return *this;
-	}
-    
 	template<typename U>
 		bool inRect(const Vector<D, U>& pos, const Vector<D, U>& size) const {
 		for (size_t i = 0u; i < D; ++i) {
@@ -342,16 +323,6 @@ struct Vector : public __vec_member<D, T> {
 
 	constexpr Vector<D, T> projectTo(const Vector<D, T>& other) const noexcept {
 		return other * dot(other) / other.length2();
-	}
-
-	const char* leak_string() const noexcept {
-		auto str = new std::string();
-
-		*str = "[ ";
-		for (size_t i = 0; i < D; ++i) *str += std::to_string(this->components[i]) + " ";
-		*str += "]";
-
-		return str->c_str();
 	}
 
 	Vector<D, T> round(T magnitude) {
@@ -544,15 +515,6 @@ struct Vector : public __vec_member<D, T> {
 		}
 		return results;
 	}
-
-	explicit operator const std::string() const {
-		std::string r = std::to_string(this->components[0]);
-		for (size_t i = 1u; i < D; ++i) {
-			r += ' ';
-			r += std::to_string(this->components[i]);
-		}
-		return r;
-	}
 #pragma endregion
 };
 
@@ -579,7 +541,7 @@ Vector<D, T> operator/(U scalar, const Vector<D, T>& vec) noexcept {
 	return result;
 }
 
-
+struct dyn_struct;
 template<typename T>
 void to_dyn_struct(dyn_struct& s, const Vector<2, T>& x) noexcept {
 	s = { x.x, x.y };

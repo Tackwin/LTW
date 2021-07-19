@@ -566,7 +566,7 @@ const char* NS::Flags::help_message() noexcept {
 
 	"--profile-build              Will produce an output file that contains information about the\n"
 	"                             time spent on each aspect of the compilation.\n"
-	"                    Exemple: ./Build.exe --profile-build"
+	"                    Exemple: ./Build.exe --profile-build\n\n"
 
 	"--verbose <level>            Change the level of verbosity.\n"
 	"                             Level 0 (default) will show a simple progress message.\n"

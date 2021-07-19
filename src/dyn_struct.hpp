@@ -8,8 +8,8 @@
 #include <variant>
 #include <optional>
 #include <filesystem>
-#include <unordered_map>
 
+#include "std/unordered_map.hpp"
 #include "Memory/ValuePtr.hpp"
 
 #include "xstd.hpp"
@@ -19,7 +19,7 @@ struct dyn_struct {
 	using real_t = long double;
 	using string_t = std::string;
 	using boolean_t = bool;
-	using structure_t = std::unordered_map<std::string, ValuePtr<dyn_struct>>;
+	using structure_t = xstd::unordered_map<std::string, ValuePtr<dyn_struct>>;
 	using array_t = std::vector<ValuePtr<dyn_struct>>;
 	using null_t = std::nullptr_t;
 
@@ -114,9 +114,7 @@ struct dyn_struct_const_array_iterator {
 struct dyn_struct_structure_iterator {
 	dyn_struct::structure_t::iterator iterator;
 
-	std::pair<std::string, const dyn_struct&> operator*() const noexcept;
 	std::pair<std::string, dyn_struct&> operator*() noexcept;
-	std::pair<std::string, const dyn_struct&> operator->() const noexcept;
 	std::pair<std::string, dyn_struct&> operator->() noexcept;
 
 	dyn_struct_structure_iterator& operator++() noexcept;
@@ -126,8 +124,8 @@ struct dyn_struct_structure_iterator {
 struct dyn_struct_const_structure_iterator {
 	dyn_struct::structure_t::const_iterator iterator;
 
-	std::pair<std::string, const dyn_struct&> operator*() const noexcept;
-	std::pair<std::string, const dyn_struct&> operator->() const noexcept;
+	std::pair<std::string, const dyn_struct&> operator*() noexcept;
+	std::pair<std::string, const dyn_struct&> operator->() noexcept;
 
 	dyn_struct_const_structure_iterator& operator++() noexcept;
 	bool operator==(const dyn_struct_const_structure_iterator& other) const noexcept;
@@ -250,13 +248,13 @@ to_dyn_struct(dyn_struct& str, const std::vector<T>& v) noexcept {
 	for (const auto& x : v) str.push_back(x);
 }
 template<typename V> void
-from_dyn_struct(const dyn_struct& str, std::unordered_map<std::string, V>& m) noexcept {
+from_dyn_struct(const dyn_struct& str, xstd::unordered_map<std::string, V>& m) noexcept {
 	for (auto& [k, v] : m) {
 		str[k] = v;
 	}
 }
 template<typename V> void
-to_dyn_struct(dyn_struct& str, const std::unordered_map<std::string, V>& m) noexcept {
+to_dyn_struct(dyn_struct& str, const xstd::unordered_map<std::string, V>& m) noexcept {
 	for (auto& [k, v] : m) {
 		str[k] = v;
 	}

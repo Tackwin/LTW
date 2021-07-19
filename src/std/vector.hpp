@@ -141,7 +141,7 @@ namespace xstd {
 			heap_data = other.heap_data;
 			size = other.size;
 			capacity = other.capacity;
-			other.stack_data = {};
+			for (size_t i = 0; i < S; ++i) other.stack_data[i] = {};
 			other.heap_data = 0;
 			other.size = 0;
 			other.capacity = 0;

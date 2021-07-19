@@ -1,6 +1,8 @@
 #pragma once
 
+#include "std/int.hpp"
 #include "Math/Vector.hpp"
+
 
 namespace io {
 
@@ -144,7 +146,7 @@ namespace io {
 
 	struct Keyboard_State {
 		static constexpr auto Max_Key = 256;
-		std::uint8_t keys[Max_Key];
+		uint8_t keys[Max_Key];
 	};
 
 	struct Controller_State {
@@ -153,12 +155,12 @@ namespace io {
 		static constexpr auto Trigger_Treshold = 30;
 
 		size_t buttons_mask;
-		std::uint8_t left_trigger;
-		std::uint8_t right_trigger;
-		std::int16_t left_thumb_x;
-		std::int16_t left_thumb_y;
-		std::int16_t right_thumb_x;
-		std::int16_t right_thumb_y;
+		uint8_t left_trigger;
+		uint8_t right_trigger;
+		int16_t left_thumb_x;
+		int16_t left_thumb_y;
+		int16_t right_thumb_x;
+		int16_t right_thumb_y;
 	};
 
 	extern Keyboard_State get_keyboard_state() noexcept;

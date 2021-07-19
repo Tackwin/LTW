@@ -151,8 +151,9 @@ struct Joystick {
 	};
 };
 
-extern std::string to_string(Keyboard::Key k) noexcept;
-extern std::string to_string(Joystick::Button b) noexcept;
+extern const char* to_string(Mouse::Button b) noexcept;
+extern const char* to_string(Keyboard::Key k) noexcept;
+extern const char* to_string(Joystick::Button b) noexcept;
 
 struct Input_Info {
 	constexpr static std::uint8_t Version{ 0 };

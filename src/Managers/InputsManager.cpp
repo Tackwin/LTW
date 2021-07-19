@@ -1,5 +1,7 @@
 #include "InputsManager.hpp"
 
+#include <string>
+
 #include "imgui/imgui.h"
 
 #include "OS/file.hpp"
@@ -13,7 +15,7 @@
 
 uint8_t current_char = '\0';
 
-std::string to_string(Mouse::Button b) noexcept {
+const char* to_string(Mouse::Button b) noexcept {
 	switch (b) {
 	case Mouse::Left:
 		return "Left";
@@ -25,7 +27,7 @@ std::string to_string(Mouse::Button b) noexcept {
 		return "Unknown";
 	}
 }
-std::string to_string(Keyboard::Key k) noexcept {
+const char* to_string(Keyboard::Key k) noexcept {
 	switch (k) {
 		case Keyboard::Key::A : {
 			return "A";
@@ -336,7 +338,7 @@ std::string to_string(Keyboard::Key k) noexcept {
 	}
 }
 
-std::string to_string(Joystick::Button b) noexcept {
+const char* to_string(Joystick::Button b) noexcept {
 	switch (b) {
 		case Joystick::Button::A : {
 			return "A";

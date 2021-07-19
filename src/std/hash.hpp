@@ -1,9 +1,16 @@
 #pragma once
 
+#include <type_traits>
+
 namespace xstd {
 
 	template<typename T>
-	struct hash {};
+	struct hash {
+		template<typename U = T>
+		std::enable_if_t<std::is_enum_v<U>, unsigned long long> operator()(U x) noexcept {
+			return hash<unsigned long long>()((unsigned long long)x);
+		}
+	};
 
 	template<>
 	struct hash<unsigned long long> {

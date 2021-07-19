@@ -1,10 +1,11 @@
 #pragma once
 
-#include <unordered_map>
 #include <filesystem>
 #include <functional>
 #include <optional>
 #include <memory>
+
+#include "std/unordered_map.hpp"
 
 #include "Graphic/Font.hpp"
 #include "Graphic/Object.hpp"
@@ -146,16 +147,16 @@ namespace asset {
 		bool stop{ false };
 		std::atomic<bool> ready = false;
 
-		std::unordered_map<std::string, std::uint64_t> textures_loaded;
+		xstd::unordered_map<std::string, std::uint64_t> textures_loaded;
 
-		std::unordered_map<std::uint64_t, Asset_DLL> dlls;
-		std::unordered_map<std::uint64_t, Asset_Font> fonts;
-		std::unordered_map<std::uint64_t, Asset_Sound> sounds;
-		std::unordered_map<std::uint64_t, Asset_Object> objects;
-		std::unordered_map<std::uint64_t, Asset_Shader> shaders;
-		std::unordered_map<std::uint64_t, Asset_Texture> textures;
+		xstd::unordered_map<std::uint64_t, Asset_DLL> dlls;
+		xstd::unordered_map<std::uint64_t, Asset_Font> fonts;
+		xstd::unordered_map<std::uint64_t, Asset_Sound> sounds;
+		xstd::unordered_map<std::uint64_t, Asset_Object> objects;
+		xstd::unordered_map<std::uint64_t, Asset_Shader> shaders;
+		xstd::unordered_map<std::uint64_t, Asset_Texture> textures;
 
-		std::unordered_map<std::string, std::uint64_t> texture_string_map;
+		xstd::unordered_map<std::string, std::uint64_t> texture_string_map;
 
 		[[nodiscard]] Texture* get_normal(size_t k) const noexcept;
 		[[nodiscard]] Texture& get_albedo(size_t k) noexcept;

@@ -7,6 +7,16 @@
 
 #include "OS/file.hpp"
 
+
+namespace xstd {
+	template<>
+	struct hash<std::string> {
+		unsigned long long operator()(const std::string& x) noexcept {
+			return std::hash<std::string>()(x);
+		}
+	};
+}
+
 dyn_struct::dyn_struct(
 std::initializer_list<std::pair<std::string, dyn_struct>> list
 ) noexcept {
@@ -27,7 +37,7 @@ dyn_struct& dyn_struct::operator[](std::string_view str) noexcept {
 	auto& struc = std::get<structure_t>(value);
 
 
-	if (struc.count(std::string(str)) == 0) set(str, {}, *this);
+	if (!struc.contains(std::string(str))) set(str, {}, *this);
 	return *struc.at(std::string(str));
 }
 dyn_struct& dyn_struct::operator[](size_t idx) noexcept {
@@ -71,8 +81,9 @@ dyn_struct& get(std::string_view str, const dyn_struct& d_struct) noexcept {
 
 dyn_struct& set(std::string_view str, const dyn_struct& value, dyn_struct& to) noexcept {
 	assert(std::holds_alternative<dyn_struct::structure_t>(to.value));
-	std::get<dyn_struct::structure_t>(to.value)
-		.emplace(std::string(str), ValuePtr(new dyn_struct(value)));
+	std::get<dyn_struct::structure_t>(to.value).emplace(
+		std::string(str), ValuePtr(new dyn_struct(value))
+	);
 	return to;
 }
 
@@ -644,16 +655,8 @@ const dyn_struct_const_array_iterator& other
 	return iterator != other.iterator;
 }
 
-std::pair<std::string, const dyn_struct&>
-dyn_struct_structure_iterator::operator*() const noexcept {
-	return std::pair<std::string, const dyn_struct&>{ iterator->first, *iterator->second };
-}
 std::pair<std::string, dyn_struct&> dyn_struct_structure_iterator::operator*() noexcept {
 	return std::pair<std::string, dyn_struct&>{ iterator->first, *iterator->second };
-}
-std::pair<std::string, const dyn_struct&>
-dyn_struct_structure_iterator::operator->() const noexcept {
-	return std::pair<std::string, const dyn_struct&>{ iterator->first, *iterator->second };
 }
 std::pair<std::string, dyn_struct&>
 dyn_struct_structure_iterator::operator->() noexcept {
@@ -675,11 +678,11 @@ bool dyn_struct_structure_iterator::operator!=(
 }
 
 std::pair<std::string, const dyn_struct&>
-dyn_struct_const_structure_iterator::operator*() const noexcept {
+dyn_struct_const_structure_iterator::operator*() noexcept {
 	return std::pair<std::string, const dyn_struct&>{ iterator->first, *iterator->second };
 }
 std::pair<std::string, const dyn_struct&>
-dyn_struct_const_structure_iterator::operator->() const noexcept {
+dyn_struct_const_structure_iterator::operator->() noexcept {
 	return std::pair<std::string, const dyn_struct&>{ iterator->first, *iterator->second };
 }
 dyn_struct_const_structure_iterator& dyn_struct_const_structure_iterator::operator++() noexcept {
@@ -789,7 +792,7 @@ dyn_struct_const_structure_iterator_tag iterate_structure(const dyn_struct& d_st
 
 bool has(const dyn_struct& d_struct, std::string_view key) noexcept {
 	return std::holds_alternative<dyn_struct::structure_t>(d_struct.value) &&
-		std::get<dyn_struct::structure_t>(d_struct.value).count(std::string{ key }) != 0;
+		std::get<dyn_struct::structure_t>(d_struct.value).contains(std::string{ key });
 }
 
 dyn_struct dyn_struct_array(size_t n) noexcept {

@@ -51,7 +51,7 @@ std::optional<Object> Object::load_from_file(
 		cursor += 4;
 	}
 
-	Vector3f m = V3F(FLT_MAX);
+	Vector3f m{ FLT_MAX, FLT_MAX, FLT_MAX };
 	for (auto& x : obj.vertices) {
 		m.x = std::min(m.x, x.pos.x);
 		m.y = std::min(m.y, x.pos.y);

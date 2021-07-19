@@ -766,7 +766,7 @@ void render::immediate(Sprite info) noexcept {
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	}
 
-	if (asset::Store.textures.count(info.texture) > 0) {
+	if (asset::Store.textures.contains(info.texture)) {
 		asset::Store.get_albedo(info.texture).bind(5);
 		auto normal = asset::Store.get_normal(info.texture); if (normal) normal->bind(6);
 	}

@@ -7,41 +7,66 @@ EASE_WATCH_ME;
 clang++ Build.cpp -o Build.exe -std=c++17
 */
 
+enum Target {
+	Windows,
+	Emscripten
+} target_to = Windows;
+
 void common_build_options(Build& b, Flags& flags) noexcept;
 
 Build build_game(Flags& flags) noexcept;
+Build build_emscripten(Flags& flags) noexcept;
 
 Build build(Flags flags) noexcept {
 	if (Env::Win32 && flags.generate_debug) {
 		flags.no_default_lib = true;
 	}
-    
+
 	auto b = Build::get_default(flags);
 	b.name = "LTW";
-    
+
 	b.add_header("./src/");
 	b.add_source_recursively("./src/");
-    
+	b.del_source_recursively("./src/Entry/");
+	b.add_source("./src/Entry/win32_main.cpp");
+
 	common_build_options(b, flags);
-	auto game = build_game(flags);
-	game.next = b;
-    //	return game;
+
 	return b;
 }
+
+Build build_emscripten(Flags& flags) noexcept {
+	if (Env::Win32 && flags.generate_debug) {
+		flags.no_default_lib = false;
+	}
+
+	auto b = Build::get_default(flags);
+	b.compiler = "emcc";
+	b.name = "LTW_em";
+
+	b.add_header("./src/");
+	b.add_source("./src/Entry/em_main.cpp");
+
+	b.add_define("BUILD_DLL");
+	b.add_define("IMGUI_IMPL_OPENGL_LOADER_GL3W");
+	b.add_define("NOMINMAX");
+	b.add_define("PROFILER");
+	b.add_define("CONSOLE");
+	if (flags.generate_debug) b.add_define("GL_DEBUG");
+	return b;
+}
+
 
 Build build_game(Flags& flags) noexcept {
 	auto b = Build::get_default(flags);
 	b.name = "game";
 	b.target = Build::Target::Shared;
 	b.flags.output = "assets/dll/";
-    
+
 	b.add_header("./src/");
 	b.add_source_recursively("./src/");
 	b.del_source_recursively("./src/Entry/");
-    
-	b.add_define("BUILD_DLL");
-    
-	common_build_options(b, flags);
+
 	return b;
 }
 
@@ -52,7 +77,7 @@ void common_build_options(Build& b, Flags& flags) noexcept {
 	b.add_define("CONSOLE");
 	if (flags.generate_debug) b.add_define("GL_DEBUG");
 	b.no_warnings_win32();
-	if (Env::Win32 && flags.generate_debug) {
+	if (target_to == Target::Windows && flags.generate_debug) {
 		if (flags.release) {
 			b.add_library("libucrt");
 			b.add_library("libvcruntime");
@@ -71,7 +96,7 @@ void common_build_options(Build& b, Flags& flags) noexcept {
 		}
 	}
     
-	if (Env::Win32) {
+	if (target_to == Target::Windows) {
 		b.add_define("WIN32_LEAN_AND_MEAN");
 		b.add_define("UNICODE");
 		b.add_define("_UNICODE");
@@ -90,5 +115,7 @@ void common_build_options(Build& b, Flags& flags) noexcept {
 		b.add_library("Ole32");
 		b.add_library("Uuid");
 		b.add_library("Winmm");
+	} else if (target_to == Target::Emscripten) {
+
 	}
 }

@@ -13,6 +13,15 @@
 
 using namespace asset;
 
+namespace xstd {
+	template<>
+	struct hash<std::string> {
+		unsigned long long operator()(const std::string& x) noexcept {
+			return std::hash<std::string>()(x);
+		}
+	};
+}
+
 namespace asset {
 	Store_t Store;
 }
@@ -89,7 +98,7 @@ namespace asset {
 	};
 
 
-	shaders.insert({ k, std::move(s) });
+	shaders.emplace(k, std::move(s));
 
 	return true;
 }
@@ -107,7 +116,7 @@ namespace asset {
 	};
 
 
-	shaders.insert({ k, std::move(s) });
+	shaders.emplace(k, std::move(s));
 
 	return true;
 }
@@ -128,7 +137,7 @@ namespace asset {
 		std::filesystem::weakly_canonical(geometry)
 	};
 
-	shaders.insert({ k, std::move(s) });
+	shaders.emplace(k, std::move(s));
 
 	return true;
 }
@@ -188,7 +197,7 @@ void Store_t::monitor_path(std::filesystem::path dir) noexcept {
 
 				auto it = textures_loaded.find(size_t.string());
 				
-				if (it != END(textures_loaded) && textures.count(it->second)) {
+				if (it != END(textures_loaded) && textures.contains(it->second)) {
 					auto& asset = textures.at(it->second);
 
 					if (suffixes.size() == 1) {
@@ -469,17 +478,16 @@ void Store_t::load_from_config(std::filesystem::path config_path) noexcept {
 	if (!opt) return false;
 	font.asset.info = (Font::Font_Info)*opt;
 
-	auto it = std::find_if(
-		BEG_END(textures),
-		[p = font.asset.info.texture_path](const auto& x) { return x.second.path == p; }
-	);
+	uint64_t it = 0;
+	for (auto& [k, v] : textures)
+		if (v.path == font.asset.info.texture_path) { it = k; break; }
 
-	if (it == END(textures)) {
+	if (it == 0) {
 		auto opt_key = load_texture(path.parent_path() / font.asset.info.texture_path);
 		if (!opt_key) return false;
 		font.asset.texture_id = *opt_key;
 	} else {
-		font.asset.texture_id = it->first;
+		font.asset.texture_id = it;
 	}
 	
 	get_albedo(font.asset.texture_id).set_resize_filter(Texture::Filter::Linear);

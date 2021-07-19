@@ -1,10 +1,10 @@
 #pragma once
 
-#include <string>
-#include <string>
 #include <optional>
 #include <filesystem>
 #include <string_view>
+
+#include "std/unordered_map.hpp"
 
 #include "Math/Vector.hpp"
 #include "Math/Matrix.hpp"
@@ -78,7 +78,7 @@ public:
 	void set_uniform(const std::string& name, int x) noexcept;
 
 private:
-	std::unordered_map<std::string, size_t> cache_loc;
+	xstd::unordered_map<std::string, size_t> cache_loc;
 
 	std::optional<std::string> check_shader_error(size_t shader) noexcept;
 	std::optional<std::string> check_program_error(size_t program) noexcept;

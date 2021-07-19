@@ -4,8 +4,8 @@
 #include <optional>
 #include <functional>
 #include <filesystem>
-#include <unordered_map>
-#include <filesystem>
+
+#include "std/unordered_map.hpp"
 
 namespace file {
 	[[nodiscard]] extern std::optional<std::string>
@@ -25,7 +25,7 @@ namespace file {
 	struct OpenFileOpts {
 		void* owner{ nullptr };
 
-		std::unordered_map<std::wstring, std::vector<std::wstring>> ext_filters;
+		xstd::unordered_map<std::wstring, std::vector<std::wstring>> ext_filters;
 		std::filesystem::path filepath;
 		std::filesystem::path filename;
 		std::wstring dialog_title{ NULL };

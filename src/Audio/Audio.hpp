@@ -5,7 +5,6 @@
 
 #include "xstd.hpp"
 #include "std/vector.hpp"
-#include "Managers/AssetsManager.hpp"
 
 extern void sound_callback(
 	ma_device* device, void* output, const void* input, ma_uint32 frame_count

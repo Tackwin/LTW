@@ -3,6 +3,7 @@
 #include "Vector.hpp"
 #include "Rectangle.hpp"
 #include <cmath>
+#include <optional>
 
 template<size_t R, size_t C, typename T = float>
 struct Matrix {
