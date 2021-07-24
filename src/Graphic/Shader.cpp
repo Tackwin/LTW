@@ -257,21 +257,21 @@ void Shader::set_uniform(const std::string& name, Vector2f x) noexcept {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
 	}
 
-	glUniform2fv(cache_loc[name], 1, &x.x);
+	glUniform2fv(cache_loc.at(name), 1, &x.x);
 }
 void Shader::set_uniform(const std::string& name, Vector3f x) noexcept {
 	if (!cache_loc.contains(name)) {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
 	}
 
-	glUniform3fv(cache_loc[name], 1, &x.x);
+	glUniform3fv(cache_loc.at(name), 1, &x.x);
 }
 void Shader::set_uniform(const std::string& name, Matrix4f x, bool transpose) noexcept {
 	if (!cache_loc.contains(name)) {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
 	}
 
-	glUniformMatrix4fv(cache_loc[name], 1, transpose ? GL_TRUE : GL_FALSE, &x[0][0]);
+	glUniformMatrix4fv(cache_loc.at(name), 1, transpose ? GL_TRUE : GL_FALSE, &x[0][0]);
 }
 void Shader::set_uniform(const std::string& name, Vector4d x) noexcept {
 	if (!cache_loc.contains(name)) {
@@ -279,28 +279,28 @@ void Shader::set_uniform(const std::string& name, Vector4d x) noexcept {
 	}
 
 	Vector4f y = (Vector4f)x;
-	glUniform4fv(cache_loc[name], 1, &y.x);
+	glUniform4fv(cache_loc.at(name), 1, &y.x);
 }
 void Shader::set_uniform(const std::string& name, Rectanglef x) noexcept {
 	if (!cache_loc.contains(name)) {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
 	}
 
-	glUniform4fv(cache_loc[name], 1, &x.x);
+	glUniform4fv(cache_loc.at(name), 1, &x.x);
 }
 void Shader::set_uniform(const std::string& name, float x) noexcept {
 	if (!cache_loc.contains(name)) {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
 	}
 
-	glUniform1f(cache_loc[name], x);
+	glUniform1f(cache_loc.at(name), x);
 }
 void Shader::set_uniform(const std::string& name, int x) noexcept {
 	if (!cache_loc.contains(name)) {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
 	}
 
-	glUniform1i(cache_loc[name], x);
+	glUniform1i(cache_loc.at(name), x);
 }
 void Shader::set_uniform(const std::string& name, Vector4u x) noexcept {
 	if (!cache_loc.contains(name)) {
@@ -309,14 +309,14 @@ void Shader::set_uniform(const std::string& name, Vector4u x) noexcept {
 
 	Vector4i y = (Vector4i)x;
 
-	glUniform4iv(cache_loc[name], 4, &y.x);
+	glUniform4iv(cache_loc.at(name), 4, &y.x);
 }
 void Shader::set_uniform(const std::string& name, Vector4f x) noexcept {
 	if (!cache_loc.contains(name)) {
 		cache_loc[name] = glGetUniformLocation(info.programId, name.c_str());
 	}
 
-	glUniform4fv(cache_loc[name], 1, &x.x);
+	glUniform4fv(cache_loc.at(name), 1, &x.x);
 }
 
 #undef loc

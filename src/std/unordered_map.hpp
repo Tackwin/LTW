@@ -371,7 +371,8 @@ struct hashmap
                 if ((state & deleted) == deleted) tombs--;
                 bitmap_set(bitmap, i, occupied);
 
-                data[i].first = std::move(key);
+                new (&data[i]) value_type;
+                data[i].first = key;
 
                 if (load() > load_factor) {
                     resize_internal(data, bitmap, limit, limit << 1);
@@ -445,6 +446,7 @@ struct hashmap
                  if (state == available)           /* notfound */ break;
             else if (state == deleted);            /* skip */
             else if (_compare(data[i].first, key)) {
+                data[i].~value_type();
                 bitmap_set(bitmap, i, deleted);
                 bitmap_clear(bitmap, i, occupied);
                 used--;
@@ -457,7 +459,6 @@ struct hashmap
 
 };
 
-
 namespace xstd {
-    template<typename K, typename V> using unordered_map = std::unordered_map<K, V>;
+    template<typename K, typename V> using unordered_map = zedland::hashmap<K, V>;
 }
