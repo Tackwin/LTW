@@ -1,8 +1,7 @@
 #pragma once
 
+#include "int.hpp"
 #include "type_traits.hpp"
-
-using size_t = unsigned long long;
 
 namespace xstd {
 
@@ -196,7 +195,7 @@ namespace xstd {
 		template<typename F>
 		void erase(const F& f) noexcept {
 			for (size_t i = 0; i < size; ++i) if (f(data()[i]))
-				data()[i--] = data()[--size_];
+				data()[i--] = data()[--size];
 		}
 
 		T* data() noexcept { if (capacity < S) return stack_data; return heap_data; }

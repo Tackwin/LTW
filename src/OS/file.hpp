@@ -6,16 +6,17 @@
 #include <filesystem>
 
 #include "std/unordered_map.hpp"
+#include "std/vector.hpp"
 
 namespace file {
 	[[nodiscard]] extern std::optional<std::string>
 		read_whole_text(const std::filesystem::path& path) noexcept;
-	[[nodiscard]] extern std::optional<std::vector<std::uint8_t>>
+	[[nodiscard]] extern std::optional<xstd::vector<std::uint8_t>>
 		read_whole_file(const std::filesystem::path& path) noexcept;
 	[[nodiscard]] extern size_t get_file_size(const std::filesystem::path& path) noexcept;
 
 	[[nodiscard]] extern bool overwrite_file_byte(
-		std::filesystem::path path, const std::vector<std::uint8_t>& bytes
+		std::filesystem::path path, const xstd::vector<std::uint8_t>& bytes
 	) noexcept;
 
 	[[nodiscard]] extern bool overwrite_file(

@@ -9,4 +9,11 @@ using int32_t = signed int;
 using uint08_t = unsigned char;
 using uint16_t = unsigned short;
 using uint32_t = unsigned int;
-using size_t = unsigned long long;
+
+#ifdef __EMSCRIPTEN__
+	using size_t = unsigned long;
+#else
+	using int64_t = signed long long int;
+	using uint64_t = unsigned long long;
+	using size_t = unsigned long long;
+#endif

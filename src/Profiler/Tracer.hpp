@@ -7,13 +7,7 @@
 #include <dyn_struct.hpp>
 #include <chrono>
 
-#ifdef _MSC_VER
-# include <intrin.h>
-#else
-# include <x86intrin.h>
-#endif
 #include "OS/Process.hpp"
-
 #include "std/vector.hpp"
 
 struct Scoped_Timer {

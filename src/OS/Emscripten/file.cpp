@@ -4,14 +4,18 @@
 
 #include <stdio.h>
 #include <string>
+#include <optional>
 
-xstd::std_expected<std::string>
+#include "xstd.hpp"
+#include "std/vector.hpp"
+
+std::optional<std::string>
 file::read_whole_text(const std::filesystem::path& path) noexcept {
 	FILE* file = fopen(path.string().c_str(), "r");
 	defer{ fclose(file); };
 
 	if (!file) {
-		return Error::Web_File_Read;
+		return std::nullopt;
 	}
 
 	std::string bytes;
@@ -21,27 +25,27 @@ file::read_whole_text(const std::filesystem::path& path) noexcept {
 	return bytes;
 }
 
-xstd::std_expected<std::vector<std::uint8_t>>
+std::optional<xstd::vector<std::uint8_t>>
 file::read_whole_file(const std::filesystem::path& path) noexcept {
 	FILE* file = fopen(path.string().c_str(), "rb");
 	defer{ fclose(file); };
 
 	if (!file) {
-		return Error::Web_File_Read;
+		return std::nullopt;
 	}
 
-	std::vector<std::uint8_t> bytes;
+	xstd::vector<std::uint8_t> bytes;
 
 	while (!feof(file)) if (char c = fgetc(file); c != EOF) bytes.push_back(c);
 
 	return bytes;
 }
 
-size_t file::overwrite_file_byte(
-	std::filesystem::path path, const std::vector<std::uint8_t>& bytes
+bool file::overwrite_file_byte(
+	std::filesystem::path path, const xstd::vector<std::uint8_t>& bytes
 ) noexcept {
 	printf("Write operation are not supported in the browser.\n");
-	return 0;
+	return false;
 }
 
 bool file::overwrite_file(const std::filesystem::path& path, std::string_view str) noexcept {
@@ -66,7 +70,7 @@ std::optional<std::filesystem::path> file::open_dir() noexcept {
 }
 file::OpenFileResult file::open_file(OpenFileOpts opts) noexcept {
 	OpenFileResult result;
-	result.error_code = Error::Unsupported_Operation;
+	result.error_code = 558;
 	return result;
 }
 

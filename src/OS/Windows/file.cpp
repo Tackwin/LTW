@@ -59,7 +59,7 @@ size_t file::get_file_size(const std::filesystem::path& path) noexcept {
 }
 
 
-std::optional<std::vector<std::uint8_t>>
+std::optional<xstd::vector<std::uint8_t>>
 file::read_whole_file(const std::filesystem::path& path) noexcept {
 	auto handle = CreateFile(
 		path.native().c_str(),
@@ -83,7 +83,7 @@ file::read_whole_file(const std::filesystem::path& path) noexcept {
 		return std::nullopt;
 	}
     
-	std::vector<std::uint8_t> buffer;
+	xstd::vector<std::uint8_t> buffer;
 	buffer.resize((std::size_t)large_int.QuadPart);
     
 	DWORD read;
@@ -95,7 +95,7 @@ file::read_whole_file(const std::filesystem::path& path) noexcept {
 }
 
 bool file::overwrite_file_byte(
-	std::filesystem::path path, const std::vector<std::uint8_t>& bytes
+	std::filesystem::path path, const xstd::vector<std::uint8_t>& bytes
 ) noexcept {
 	FILE* f;
 	auto err = fopen_s(&f, path.generic_string().c_str(), "wb");

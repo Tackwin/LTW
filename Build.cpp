@@ -18,6 +18,8 @@ Build build_game(Flags& flags) noexcept;
 Build build_emscripten(Flags& flags) noexcept;
 
 Build build(Flags flags) noexcept {
+	// return build_emscripten(flags);
+
 	if (Env::Win32 && flags.generate_debug) {
 		flags.no_default_lib = true;
 	}
@@ -28,6 +30,7 @@ Build build(Flags flags) noexcept {
 	b.add_header("./src/");
 	b.add_source_recursively("./src/");
 	b.del_source_recursively("./src/Entry/");
+	b.del_source_recursively("./src/OS/Emscripten");
 	b.add_source("./src/Entry/win32_main.cpp");
 
 	common_build_options(b, flags);
@@ -45,8 +48,13 @@ Build build_emscripten(Flags& flags) noexcept {
 	b.name = "LTW_em";
 
 	b.add_header("./src/");
+	b.add_source("./src/dyn_struct.cpp");
 	b.add_source("./src/Entry/em_main.cpp");
+	b.add_source("./src/Profiler/Tracer.cpp");
+	b.add_source("./src/OS/Emscripten/Process.cpp");
+	b.add_source("./src/OS/Emscripten/file.cpp");
 
+	b.add_define("WEB");
 	b.add_define("BUILD_DLL");
 	b.add_define("IMGUI_IMPL_OPENGL_LOADER_GL3W");
 	b.add_define("NOMINMAX");

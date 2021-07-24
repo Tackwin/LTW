@@ -6,7 +6,7 @@
 #include <functional>
 
 #include "OS/file.hpp"
-
+#include "std/vector.hpp"
 
 namespace xstd {
 	template<>
@@ -156,12 +156,6 @@ void to_dyn_struct(dyn_struct& to, const dyn_struct::variant& from) noexcept {
 }
 void from_dyn_struct(const dyn_struct& from, dyn_struct::variant& to) noexcept {
 	to = from.value;
-}
-
-void to_dyn_struct(dyn_struct& to, const char*& from) noexcept {
-	dyn_struct::variant v;
-	v = std::string{ from };
-	to.value = std::move(v);
 }
 
 void to_dyn_struct(dyn_struct& to, const dyn_struct::null_t& from) noexcept {
@@ -389,7 +383,7 @@ std::optional<dyn_struct> load_from_json_file(const std::filesystem::path& file)
 			(c >= '0' && c <= '9');
 	};
 
-	auto advance_token = [=](const std::vector<std::uint8_t>& str, size_t idx)
+	auto advance_token = [=](const xstd::vector<std::uint8_t>& str, size_t idx)
 		-> std::pair<token, size_t>
 	{
 		if (idx >= str.size()) return { { token_type::UNKNOWN }, idx + 1 };
