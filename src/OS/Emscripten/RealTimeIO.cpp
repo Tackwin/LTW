@@ -5,7 +5,6 @@
 #include <emscripten/html5.h>
 #include <cassert>
 
-
 extern io::Keyboard_State emscripten_keyboard_state;
 extern io::Controller_State emscripten_controller_state;
 extern Vector2f emscripten_mouse_pos;

@@ -253,6 +253,8 @@ struct Build {
 	std::vector<std::filesystem::path> export_files;
 	std::vector<std::filesystem::path> export_dest_files;
 
+	std::vector<std::string> link_flags;
+
 	std::vector<Commands> pre_compile;
 	std::vector<Commands> post_compile;
 	std::vector<Commands> pre_link;
@@ -280,6 +282,8 @@ struct Build {
 
 	void add_export(const std::filesystem::path& f) noexcept;
 	void add_export(const std::filesystem::path& from, const std::filesystem::path& to) noexcept;
+
+	void add_link_flag(std::string str) noexcept;
 
 	void add_define(std::string str) noexcept;
 	void add_debug_defines() noexcept;
@@ -865,6 +869,9 @@ void NS::Build::del_source_recursively(const std::filesystem::path& f) noexcept 
 	}
 }
 
+void NS::Build::add_link_flag(std::string str) noexcept {
+	link_flags.emplace_back(std::move(str));
+}
 
 void NS::Build::add_header(const std::filesystem::path& f) noexcept {
 	auto x = f;
@@ -1244,6 +1251,7 @@ NS::Commands compile_command_link_exe(const NS::Build& b) noexcept {
 	std::string command;
 
 	command = b.compiler.generic_string() + " ";
+	for (auto& x : b.link_flags) command += x + " ";
 
 	if (b.target == Build::Target::Shared)
 		command += get_cli_flag(b.cli, Cli_Opts::Link_Shared) + " ";

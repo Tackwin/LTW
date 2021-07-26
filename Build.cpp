@@ -48,19 +48,21 @@ Build build_emscripten(Flags& flags) noexcept {
 	b.name = "LTW_em";
 
 	b.add_header("./src/");
-	b.add_source("./src/dyn_struct.cpp");
+	b.add_source_recursively("./src/");
+	b.del_source_recursively("./src/Entry/");
+	b.del_source_recursively("./src/OS/Windows");
+	b.del_source_recursively("./src/imgui");
+	b.del_source("./src/Inspector.cpp");
 	b.add_source("./src/Entry/em_main.cpp");
-	b.add_source("./src/Profiler/Tracer.cpp");
-	b.add_source("./src/OS/Emscripten/Process.cpp");
-	b.add_source("./src/OS/Emscripten/file.cpp");
 
 	b.add_define("WEB");
-	b.add_define("BUILD_DLL");
 	b.add_define("IMGUI_IMPL_OPENGL_LOADER_GL3W");
 	b.add_define("NOMINMAX");
 	b.add_define("PROFILER");
 	b.add_define("CONSOLE");
 	if (flags.generate_debug) b.add_define("GL_DEBUG");
+
+	b.add_link_flag("-s TOTAL_MEMORY=32768000");
 	return b;
 }
 

@@ -187,9 +187,9 @@ void Game::input(Input_Info in) noexcept {
 		mouse -= Vector2f{tile_size * (place_size.x - 1), tile_size * (place_size.y - 1)} / 2;
 
 		mouse /= tile_size;
-		mouse  = std::max(mouse, V2F(0));
+		mouse  = xstd::max(mouse, V2F(0));
 		auto mouse_u = (Vector2u)mouse;
-		mouse_u = std::min(mouse_u, board.size - place_size);
+		mouse_u = xstd::min(mouse_u, board.size - place_size);
 		controller.placing->tile_pos = mouse_u;
 	}
 
@@ -470,10 +470,10 @@ void game_render(Game& game, render::Orders& order) noexcept {
 		for (size_t i = 0; i < Sample_Log::MAX_FRAME_RECORD; ++i) {
 			for (size_t j = 0; j < frame_sample_log[i].sample_count; ++j) {
 				auto& it = frame_sample_log[i].samples[j];
-				max_time = std::max(max_time, it.time_end - it.time_start);
+				max_time = xstd::max(max_time, (size_t)(it.time_end - it.time_start));
 			}
 		}
-		max_time = std::max(max_time, (size_t)2'200'000 /*ns*/);
+		max_time = xstd::max(max_time, (size_t)2'200'000 /*ns*/);
 
 		Vector2f cursor = {10, 10};
 		for (size_t i = 0; i < Sample_Log::MAX_FRAME_RECORD; ++i) {

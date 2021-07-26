@@ -66,11 +66,14 @@ struct Scoped_Session {
 };
 
 
+#ifdef _MSC_VER
+    #define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
 #ifdef PROFILER
 #define PROFILER_SCOPE_SESSION(n, p) Scoped_Session scoped_session##__COUNTER__ (n, p);
 #define PROFILER_SESSION_BEGIN(n) Tracer::get().begin_session(n);
 #define PROFILER_SESSION_END(n) Tracer::get().end_session(n);
-#define PROFILER_FUNCTION() Scoped_Timer scoped_timer##__COUNTER__ ("function", __FUNCSIG__);
+#define PROFILER_FUNCTION() Scoped_Timer scoped_timer##__COUNTER__ ("function", __PRETTY_FUNCTION__);
 #define PROFILER_SCOPE(n) Scoped_Timer scoped_timer##__COUNTER__ ("scope", n);
 #define PROFILER_BEGIN(n) Tracer::get().begin(n);
 #define PROFILER_END() Tracer::get().end();
@@ -123,5 +126,5 @@ struct Timed_Block {
 	}
 };
 
-#define TIMED_FUNCTION Timed_Block scoped_timed_bloc_##__COUNTER__(__FUNCSIG__);
+#define TIMED_FUNCTION Timed_Block scoped_timed_bloc_##__COUNTER__(__PRETTY_FUNCTION__);
 #define TIMED_BLOCK(name) Timed_Block scoped_timed_bloc_##__COUNTER__(name);

@@ -4,6 +4,7 @@
 #include <optional>
 #include "std/vector.hpp"
 
+#include "dyn_struct.hpp"
 #include "Math/Vector.hpp"
 #include "Math/Rectangle.hpp"
 

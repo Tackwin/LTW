@@ -20,19 +20,29 @@ namespace xstd {
 
 	template<typename T>
 	struct hash {
+		template<typename U = T>
+		std::enable_if_t<std::is_enum_v<U>, size_t> operator()(U x) noexcept {
+			return (size_t)x;
+		}
 	};
 
 	#ifndef __EMSCRIPTEN__
 	template<>
 	struct hash<uint64_t> {
 		uint64_t operator()(uint64_t x) noexcept {
-			return hash_op();
+			return hash_op(x);
 		}
 	};
 	#endif
 	template<>
 	struct hash<uint32_t> {
 		uint32_t operator()(uint32_t x) noexcept {
+			return x;
+		}
+	};
+	template<>
+	struct hash<unsigned long> {
+		unsigned long operator()(unsigned long x) noexcept {
 			return x;
 		}
 	};

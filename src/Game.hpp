@@ -3,6 +3,7 @@
 #include <array>
 #include <optional>
 
+#include "dyn_struct.hpp"
 #include "Audio/Audio.hpp"
 #include "Graphic/Render.hpp"
 

@@ -208,7 +208,7 @@ namespace xstd {
 	constexpr T min(T a, T b) noexcept {
 		return a < b ? a : b;
 	}
-	
+
 	inline xstd::vector<std::string> split(
 		std::string_view str, std::string_view delim
 	) noexcept {

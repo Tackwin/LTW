@@ -545,7 +545,6 @@ struct dyn_struct;
 template<typename T>
 void to_dyn_struct(dyn_struct& s, const Vector<2, T>& x) noexcept {
 	s = { x.x, x.y };
-	s.type_tag = Vector2_Type_Tag;
 }
 template<typename T>
 void from_dyn_struct(const dyn_struct& s, Vector<2, T>& x) noexcept {
@@ -556,7 +555,6 @@ void from_dyn_struct(const dyn_struct& s, Vector<2, T>& x) noexcept {
 template<typename T>
 void to_dyn_struct(dyn_struct& s, const Vector<4, T>& x) noexcept {
 	s = { x.x, x.y, x.z, x.w };
-	s.type_tag = Vector4_Type_Tag;
 }
 template<typename T>
 void from_dyn_struct(const dyn_struct& s, Vector<4, T>& x) noexcept {
@@ -628,7 +626,7 @@ inline Vector4d to_rgba(Vector4d in) noexcept {
 
 #pragma warning(pop)
 
-namespace std {
+namespace xstd {
 template<typename T, size_t D>
 Vector<D, T> max(const Vector<D, T>& a, const Vector<D, T>& b) noexcept {
 	Vector<D, T> m;

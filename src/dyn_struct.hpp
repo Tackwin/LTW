@@ -63,9 +63,11 @@ struct dyn_struct {
 
 	dyn_struct& operator[](std::string_view str) noexcept;
 	dyn_struct& operator[](size_t idx) noexcept;
-
 	const dyn_struct& operator[](std::string_view str) const noexcept;
 	const dyn_struct& operator[](size_t idx) const noexcept;
+	const dyn_struct& operator[](int idx) const noexcept {
+		return this->operator[]((size_t)idx);
+	}
 
 	void push_back(const dyn_struct& v) noexcept;
 	void pop_back() noexcept;

@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <unordered_set>
+#include <float.h>
 
 #include "std/vector.hpp"
 #include "std/bloom_filter.hpp"

@@ -2,6 +2,7 @@
 #include "miniaudio.h"
 
 #include <atomic>
+#include <string>
 
 #include "xstd.hpp"
 #include "std/vector.hpp"
