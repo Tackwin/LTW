@@ -1,9 +1,8 @@
 #include "Graphic/Render.hpp"
 #include "Graphic/FrameBuffer.hpp"
 
-#include "GL/gl3w.h"
-
 #include "global.hpp"
+#include "OS/OpenGL.hpp"
 
 #include "std/vector.hpp"
 #include <random>
@@ -61,11 +60,17 @@ void render_world(render::Orders& orders, render::Render_Param param) noexcept;
 void render_ui(render::Orders& orders, render::Render_Param param) noexcept;
 
 void edge_highlight(
-	G_Buffer& g_buffer, Texture_Buffer& buffer, render::Render_Param& param
+	Texture_Buffer& position_buffer,
+	Texture_Buffer& normal_buffer,
+	Texture_Buffer& output_buffer,
+	render::Render_Param& param
 ) noexcept;
 
 void lighting(
-	G_Buffer& g_buffer,
+	Texture_Buffer& albedo_buffer,
+	Texture_Buffer& normal_buffer,
+	Texture_Buffer& position_buffer,
+	Texture_Buffer& velocity_buffer,
 	Texture_Buffer& edge_buffer,
 	HDR_Buffer& out_buffer,
 	render::Render_Param& param
@@ -74,7 +79,7 @@ void lighting(
 void render_transparent(render::Orders& orders, render::Render_Param& param) noexcept;
 
 void motion_blur(
-	G_Buffer& g_buffer,
+	Texture_Buffer& velocity_buffer,
 	HDR_Buffer& hdr_buffer,
 	HDR_Buffer& out_buffer,
 	render::Render_Param& param
@@ -94,10 +99,15 @@ void tone_mapping(
 void render::render_orders(render::Orders& orders, render::Render_Param param) noexcept {
 	auto buffer_size = Environment.buffer_size;
 	
+	static Texture_Buffer unisample_albedo  (buffer_size, "Unisample albedo");
+	static Texture_Buffer unisample_normal  (buffer_size, "Unisample normal");
+	static Texture_Buffer unisample_position(buffer_size, "Unisample position");
+	static Texture_Buffer unisample_velocity(buffer_size, "Unisample velocity");
+
 	static Texture_Buffer texture_target(buffer_size, "Texture Target");
 	static Texture_Buffer edge_buffer(buffer_size, "Edge Buffer");
 	static HDR_Buffer     motion_buffer(buffer_size, 1, "Motion Buffer");
-	static G_Buffer       g_buffer(buffer_size);
+	static G_Buffer       g_buffer(buffer_size, 4);
 	static HDR_Buffer     hdr_buffer(buffer_size, 1, "HDR Buffer");
 	static HDR_Buffer     transparent_buffer(buffer_size, 2, "Transparent Buffer");
 	static HDR_Buffer     bloom_buffer(buffer_size, 1, "Bloom Buffer");
@@ -113,8 +123,21 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 
 	render_world(orders, param);
 
-	edge_highlight(g_buffer, edge_buffer, param);
-	lighting(g_buffer, edge_buffer, hdr_buffer, param);
+	g_buffer.copy_draw_to(g_buffer.g_buffer, unisample_albedo  .frame_buffer, 0);
+	g_buffer.copy_draw_to(g_buffer.g_buffer, unisample_normal  .frame_buffer, 1);
+	g_buffer.copy_draw_to(g_buffer.g_buffer, unisample_position.frame_buffer, 2);
+	g_buffer.copy_draw_to(g_buffer.g_buffer, unisample_velocity.frame_buffer, 3);
+
+	edge_highlight(unisample_position, unisample_normal, edge_buffer, param);
+	lighting(
+		unisample_albedo,
+		unisample_normal,
+		unisample_position,
+		unisample_velocity,
+		edge_buffer,
+		hdr_buffer,
+		param
+	);
 
 	transparent_buffer.set_active();
 	glClearColor(0, 0, 0, 0);
@@ -123,7 +146,7 @@ void render::render_orders(render::Orders& orders, render::Render_Param param) n
 	render_transparent(orders, param);
 	gaussian_blur(transparent_buffer.color2_buffer, bloom_buffer, param);
 
-	motion_blur(g_buffer, hdr_buffer, motion_buffer, param);
+	motion_blur(unisample_velocity, hdr_buffer, motion_buffer, param);
 
 	glEnable(GL_BLEND);
 	motion_buffer.set_active();
@@ -434,18 +457,23 @@ void render_ui(render::Orders& orders, render::Render_Param param) noexcept {
 }
 
 void edge_highlight(
-	G_Buffer& g_buffer, Texture_Buffer& buffer, render::Render_Param& param
+	Texture_Buffer& position_buffer,
+	Texture_Buffer& normal_buffer,
+	Texture_Buffer& output_buffer,
+	render::Render_Param& param
 ) noexcept {
 	auto buffer_size = Environment.buffer_size;
 	thread_local Texture_Buffer temp_buffer(buffer_size, "Temporary edge highlight");
 
 	temp_buffer.set_active();
-	g_buffer.set_active_texture();
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 #if 1
+	normal_buffer.set_active_texture(1);
+	position_buffer.set_active_texture(2);
+
 	auto& edge_shader = asset::Store.get_shader(asset::Shader_Id::Edge_Glow);
 	edge_shader.use();
 	edge_shader.set_uniform("buffer_normal", 1);
@@ -475,7 +503,7 @@ void edge_highlight(
 
 	temp_buffer.render_quad();
 
-	buffer.set_active();
+	output_buffer.set_active();
 	temp_buffer.set_active_texture(0);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -484,7 +512,7 @@ void edge_highlight(
 	blur_shader.set_uniform("radius", (int)param.edge_blur);
 	blur_shader.set_uniform("image", 0);
 
-	buffer.render_quad();
+	output_buffer.render_quad();
 }
 
 
@@ -561,13 +589,19 @@ void gaussian_blur(
 }
 
 void lighting(
-	G_Buffer& g_buffer,
+	Texture_Buffer& albedo_buffer,
+	Texture_Buffer& normal_buffer,
+	Texture_Buffer& position_buffer,
+	Texture_Buffer& velocity_buffer,
 	Texture_Buffer& edge_buffer,
 	HDR_Buffer& out_buffer,
 	render::Render_Param& param
 ) noexcept {
 	out_buffer.set_active();
-	g_buffer.set_active_texture();
+	albedo_buffer.set_active_texture(0);
+	normal_buffer.set_active_texture(1);
+	position_buffer.set_active_texture(2);
+	velocity_buffer.set_active_texture(3);
 	edge_buffer.set_active_texture(10);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -590,18 +624,18 @@ void lighting(
 	shader.set_uniform("light_dirs[0].dir", Vector3f(0, 1, -1).normalize());
 	shader.set_uniform("light_dirs[0].color", Vector3f(0.8f, 0.8f, 1.f));
 
-	g_buffer.render_quad();
+	out_buffer.render_quad();
 }
 
 void motion_blur(
-	G_Buffer& g_buffer,
+	Texture_Buffer& velocity_buffer,
 	HDR_Buffer& hdr_buffer,
 	HDR_Buffer& out_buffer,
 	render::Render_Param& param
 ) noexcept {
 	out_buffer.set_active();
 	hdr_buffer.set_active_texture(5);
-	g_buffer.set_active_texture();
+	velocity_buffer.set_active_texture(3);
 
 	auto& motion_shader = asset::Store.get_shader(asset::Shader_Id::Motion);
 
@@ -675,7 +709,7 @@ const char* debug_severity_str(GLenum severity) {
 	return severities[str_idx];
 }
 
-void APIENTRY opengl_debug(
+void opengl_debug(
 	GLenum source,
 	GLenum type,
 	GLuint id,
@@ -711,6 +745,8 @@ void APIENTRY opengl_debug(
 	printf("\n");
 
 	if (std::find(BEG_END(To_Break_On), id) != std::end(To_Break_On)) {
+		#ifndef WEB
 		DebugBreak();
+		#endif
 	}
 }

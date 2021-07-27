@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include "std/int.hpp"
+#include "dyn_struct.hpp"
 
 #pragma warning(push)
 #pragma warning(disable: 4201)

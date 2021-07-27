@@ -53,16 +53,38 @@ Build build_emscripten(Flags& flags) noexcept {
 	b.del_source_recursively("./src/OS/Windows");
 	b.del_source_recursively("./src/imgui");
 	b.del_source("./src/Inspector.cpp");
+	b.del_source("./src/GL/gl3w.cpp");
 	b.add_source("./src/Entry/em_main.cpp");
 
 	b.add_define("WEB");
 	b.add_define("IMGUI_IMPL_OPENGL_LOADER_GL3W");
+	b.add_define("ES");
 	b.add_define("NOMINMAX");
 	b.add_define("PROFILER");
 	b.add_define("CONSOLE");
 	if (flags.generate_debug) b.add_define("GL_DEBUG");
 
 	b.add_link_flag("-s TOTAL_MEMORY=32768000");
+	b.add_link_flag("-s ASSERTIONS=2");
+	b.add_link_flag("-s TOTAL_STACK=32MB");
+	b.add_link_flag("-s TOTAL_MEMORY=128MB");
+	b.add_link_flag("-s SAFE_HEAP=1");
+	b.add_link_flag("-s USE_WEBGL2=1");
+	b.add_link_flag("-s DEMANGLE_SUPPORT=1");
+	b.add_link_flag("-s SAFE_HEAP=1");
+	b.add_link_flag("-s WASM=1");
+	b.add_link_flag("-s FULL_ES3=1");
+	b.add_link_flag("-s FULL_ES2=1");
+	b.add_link_flag("-s GL_ASSERTIONS=2");
+	b.add_link_flag("-s ERROR_ON_UNDEFINED_SYMBOLS=0");
+	b.add_link_flag("--embed-file ./assets/");
+	b.add_link_flag("--emrun");
+
+	if (flags.run_after_compilation) {
+		Commands c;
+		c.add_command("emrun --port 2356 ./LTW.html", "Run", "LTW.html", "LTW.html");
+		b.post_link.push_back(c);
+	}
 	return b;
 }
 

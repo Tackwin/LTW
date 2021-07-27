@@ -1,10 +1,11 @@
-#version 450 core
+#version 300 es
+precision mediump float;
 out vec4 FragColor;
 
 in vec2 TexCoords;
 
-uniform sampler2DMS gPosition;
-uniform sampler2DMS gNormal;
+uniform mediump sampler2D gPosition;
+uniform mediump sampler2D gNormal;
 uniform sampler2D texNoise;
 
 uniform vec3 samples[512];
@@ -19,15 +20,6 @@ uniform vec2 noiseScale;
 uniform mat4 projection;
 uniform mat4 view;
 
-vec4 texture_fetch(sampler2DMS tex, vec2 c) {
-	vec4 ret;
-	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
-	int samples = textureSamples(tex);
-	for (int i = 0; i < 1; ++i) {
-		ret += texelFetch(tex, tex_pixel, i);
-	}
-	return ret / float(samples);
-}
 float linearize_depth(float d,float zNear,float zFar)
 {
     return zNear * zFar / (zFar + d * (zNear - zFar));
@@ -35,8 +27,8 @@ float linearize_depth(float d,float zNear,float zFar)
 
 void main() {
     // get input for SSAO algorithm
-    vec3 fragPos = (texture_fetch(gPosition, TexCoords) * view).xyz;
-    vec3 normal = texture_fetch(gNormal, TexCoords).xyz;
+    vec3 fragPos = (texture(gPosition, TexCoords) * view).xyz;
+    vec3 normal = texture(gNormal, TexCoords).xyz;
     vec3 randomVec = texture(texNoise, TexCoords * noiseScale).xyz;
 
     // create TBN change-of-basis matrix: from tangent-space to view-space
@@ -61,7 +53,7 @@ void main() {
         offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
         
         // get sample depth
-        float sampleDepth = (texture_fetch(gPosition, offset.xy) * view).z; // get depth value of kernel sample
+        float sampleDepth = (texture(gPosition, offset.xy) * view).z; // get depth value of kernel sample
         //FragColor = vec4(vec3(linearize_depth(fragPos.z, 0.1, 500)), 1);
         //FragColor = vec4(vec3(linearize_depth(sampleDepth, 0.1, 500)), 1);
 
@@ -69,7 +61,7 @@ void main() {
         float rangeCheck = smoothstep(0.0, radius / abs(fragPos.z - sampleDepth), 1.0);
         occlusion += (sampleDepth >= ssao_sample.z + bias ? 1.0 : 0.0);// * rangeCheck;           
     }
-    occlusion = occlusion / n;
+    occlusion = occlusion / float(n);
     
     FragColor = vec4(vec3(occlusion), 1);
 }

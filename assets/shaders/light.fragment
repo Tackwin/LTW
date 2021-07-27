@@ -1,4 +1,4 @@
-#version 450
+#version 300 es
 precision mediump float;
 const int N_Light_Point = 32;
 const int N_Light_Dir   = 32;
@@ -24,11 +24,10 @@ layout (location = 1) out vec4 glow_buffer;
 
 in vec2 text_coord;
 
-uniform sampler2DMS buffer_position;
-uniform sampler2DMS buffer_normal;
-uniform sampler2DMS buffer_albedo;
-uniform usampler2DMS buffer_tag;
-uniform sampler2DMS buffer_velocity;
+uniform mediump sampler2D buffer_position;
+uniform mediump sampler2D buffer_normal;
+uniform mediump sampler2D buffer_albedo;
+uniform mediump sampler2D buffer_velocity;
 
 uniform sampler2D buffer_ssao;
 
@@ -44,25 +43,6 @@ uniform int debug;
 uniform float ambient_intensity;
 uniform vec4 ambient_color;
 
-vec4 texture_fetch(sampler2DMS tex, vec2 c) {
-	vec4 ret;
-	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
-	int samples = textureSamples(tex);
-	for (int i = 0; i < samples; ++i) {
-		ret += texelFetch(tex, tex_pixel, i);
-	}
-	return ret / float(samples);
-}
-uvec4 utexture_fetch(usampler2DMS tex, vec2 c) {
-	uvec4 ret;
-	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
-	int samples = textureSamples(tex);
-	for (int i = 0; i < samples; ++i) {
-		ret += texelFetch(tex, tex_pixel, i);
-	}
-	return ret / samples;
-}
-
 vec3 light_pixel(vec2 pix) {
 	const float root = 0.7;
 	const float linear = 0.25;
@@ -71,11 +51,11 @@ vec3 light_pixel(vec2 pix) {
 	const float step = 0.1;
 	const float distance_step = 10.0;
 
-	vec4 albedo = texture_fetch(buffer_albedo, pix);
-	vec3 normal = 1.0 - texture_fetch(buffer_normal, pix).xyz * 2.0;
-	vec3 pos = texture_fetch(buffer_position, pix).xyz;
+	vec4 albedo = texture(buffer_albedo, pix);
+	vec3 normal = 1.0 - texture(buffer_normal, pix).xyz * 2.0;
+	vec3 pos = texture(buffer_position, pix).xyz;
 
-	if (texture_fetch(buffer_normal, pix).xyz == vec3(1.0, 1.0, 1.0)) return albedo.rgb;
+	if (texture(buffer_normal, pix).xyz == vec3(1.0, 1.0, 1.0)) return albedo.rgb;
 
 	vec3 result = albedo.xyz * ambient_intensity;
 
@@ -112,7 +92,7 @@ vec3 light_pixel(vec2 pix) {
 
 		result =
 			result +
-			albedo.rgb * light_dirs[i].color * factor * 1;
+			albedo.rgb * light_dirs[i].color * factor * 1.0;
 	}
 
 	return result;
@@ -120,31 +100,30 @@ vec3 light_pixel(vec2 pix) {
 
 
 void main() {
-	vec4 normal = texture_fetch(buffer_normal, text_coord);
+	vec4 normal = texture(buffer_normal, text_coord);
 	if (normal == vec4(0.0, 0.0, 0.0, 0.0)){
 		discard;
 	}
 
 	if (debug == Debug_Default) {
 		frag_color.rgb = light_pixel(text_coord);
-		frag_color.a = texture_fetch(buffer_albedo, text_coord).a;
+		frag_color.a = texture(buffer_albedo, text_coord).a;
 	}
 	if (debug == Debug_Albedo) {
-		frag_color = texture_fetch(buffer_albedo, text_coord);
+		frag_color = texture(buffer_albedo, text_coord);
 	}
 	if (debug == Debug_Normal) {
-		frag_color = texture_fetch(buffer_normal, text_coord) * 2.0 - 1.0;
+		frag_color = texture(buffer_normal, text_coord) * 2.0 - 1.0;
 	}
 	if (debug == Debug_Position) {
-		frag_color = texture_fetch(buffer_position, text_coord);
+		frag_color = texture(buffer_position, text_coord);
 	}
 	if (debug == Debug_Depth) {
-		frag_color = vec4(texture_fetch(buffer_position, text_coord).w);
+		frag_color = vec4(texture(buffer_position, text_coord).w);
 	}
 
 	glow_buffer = vec4(0);
-	//frag_color = vec4(texture_fetch(buffer_position, text_coord).zzz, 1);
-	frag_color.xyz += vec3(0.1 * pow(texture(buffer_ssao, text_coord).x, 5));
-	//oofrag_color.rgb = texture_fetch(buffer_tag, text_coord).rgb;
-	//frag_color = texture_fetch(buffer_velocity, text_coord);
+	//frag_color = vec4(texture(buffer_position, text_coord).zzz, 1);
+	frag_color.xyz += vec3(0.1 * pow(texture(buffer_ssao, text_coord).x, 5.0));
+	//frag_color = texture(buffer_velocity, text_coord);
 }

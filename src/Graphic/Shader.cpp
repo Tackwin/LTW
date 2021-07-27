@@ -2,14 +2,9 @@
 #include <sstream>
 #include <fstream>
 
-#ifdef ES
-#include <GLES3/gl3.h>
-#else
-#include <GL/gl3w.h>
-#endif
-
 #include "Graphic/Shader.hpp"
 #include "OS/file.hpp"
+#include "OS/OpenGL.hpp"
 
 namespace xstd {
 	template<>
@@ -41,28 +36,14 @@ std::optional<Shader> Shader::create_shader(
 	return s;
 }
 
-std::optional<Shader> Shader::create_shader(
-	std::filesystem::path vertex, std::filesystem::path fragment, std::filesystem::path geometry
-) noexcept {
-	Shader s;
-	if (!s.load_geometry(geometry)) return std::nullopt;
-	if (!s.load_fragment(fragment)) return std::nullopt;
-	if (!s.load_vertex(vertex)) return std::nullopt;
-	if (!s.build_shaders()) return std::nullopt;
-
-	return s;
-}
-
 Shader::Shader() noexcept {
-	info.vertexId = glCreateShader(GL_VERTEX_SHADER);
+	info.vertexId   = glCreateShader(GL_VERTEX_SHADER);
 	info.fragmentId = glCreateShader(GL_FRAGMENT_SHADER);
-	info.geometryId = glCreateShader(GL_GEOMETRY_SHADER);
 }
 
 Shader::~Shader() noexcept {
 	if (info.vertexId) glDeleteShader(info.vertexId);
 	if (info.fragmentId) glDeleteShader(info.fragmentId);
-	if (info.geometryId) glDeleteShader(info.geometryId);
 	glDeleteProgram(info.programId);
 }
 
@@ -145,40 +126,11 @@ bool Shader::load_fragment(std::filesystem::path path) noexcept {
 	info.fragment_compiled = true;
 	return true;
 }
-bool Shader::load_geometry(std::filesystem::path path) noexcept {
-	auto expected = file::read_whole_text(path);
-	if (!expected) return false;
-
-	char* source = (*expected).data();
-
-	if (info.geometry_linked) {
-		glDetachShader(info.programId, info.geometryId);
-		info.geometry_linked = false;
-	}
-	if (info.geometry_compiled) {
-		glDeleteShader(info.geometryId);
-		info.geometryId = glCreateShader(GL_GEOMETRY_SHADER);
-		info.geometry_compiled = false;
-	}
-
-
-	glShaderSource(info.geometryId, 1, &source, nullptr);
-	glCompileShader(info.geometryId);
-
-	if (auto err = check_shader_error(info.geometryId)) {
-		printf("Geometry compilation error: %s\n", err->c_str());
-		return false;
-	}
-
-	info.geometry_compiled = true;
-	return true;
-}
 
 bool Shader::build_shaders() noexcept {
 	info.programId = glCreateProgram();
 	glAttachShader(info.programId, info.vertexId);
 	if (info.fragment_compiled) glAttachShader(info.programId, info.fragmentId);
-	if (info.geometry_compiled) glAttachShader(info.programId, info.geometryId);
 	glLinkProgram(info.programId);
 
 	if (auto err = check_program_error(info.programId)) {
@@ -188,7 +140,6 @@ bool Shader::build_shaders() noexcept {
 
 	info.fragment_linked = true;
 	info.vertex_linked = true;
-	info.geometry_linked = true;
 
 	cache_loc.clear();
 

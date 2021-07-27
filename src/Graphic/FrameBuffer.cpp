@@ -2,12 +2,7 @@
 
 #include <cassert>
 #include <stdio.h>
-
-#ifdef ES
-#include <GLES3/gl3.h>
-#else
-#include <GL/gl3w.h>
-#endif
+#include "OS/OpenGL.hpp"
 
 Frame_Buffer::Frame_Buffer(Vector2u size, size_t n_samples, std::string label) noexcept {
 	this->size = size;
@@ -67,7 +62,7 @@ void Frame_Buffer::new_color_attach(size_t format, std::string label) noexcept {
 	GLuint id;
 	glGenTextures(1, &id);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, id);
-	glTexImage2DMultisample(
+	glTexStorage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
 		format,
@@ -125,10 +120,10 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	// - color + specular color buffer
 	glGenTextures(1, &albedo_buffer);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, albedo_buffer);
-	glTexImage2DMultisample(
+	glTexStorage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
-		GL_RGB,
+		GL_RGB8,
 		(GLsizei)size.x,
 		(GLsizei)size.y,
 		GL_TRUE
@@ -144,7 +139,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	// - normal color buffer
 	glGenTextures(1, &normal_buffer);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, normal_buffer);
-	glTexImage2DMultisample(
+	glTexStorage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
 		GL_RGB8_SNORM,
@@ -163,7 +158,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	// - position color buffer
 	glGenTextures(1, &pos_buffer);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pos_buffer);
-	glTexImage2DMultisample(
+	glTexStorage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
 		GL_RGB16F,
@@ -183,7 +178,7 @@ G_Buffer::G_Buffer(Vector2u size, size_t n_samples) noexcept {
 	// - velocity color buffer
 	glGenTextures(1, &velocity_buffer);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, velocity_buffer);
-	glTexImage2DMultisample(
+	glTexStorage2DMultisample(
 		GL_TEXTURE_2D_MULTISAMPLE,
 		n_samples,
 		GL_RG16F,
@@ -308,12 +303,14 @@ void G_Buffer::render_quad() noexcept {
 }
 
 void G_Buffer::copy_depth_to(uint32_t id) noexcept {
+	static GLenum b = GL_BACK;
+
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, g_buffer);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, id); // write to default framebuffer
 	// blit to default framebuffer. Note that this may or may not work as the internal formats of both the FBO and default framebuffer have to match.
 	// the internal formats are implementation defined. This works on all of my systems, but if it doesn't on yours you'll likely have to write to the 		
 	// depth buffer in another shader stage (or somehow see to match the default framebuffer's internal format with the FBO's internal format).
-	glDrawBuffer(GL_BACK);
+	glDrawBuffers(1, &b);
 	glBlitFramebuffer(
 		0,
 		0,
@@ -329,13 +326,33 @@ void G_Buffer::copy_depth_to(uint32_t id) noexcept {
 	glBindFramebuffer(GL_FRAMEBUFFER, id);
 }
 
+void G_Buffer::copy_draw_to(uint32_t from_id, uint32_t dest_id, uint32_t color) noexcept {
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, from_id);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest_id);
+
+	glReadBuffer(GL_COLOR_ATTACHMENT0 + color);
+	glBlitFramebuffer(
+		0,
+		0,
+		(GLsizei)size.x,
+		(GLsizei)size.y,
+		0,
+		0,
+		(GLsizei)size.x,
+		(GLsizei)size.y,
+		GL_COLOR_BUFFER_BIT,
+		GL_LINEAR
+	);
+}
+
 void G_Buffer::copy_depth_to(uint32_t id, Rectanglef v) noexcept {
+	static GLenum b = GL_BACK;
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, g_buffer);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, id); // write to default framebuffer
 	// blit to default framebuffer. Note that this may or may not work as the internal formats of both the FBO and default framebuffer have to match.
 	// the internal formats are implementation defined. This works on all of my systems, but if it doesn't on yours you'll likely have to write to the 		
 	// depth buffer in another shader stage (or somehow see to match the default framebuffer's internal format with the FBO's internal format).
-	glDrawBuffer(GL_BACK);
+	glDrawBuffers(1, &b);
 	glBlitFramebuffer(
 		0,
 		0,
@@ -512,7 +529,7 @@ Texture_Buffer::Texture_Buffer(Vector2u size, std::string label) noexcept {
 
 	glGenRenderbuffers(1, &rbo_buffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo_buffer);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, (GLsizei)size.x, (GLsizei)size.y);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, (GLsizei)size.x, (GLsizei)size.y);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_buffer);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {

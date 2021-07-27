@@ -1,6 +1,7 @@
 #include "Object.hpp"
 
 #include <sstream>
+#include <float.h>
 
 #include "OS/file.hpp"
 
@@ -35,12 +36,15 @@ std::optional<Object> Object::load_from_file(
 	}
 
 	for (size_t i = 0; i < n_vertex; ++i) {
-		obj.vertices.push_back(*reinterpret_cast<Vertex*>(file.data() + cursor));
+		thread_local Vertex temp;
+		memcpy(&temp, file.data() + cursor, sizeof(Vertex));
+
+		obj.vertices.push_back(temp);
 		cursor += sizeof(Vertex);
 	}
 
 	for (size_t i = 0; i < n_face; ++i) {
-		assert(*reinterpret_cast<std::uint8_t*>(file.data() + cursor) == 3);
+		assert(file[cursor] == 3);
 		cursor++;
 
 		obj.faces.push_back((std::uint16_t)*reinterpret_cast<std::uint32_t*>(file.data() + cursor));

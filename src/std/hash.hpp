@@ -12,10 +12,11 @@ namespace xstd {
 		x = x ^ (x >> 30) ^ (x >> 60);
 		return x;
 	}
-#endif
-	constexpr inline uint32_t hash_op(uint32_t x) noexcept {
+#else
+	constexpr inline size_t hash_op(size_t x) noexcept {
 		return x;
 	}
+#endif
 
 
 	template<typename T>
@@ -26,18 +27,16 @@ namespace xstd {
 		}
 	};
 
-	#ifndef __EMSCRIPTEN__
 	template<>
 	struct hash<uint64_t> {
 		uint64_t operator()(uint64_t x) noexcept {
-			return hash_op(x);
+			return hash_op((size_t)x);
 		}
 	};
-	#endif
 	template<>
 	struct hash<uint32_t> {
 		uint32_t operator()(uint32_t x) noexcept {
-			return x;
+			return hash_op((size_t)x);
 		}
 	};
 	template<>

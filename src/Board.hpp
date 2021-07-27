@@ -7,6 +7,7 @@
 #include "std/vector.hpp"
 #include "std/bloom_filter.hpp"
 
+#include "dyn_struct.hpp"
 #include "Audio/Audio.hpp"
 
 #include "xstd.hpp"

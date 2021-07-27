@@ -1,30 +1,21 @@
-#version 450 core
+#version 300 es
+precision mediump float;
 uniform sampler2D texture_input;
-uniform sampler2DMS texture_velocity;
+uniform mediump sampler2D texture_velocity;
 
 uniform float scale;
 
 out vec4 result;
 in vec2 TexCoords;
 
-vec4 texture_fetch(sampler2DMS tex, vec2 c) {
-	vec4 ret;
-	ivec2 tex_pixel = ivec2(c * vec2(textureSize(tex)));
-	int samples = textureSamples(tex);
-	for (int i = 0; i < samples; ++i) {
-		ret += texelFetch(tex, tex_pixel, i);
-	}
-	return ret / float(samples);
-}
-
 void main() {
 	vec2 texel_size = 1.0 / vec2(textureSize(texture_input, 0));
 
-	vec2 velocity = texture_fetch(texture_velocity, TexCoords).xy;
+	vec2 velocity = texture(texture_velocity, TexCoords).xy;
 	velocity *= scale;
 
 	float speed = length(velocity / texel_size);
-	if (abs(speed) > 1) speed = pow(speed, 1 / 2.0);
+	if (abs(speed) > 1.0) speed = pow(speed, 1.0 / 2.0);
 	int n_samples = clamp(int(speed), 1, 16);
 
 
@@ -34,7 +25,7 @@ void main() {
 		result += texture(texture_input, TexCoords + offset);
 	}
 	result /= float(n_samples);
-	result.a = 1;
+	result.a = 1.0;
 
 
 	//result = vec4(vec3(speed * 0.5), 1);

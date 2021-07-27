@@ -13,7 +13,6 @@
 struct ShaderInfo {
 	size_t vertexId   = 0;
 	size_t programId  = 0;
-	size_t geometryId = 0;
 	size_t fragmentId = 0;
 
 	bool vertex_compiled = false;
@@ -21,21 +20,13 @@ struct ShaderInfo {
 
 	bool fragment_compiled = false;
 	bool fragment_linked   = false;
-	
-	bool geometry_compiled = false;
-	bool geometry_linked   = false;
 };
 
 class Shader {
 public:
-	static std::optional<Shader> create_shader(
-		std::filesystem::path vertex
-	) noexcept;
+	static std::optional<Shader> create_shader(std::filesystem::path vertex) noexcept;
 	static std::optional<Shader> create_shader(
 		std::filesystem::path vertex, std::filesystem::path fragment
-	) noexcept;
-	static std::optional<Shader> create_shader(
-		std::filesystem::path vertex, std::filesystem::path fragment, std::filesystem::path geometry
 	) noexcept;
 
 public:
@@ -63,7 +54,6 @@ public:
 
 	bool load_vertex(std::filesystem::path path) noexcept;
 	bool load_fragment(std::filesystem::path path) noexcept;
-	bool load_geometry(std::filesystem::path path) noexcept;
 	bool build_shaders() noexcept;
 
 

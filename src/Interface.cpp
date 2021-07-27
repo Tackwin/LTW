@@ -97,7 +97,7 @@ Ui_Table Tower_Selection::get_selected_table(
 	for (auto& i : selection) if (pool->exist(i) && pool->id(i).kind == Tower::Volter_Kind) {
 		table[8 + 1] = Ui_State::Surge_Spell;
 		buttons[Ui_State::Surge_Spell].ready_percentage =
-			1 - std::max(0.f, pool->id(i).Volter_.surge_timer) / pool->id(i).Volter_.surge_time;
+			1 - xstd::max(0.f, pool->id(i).Volter_.surge_timer) / pool->id(i).Volter_.surge_time;
 	}
 
 	return table;
@@ -182,8 +182,8 @@ void Interface::update(double dt) noexcept {
 
 	for (auto& [s, x] : action.state_button) if (s != Ui_State::Null) {
 		x.actual_color += (x.target_color - x.actual_color) * dt;
-		if (x.hovered) x.actual_color = std::max(x.target_color * 1.3f, x.actual_color);
-		if (x.pressed) x.actual_color = std::max(x.target_color * 1.8f, x.actual_color);
+		if (x.hovered) x.actual_color = xstd::max(x.target_color * 1.3f, x.actual_color);
+		if (x.pressed) x.actual_color = xstd::max(x.target_color * 1.8f, x.actual_color);
 	}
 
 	if (tower_selection.selection.empty()) {

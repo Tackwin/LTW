@@ -5,6 +5,7 @@
 #include "Managers/AssetsManager.hpp"
 
 #include "std/vector.hpp"
+#include "std/int.hpp"
 
 struct Frame_Buffer {
 
@@ -59,6 +60,7 @@ struct G_Buffer {
 	void render_quad() noexcept;
 	void copy_depth_to(std::uint32_t id = 0) noexcept;
 	void copy_depth_to(std::uint32_t id, Rectanglef viewport) noexcept;
+	void copy_draw_to(uint32_t from_id, uint32_t dest_id, uint32_t color) noexcept;
 
 	void clear(Vector4d color) noexcept;
 

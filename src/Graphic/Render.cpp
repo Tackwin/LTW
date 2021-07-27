@@ -1,9 +1,5 @@
 #include "Render.hpp"
-#ifdef ES
-#include <GLES3/gl3.h>
-#else
-#include "GL/gl3w.h"
-#endif
+#include "OS/OpenGL.hpp"
 
 #include "Math/Ray.hpp"
 #include "Math/Matrix.hpp"
@@ -1395,7 +1391,7 @@ void render::immediate(
 
 	for (size_t i = 0; i < models.size(); i += Batch_Size) {
 
-	auto batch = std::span<Model>(models.begin() + i, std::min(models.size() - i, Batch_Size));
+	auto batch = xstd::span<Model>(models.data() + i, std::min(models.size() - i, Batch_Size));
 
 	Matrix4f VP = cam.get_VP();
 
@@ -1404,7 +1400,7 @@ void render::immediate(
 	};
 
 	host_instance_data.clear();
-	host_instance_data.resize(batch.size() * GPU_Instance_Size);
+	host_instance_data.resize(batch.size * GPU_Instance_Size);
 	size_t off = 0;
 	for (auto& x : batch) {
 		uint32_t tag = x.object_id;
@@ -1434,7 +1430,7 @@ void render::immediate(
 
 	glBindBuffer(indices.target, indices.buffer);
 	glDrawElementsInstanced(
-		GL_TRIANGLES, object.faces.size(), GL_UNSIGNED_SHORT, (void*)0, batch.size()
+		GL_TRIANGLES, object.faces.size(), GL_UNSIGNED_SHORT, (void*)0, batch.size
 	);
 
 	}

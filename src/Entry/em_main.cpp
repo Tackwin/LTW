@@ -6,10 +6,15 @@
 
 #include <string>
 #include "xstd.hpp"
-#include "Profiler/Tracer.hpp"
 #include "global.hpp"
 #include "Game.hpp"
+#include "Graphic/Render.hpp"
+#include "Profiler/Tracer.hpp"
 #include "OS/RealTimeIO.hpp"
+
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
+
 
 
 io::Keyboard_State emscripten_keyboard_state{};
@@ -33,7 +38,10 @@ int main() {
 	PROFILER_SESSION_BEGIN("Startup");
 	defer { PROFILER_SESSION_END("output/trace/"); };
 
-	init_gl_context();
+	if (!init_gl_context()) {
+		printf("Problem \n");
+	}
+	printf("OpenGL version supported by this platform (%s): \n", glGetString(GL_VERSION));
 
 	game_proc.startup(game);
 	emscripten_set_main_loop(loop, 0, 1);
@@ -49,6 +57,8 @@ void loop() noexcept {
 
 	game_proc.update(game, sound_orders, 0.016f);
 	game_proc.render(game, render_orders);
+
+	render::render_orders(render_orders, render_param);
 }
 
 bool init_gl_context() noexcept {

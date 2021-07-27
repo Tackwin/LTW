@@ -1,9 +1,5 @@
 #include "Graphic/Texture.hpp"
-#ifdef ES
-#include <GLES3/gl3.h>
-#else
-#include <GL/gl3w.h>
-#endif
+#include "OS/OpenGL.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -15,12 +11,12 @@
 Texture::Texture() noexcept {
 	GLuint temp;
 	glGenTextures(1, &temp);
+	info.id = temp;
 	bind();
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	info.id = temp;
 }
 Texture::~Texture() noexcept {
 	GLuint temp = info.id;

@@ -2,6 +2,7 @@
 #include <assert.h>
 
 #include <string_view>
+#include <string>
 #include <atomic>
 
 #include "std/vector.hpp"

@@ -4,7 +4,7 @@
 #include <set>
 
 #include "std/unordered_map.hpp"
-#include "GL/gl3w.h"
+#include "OS/OpenGL.hpp"
 
 #include "global.hpp"
 #include "imgui/imgui.h"
@@ -364,6 +364,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 	if (game.gui.game_debug_open) {
 		int temp = 0;
 
+#ifndef WEB
 		ImGui::Begin("Game Debug", &game.gui.game_debug_open);
 		if (ImGui::CollapsingHeader("SSAO")) {
 			ImGui::SliderSize("radius", &game.gui.edge_blur, 0, 10);
@@ -392,6 +393,7 @@ void game_render(Game& game, render::Orders& order) noexcept {
 		ImGui::Text("Units: %zu", units);
 		ImGui::Text("Projectiles: %zu", projectiles);
 		ImGui::End();
+#endif
 	}
 
 

@@ -4,6 +4,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <cassert>
+#include "global.hpp"
 
 extern io::Keyboard_State emscripten_keyboard_state;
 extern io::Controller_State emscripten_controller_state;
@@ -15,7 +16,7 @@ Vector2f io::get_mouse_pos() noexcept {
 
 	return {
 		(float)mouse_state.canvasX,
-		(float)(Environment.window_height - mouse_state.canvasY)
+		(float)(Environment.window_size.y - mouse_state.canvasY)
 	};
 }
 

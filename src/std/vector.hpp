@@ -230,6 +230,7 @@ namespace xstd {
 			data = vec.data();
 			size = vec.size();
 		}
+		span(T* data, size_t size) noexcept : data(data), size(size) {}
 
 		constexpr T& operator[](size_t idx) noexcept {
 			#ifdef _DEBUG

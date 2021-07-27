@@ -34,9 +34,14 @@ file::read_whole_file(const std::filesystem::path& path) noexcept {
 		return std::nullopt;
 	}
 
-	xstd::vector<std::uint8_t> bytes;
+	xstd::vector<uint8_t> bytes;
+	size_t len = 0;
+	fseek(file, 0, SEEK_END);
+	len = ftell(file);
+	rewind(file);
 
-	while (!feof(file)) if (char c = fgetc(file); c != EOF) bytes.push_back(c);
+	bytes.resize(len);
+	fgets((char*)bytes.data(), len, file);
 
 	return bytes;
 }

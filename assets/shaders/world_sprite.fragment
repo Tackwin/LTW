@@ -1,4 +1,7 @@
-#version 450
+#version 300 es
+
+precision mediump float;
+
 layout (location = 0) out vec4 g_albedo;
 layout (location = 1) out vec4 g_normal;
 layout (location = 2) out vec4 g_position;
@@ -6,7 +9,7 @@ layout (location = 3) out vec4 g_velocity;
 
 uniform sampler2D color_texture;
 
-in vec2 texture_pos;
+flat in vec2 texture_pos;
 in vec3 position;
 in vec3 normal;
 flat in uint tag;

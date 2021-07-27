@@ -1,4 +1,5 @@
-#version 450
+#version 300 es
+precision highp float;
 out vec4 FragColor;
 
 in vec2 TexCoords;
@@ -7,7 +8,9 @@ uniform sampler2D image;
 uniform int radius;
 
 void main() {
-	vec2 tex_offset = 1.0 / textureSize(image, 0); // gets size of single texel
+	vec2 tex_offset = vec2(1.0);
+	tex_offset.x /= float(textureSize(image, 0).x); // gets size of single texel
+	tex_offset.y /= float(textureSize(image, 0).y); // gets size of single texel
 	vec4 result = vec4(0); // current fragment's contribution
 	
 	int r = radius;
@@ -17,5 +20,5 @@ void main() {
 			result += texture(image, TexCoords + tex_offset * vec2(i, j));
 		}
 	}
-	FragColor = vec4(result / (r * r));
+	FragColor = vec4(result / float(r * r));
 }

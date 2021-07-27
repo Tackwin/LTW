@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "std/unordered_map.hpp"
+#include "std/int.hpp"
 
 #include "Graphic/Font.hpp"
 #include "Graphic/Object.hpp"
@@ -57,7 +58,6 @@ namespace asset {
 		inline static size_t Default = 1;
 		inline static size_t Light   = 2;
 		inline static size_t HDR     = 3;
-		inline static size_t Line    = 4;
 		inline static size_t Default_Batched = 5;
 		inline static size_t Default_3D = 6;
 		inline static size_t Default_3D_Batched = 7;
@@ -147,16 +147,16 @@ namespace asset {
 		bool stop{ false };
 		std::atomic<bool> ready = false;
 
-		xstd::unordered_map<std::string, std::uint64_t> textures_loaded;
+		xstd::unordered_map<std::string, uint64_t> textures_loaded;
 
-		xstd::unordered_map<std::uint64_t, Asset_DLL> dlls;
-		xstd::unordered_map<std::uint64_t, Asset_Font> fonts;
-		xstd::unordered_map<std::uint64_t, Asset_Sound> sounds;
-		xstd::unordered_map<std::uint64_t, Asset_Object> objects;
-		xstd::unordered_map<std::uint64_t, Asset_Shader> shaders;
-		xstd::unordered_map<std::uint64_t, Asset_Texture> textures;
+		xstd::unordered_map<uint64_t, Asset_DLL> dlls;
+		xstd::unordered_map<uint64_t, Asset_Font> fonts;
+		xstd::unordered_map<uint64_t, Asset_Sound> sounds;
+		xstd::unordered_map<uint64_t, Asset_Object> objects;
+		xstd::unordered_map<uint64_t, Asset_Shader> shaders;
+		xstd::unordered_map<uint64_t, Asset_Texture> textures;
 
-		xstd::unordered_map<std::string, std::uint64_t> texture_string_map;
+		xstd::unordered_map<std::string, uint64_t> texture_string_map;
 
 		[[nodiscard]] Texture* get_normal(size_t k) const noexcept;
 		[[nodiscard]] Texture& get_albedo(size_t k) noexcept;
@@ -171,22 +171,11 @@ namespace asset {
 		[[nodiscard]] std::optional<size_t> load_shader(
 			std::filesystem::path vertex, std::filesystem::path fragment
 		) noexcept;
-		[[nodiscard]] std::optional<size_t> load_shader(
-			std::filesystem::path vertex,
-			std::filesystem::path fragment,
-			std::filesystem::path geometry
-		) noexcept;
 		[[nodiscard]] bool load_shader(
 			size_t k, std::filesystem::path vertex
 		) noexcept;
 		[[nodiscard]] bool load_shader(
 			size_t k, std::filesystem::path vertex, std::filesystem::path fragment
-		) noexcept;
-		[[nodiscard]] bool load_shader(
-			size_t k,
-			std::filesystem::path vertex,
-			std::filesystem::path fragment,
-			std::filesystem::path geometry
 		) noexcept;
 
 		[[nodiscard]] Font& get_font(size_t k) noexcept;

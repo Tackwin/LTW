@@ -1,13 +1,8 @@
 #pragma once
 
 #ifdef ES
-#include <GLES3/gl3.h>
+#include <GLES3/gl32.h>
+#define glObjectLabel(...)
 #else
 #include <GL/gl3w.h>
-namespace opengl {
-	typedef HGLRC WINAPI Create_Context_Attribs_ARB(HDC, HGLRC, const int*);
-	typedef HGLRC WINAPI Make_Current_ARB(HDC, HGLRC, const int*);
-
-	inline static Create_Context_Attribs_ARB* create_context_arb{ nullptr };
-}
 #endif

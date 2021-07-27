@@ -5,7 +5,6 @@
 #include "xstd.hpp"
 #include "global.hpp"
 
-#include "GL/gl3w.h"
 #include "OS/file.hpp"
 #include "OS/OpenGL.hpp"
 
@@ -76,15 +75,6 @@ namespace asset {
 	auto x = xstd::uuid();
 	return load_shader(x, vertex, fragment) ? std::optional{x} : std::nullopt;
 }
-[[nodiscard]] std::optional<size_t> Store_t::load_shader(
-	std::filesystem::path vertex,
-	std::filesystem::path fragment,
-	std::filesystem::path geometry
-) noexcept {
-	auto x = xstd::uuid();
-	return load_shader(x, vertex, fragment, geometry) ? std::optional{x} : std::nullopt;
-}
-
 
 [[nodiscard]] bool Store_t::load_shader(
 	size_t k, std::filesystem::path vertex
@@ -115,27 +105,6 @@ namespace asset {
 		std::filesystem::weakly_canonical(fragment)
 	};
 
-
-	shaders.emplace(k, std::move(s));
-
-	return true;
-}
-
-[[nodiscard]] bool Store_t::load_shader(
-	size_t k,
-	std::filesystem::path vertex,
-	std::filesystem::path fragment,
-	std::filesystem::path geometry
-) noexcept {
-	auto new_shader = Shader::create_shader(vertex, fragment, geometry);
-	if (!new_shader) return false;
-
-	Asset_Shader s{
-		std::move(*new_shader),
-		std::filesystem::weakly_canonical(vertex),
-		std::filesystem::weakly_canonical(fragment),
-		std::filesystem::weakly_canonical(geometry)
-	};
 
 	shaders.emplace(k, std::move(s));
 
@@ -227,13 +196,6 @@ void Store_t::monitor_path(std::filesystem::path dir) noexcept {
 
 					if (x.asset.build_shaders()) printf("Rebuilt shader.\n");
 					else printf("Faield to rebuild shader.\n");
-				}
-				else if (x.geometry == path) {
-
-					if (!x.asset.load_geometry(path)) continue;
-
-					if (x.asset.build_shaders()) printf("Rebuilt shader.\n");
-					else printf("Failed to rebuild shader.\n");
 				}
 			}
 
@@ -340,11 +302,10 @@ void Store_t::load_known_shaders() noexcept {
 
 	std::optional<size_t> opt;
 
-#define X(f, v, g, x)\
+#define X(f, v, x)\
 	printf("Loading " #x " shader... ");\
 	if (*v == '\0') opt = load_shader(f);\
-	else if (*g == '\0') opt = load_shader(f, v);\
-	else opt = load_shader(f, v, g);\
+	else opt = load_shader(f, v);\
 	if (opt) {\
 		Shader_Id::x = *opt;\
 		printf("sucess :) !\n");\
@@ -353,55 +314,41 @@ void Store_t::load_known_shaders() noexcept {
 		printf("failed :( !\n");\
 	}
 
-	X("assets/shaders/default.vertex", "assets/shaders/default.fragment", "", Default);
-	X("assets/shaders/default_3d.vertex", "assets/shaders/default_3d.fragment", "", Default_3D);
+	X("assets/shaders/default.vertex",    "assets/shaders/default.fragment",    Default);
+	X("assets/shaders/default_3d.vertex", "assets/shaders/default_3d.fragment", Default_3D);
 	X(
 		"assets/shaders/default_3d_batched.vertex",
 		"assets/shaders/default_3d_batched.fragment",
-		"",
 		Default_3D_Batched
 	);
 	X(
 		"assets/shaders/default_batched.vertex",
 		"assets/shaders/default_batched.fragment",
-		"",
 		Default_Batched
 	);
 	X(
 		"assets/shaders/primitive_3d_batched.vertex",
 		"assets/shaders/primitive_3d_batched.fragment",
-		"",
 		Primitive_3D_Batched
 	);
-	X("assets/shaders/simple.vertex", "assets/shaders/edge_glow.fragment", "", Edge_Glow);
-	X("assets/shaders/simple.vertex", "assets/shaders/motion.fragment",    "", Motion);
-	X("assets/shaders/light.vertex",  "assets/shaders/light.fragment",     "", Light);
-	X("assets/shaders/simple.vertex", "assets/shaders/ssao.fragment",      "", SSAO);
-	X("assets/shaders/simple.vertex", "assets/shaders/blur.fragment",      "", Blur);
-	X("assets/shaders/simple.vertex", "assets/shaders/hdr.fragment",       "", HDR);
-	X("assets/shaders/simple.vertex", "assets/shaders/simple.fragment",    "", Simple);
-	X("assets/shaders/depth_prepass.vertex", "",    "", Depth_Prepass);
-	X("assets/shaders/ring.vertex", "assets/shaders/ring.fragment",    "", Ring);
-	X("assets/shaders/simple.vertex", "assets/shaders/bloom.fragment",    "", Bloom);
-	X("assets/shaders/simple.vertex", "assets/shaders/additive.fragment",    "", Additive);
+	X("assets/shaders/simple.vertex", "assets/shaders/edge_glow.fragment", Edge_Glow);
+	X("assets/shaders/simple.vertex", "assets/shaders/motion.fragment",    Motion);
+	X("assets/shaders/light.vertex",  "assets/shaders/light.fragment",     Light);
+	X("assets/shaders/simple.vertex", "assets/shaders/ssao.fragment",      SSAO);
+	X("assets/shaders/simple.vertex", "assets/shaders/blur.fragment",      Blur);
+	X("assets/shaders/simple.vertex", "assets/shaders/hdr.fragment",       HDR);
+	X("assets/shaders/simple.vertex", "assets/shaders/simple.fragment",    Simple);
+	X("assets/shaders/depth_prepass.vertex", "",                           Depth_Prepass);
+	X("assets/shaders/ring.vertex", "assets/shaders/ring.fragment",        Ring);
+	X("assets/shaders/simple.vertex", "assets/shaders/bloom.fragment",     Bloom);
+	X("assets/shaders/simple.vertex", "assets/shaders/additive.fragment",  Additive);
 	X(
 		"assets/shaders/particle.vertex",
 		"assets/shaders/particle_deferred.fragment",
-		"",
 		Particle_Deferred
 	);
-	X(
-		"assets/shaders/particle.vertex",
-		"assets/shaders/particle_bloom.fragment",
-		"",
-		Particle_Bloom
-	);
-	X(
-		"assets/shaders/world_sprite.vertex",
-		"assets/shaders/world_sprite.fragment",
-		"",
-		World_Sprite
-	);
+	X("assets/shaders/particle.vertex", "assets/shaders/particle_bloom.fragment", Particle_Bloom);
+	X("assets/shaders/world_sprite.vertex", "assets/shaders/world_sprite.fragment", World_Sprite);
 #undef X
 }
 void Store_t::load_known_objects() noexcept {
